@@ -1,0 +1,119 @@
+@extends('layouts.app')
+
+@section('title', 'Dashboard profesor')
+
+@section('content')
+@if(session('info'))
+    <div class="alert alert-primary" role="alert">
+        <strong>{{ session('info') }}</strong>
+    </div>    
+@endif
+@if($followUpNotifications->isNotEmpty())
+    <div class="card card-warning">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-bell mr-1"></i>
+                Seguimientos pendientes
+            </h3>
+        </div>
+
+        <div class="card-body">
+            @foreach($followUpNotifications as $notification)
+                <div class="mb-2">
+                    <a href="{{ $notification->data['url'] }}">
+                        Seguimiento solicitado:
+                        <strong>{{ $notification->data['student_name'] }}</strong>
+                    </a>
+                </div>
+            @endforeach
+        </div>
+    </div>
+@endif
+<div class="content px-3">
+    <div class="clearfix"></div>
+        <div class="row">
+            <div class="col-lg-12 mt-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="fas fa-bullhorn"></i> Avisos
+                        </h5>
+                    </div>
+
+                    <div class="card-body">
+                        @forelse($announcements as $a)
+                            <div class="alert alert-info mb-2">
+                                <strong>{{ $a->title }}</strong><br>
+                                {{ $a->body }}
+                            </div>
+                        @empty
+                        @endforelse
+                        <ul>
+                            @foreach(auth()->user()->unreadNotifications as $notification)
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+
+                                    <div>
+                                        <strong>Justificante de inasistencia</strong><br>
+
+                                        {{ $notification->data['student_name'] }}
+                                        ({{ $notification->data['enrollment_number'] }})<br>
+
+                                        <small class="text-muted">
+                                            {{ $notification->data['from_date'] }}
+                                            –
+                                            {{ $notification->data['to_date'] }}
+                                        </small>
+                                    </div>
+
+                                    <form method="POST"
+                                        action="{{ route('notifications.read', $notification) }}">
+                                        @csrf
+                                        <button class="btn btn-sm btn-light"
+                                                title="Marcar como leído">
+                                            ✔
+                                        </button>
+                                    </form>
+
+                                </div>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Mis clases</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+
+                            @foreach($assignments as $assignment)
+                                <div class="col-md-4">
+                                    <div class="card card-outline card-primary">
+                                        <div class="card-header">
+                                            <h5 class="card-title">
+                                                {{ $assignment->subject->name }}
+                                            </h5>
+                                        </div>
+
+                                        <div class="card-body">
+                                            <p><strong>Grupo:</strong> {{ $assignment->group->name }}</p>
+                                        </div>
+
+                                        <div class="card-footer text-right">
+                                            <a href="{{ route('assignments.show', $assignment) }}"
+                                            class="btn btn-primary btn-sm">
+                                                Entrar
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

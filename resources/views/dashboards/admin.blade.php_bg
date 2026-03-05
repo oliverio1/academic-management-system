@@ -1,0 +1,44 @@
+@extends('layouts.app')
+
+@section('title', 'Dashboard administrador')
+
+@section('content')
+    @if(session('info'))
+        <div class="alert alert-primary" role="alert">
+            <strong>{{ session('info') }}</strong>
+        </div>
+    @endif
+
+    <div class="content px-3">
+        <div class="clearfix"></div>
+        <div class="row">
+            <div class="col-md-12 mt-3">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <h4>Dashboard</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @include('dashboards.admin._kpis')
+                        <!-- {{-- ALERTAS --}}
+                        @include('dashboards.admin._alerts') -->
+                        <div class="row mt-3">
+                            {{-- ACCIONES RÁPIDAS --}}
+                            <div class="col-md-6">
+                                @include('dashboards.admin._quick-actions')
+                            </div>
+
+                            {{-- ESTADO DEL SISTEMA --}}
+                            <div class="col-md-6">
+                                @include('dashboards.admin._system-status')
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
