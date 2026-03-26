@@ -62,12 +62,7 @@ Route::middleware(['auth'])->get('/dashboard', [DashboardController::class, 'ind
 Route::middleware(['auth'])->get('students/{student}/report-card', [ReportCardController::class, 'show'])->name('students.report-card');
 Route::get('students/{student}/report-card/pdf',[ReportCardController::class, 'pdf'])->name('students.report-card.pdf');
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/home', function () {
-        return view('home');
-    })->name('home');
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-});
+
 
 Route::middleware(['auth', 'role:admin'])->group(function() {
     Route::resource('users', UserController::class);
@@ -168,8 +163,6 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('/teacher/students', [TeacherStudentController::class, 'index'])->name('teacher.students.index');
     Route::get('/teacher/activities', [TeacherStudentController::class, 'index'])->name('teacher.activities.index');
     Route::get('/teacher/reports', [TeacherStudentController::class, 'index'])->name('teacher.reports.index');
-
-    Route::get('/teacher/students', [TeacherStudentController::class, 'index'])->name('teacher.students.index');
     Route::get('/teacher/students/group/{group}', [TeacherStudentController::class, 'group'])->name('teacher.students.group');
     Route::get('/teacher/students/{student}', [TeacherStudentController::class, 'show'])->name('teacher.students.show');
 

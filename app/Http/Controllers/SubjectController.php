@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Subject;
 use App\Models\Level;
 use App\Http\Requests\SubjectRequest;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class SubjectController extends Controller
 {
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
     public function index() {
         $subjects = Subject::with('level')->get();
         return view('subjects.index', compact('subjects'));
@@ -45,19 +50,8 @@ class SubjectController extends Controller
         return redirect()->route('subjects.index')->with('info', 'Materia actualizada correctamente');
     }
 
-    public function deactivate(Subject $subject) {
-        if (! $subject->is_active) {
-            return back()->with('info', 'La materia ya está dada de baja');
-        }
-        $subject->update(['is_active' => false]);
-        return back()->with('info', 'Materia dada de baja correctamente');
-    }
-
-    public function activate(Subject $subject) {
-        if ($subject->is_active) {
-            return back()->with('info', 'La materia ya está activa');
-        }
-        $subject->update(['is_active' => true]);
-        return back()->with('info', 'Materia activada correctamente');
+    public function destroy(Subject $subject) {
+        $subject->delete();
+        return redirect()->route('subjects.index')->with('info', 'Materia eliminada correctamente');
     }
 }

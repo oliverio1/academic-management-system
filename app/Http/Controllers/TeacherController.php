@@ -8,8 +8,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\TeacherRequest;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class TeacherController extends Controller
+{
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
+    protected function authorizeActivation($model, $action): void
+    {
+        $this->authorize($action, $model);
+    }
 {
     public function index() {
         $teachers = Teacher::with('user')->get();
@@ -56,23 +66,7 @@ class TeacherController extends Controller
         return redirect()->route('teachers.index')->with('info', 'Profesor actualizado correctamente');
     }
 
-    public function deactivate(Teacher $teacher) {
-        $this->authorize('deactivate', $teacher);
-        if (! $teacher->is_active) {
-            return back()->with('info', 'El profesor ya está dado de baja');
-        }
-        $teacher->update(['is_active' => false]);
-        return back()->with('info', 'Profesor dado de baja correctamente');
-    }
 
-    public function activate(Teacher $teacher) {
-        $this->authorize('activate', $teacher);
-        if ($teacher->is_active) {
-            return back()->with('info', 'El profesor ya está activo');
-        }
-        $teacher->update(['is_active' => true]);
-        return back()->with('info', 'Profesor activado correctamente');
-    }
 
     public function show(Teacher $teacher) {
         $teacher->load([

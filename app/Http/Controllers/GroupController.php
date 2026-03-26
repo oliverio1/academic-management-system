@@ -8,9 +8,18 @@ use App\Services\GradeService;
 use App\Services\AcademicPerformanceService;
 use App\Http\Requests\GroupRequest;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class GroupController extends Controller
 {
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
+    protected function authorizeActivation($model, $action): void
+    {
+        $this->authorize($action, $model);
+    }
     public function index() {
         $groups = Group::with('level')->get();
         return view('groups.index', compact('groups'));
@@ -47,23 +56,7 @@ class GroupController extends Controller
         return redirect()->route('groups.index')->with('info', 'Grupo actualizado correctamente');
     }
 
-    public function deactivate(Group $group) {
-        $this->authorize('deactivate', $group);
-        if (! $group->is_active) {
-            return back()->with('info', 'El grupo ya está dado de baja');
-        }
-        $group->update(['is_active' => false]);
-        return back()->with('info', 'Grupo dado de baja correctamente');
-    }
 
-    public function activate(Group $group) {
-        $this->authorize('activate', $group);
-        if ($group->is_active) {
-            return back()->with('info', 'El grupo ya está activo');
-        }
-        $group->update(['is_active' => true]);
-        return back()->with('info', 'Grupo activado correctamente');
-    }
 
     public function show(
         Group $group,
