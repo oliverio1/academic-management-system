@@ -166,18 +166,8 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('/teacher/students/group/{group}', [TeacherStudentController::class, 'group'])->name('teacher.students.group');
     Route::get('/teacher/students/{student}', [TeacherStudentController::class, 'show'])->name('teacher.students.show');
 
-    // Route::get('schedules/{schedule}/attendance',[AttendanceController::class, 'index'])->name('attendance.index');
-    // Route::post('schedules/{schedule}/attendance',[AttendanceController::class, 'store'])->name('attendance.store');
-    
-    // Route::get('schedules/{schedule}/attendance/daily',[AttendanceController::class, 'daily'])->name('attendance.daily');
-    // Route::post('schedules/{schedule}/attendance/daily',[AttendanceController::class, 'storeDaily'])->name('attendance.daily.store');
     Route::get('assignments/{assignment}/attendance/massive',[AttendanceController::class, 'massive'])->name('attendance.massive');
-    // Route::post('/attendance/inline', [AttendanceController::class, 'storeInline'])->name('attendance.inline');
     Route::post('/attendance/adjust-inline', [AttendanceController::class, 'adjustScoreInline'])->name('attendance.adjustInline');
-
-    // Route::get('assignments/{teachingAssignment}/attendance',[AttendanceController::class, 'create'])->name('teacher.attendance.create');
-    // Route::post('assignments/{teachingAssignment}/attendance',[AttendanceController::class, 'store'])->name('teacher.attendance.store');
-    // Route::get('assignments/{teachingAssignment}/attendance/edit',[AttendanceController::class, 'edit'])->name('teacher.attendance.edit');
 
     Route::get('sessions/{academicSession}/attendance',[AttendanceController::class, 'create'])->name('attendance.take');
     Route::post('sessions/{academicSession}/attendance',[AttendanceController::class, 'store'])->name('attendance.store');
@@ -189,12 +179,6 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::post('/teams/assign', [TeamController::class, 'assign'])->name('teams.assign');
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
 
-    
-    // Route::get('assignments/{assignment}/teams', [TeamController::class, 'index'])->name('teams.index');
-    // Route::get('assignments/{assignment}/teams/create', [TeamController::class, 'create'])->name('teams.create');
-    // Route::post('assignments/{assignment}/teams', [TeamController::class, 'store'])->name('teams.store');
-    // Route::delete('teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
-    
     Route::get('assignments/{assignment}/activities',[ActivityController::class, 'index'])->name('activities.index');
     Route::get('assignments/{assignment}/activities/create',[ActivityController::class, 'create'])->name('activities.create');
     Route::post('assignments/{assignment}/activities',[ActivityController::class, 'store'])->name('activities.store');
@@ -239,9 +223,6 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('teacher/follow-ups/{followUpTeacher}', [TeacherFollowUpController::class, 'show'])->name('teacher.follow-ups.show');
     Route::post('teacher/follow-ups/{followUpTeacher}/respond', [TeacherFollowUpController::class, 'respond'])->name('teacher.follow-ups.respond');
     
-    // Route::get('follow-ups', [TeacherFollowUpController::class, 'index'])->name('teacher.follow-ups.index');
-    // Route::get('follow-ups/{assignment}', [TeacherFollowUpController::class, 'show'])->name('teacher.follow-ups.show');
-    // Route::post('follow-ups/{assignment}', [TeacherFollowUpController::class, 'store'])->name('teacher.follow-ups.store');
     Route::post('/notifications/{notification}/read', function (\Illuminate\Notifications\DatabaseNotification $notification) {
         abort_if(
             $notification->notifiable_id !== auth()->id(),
