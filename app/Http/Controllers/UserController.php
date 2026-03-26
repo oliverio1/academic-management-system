@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UserRequest;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use App\Models\User;
@@ -24,8 +25,7 @@ class UserController extends Controller
         return view('users.create', compact('roles','groups'));
     }
 
-    public function store(Request $request) {
-        $request->validate([
+    public function store(UserRequest $request) {
             'name' => 'required',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8',
@@ -81,12 +81,7 @@ class UserController extends Controller
     }
 
 
-    public function update(Request $request, User $user) {
-        $request->validate([
-            'name'  => 'required',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'role'  => 'required|exists:roles,name',
-        ]);
+    public function update(UserRequest $request, User $user) {
         DB::transaction(function () use ($request, $user) {
             $user->update([
                 'name'  => $request->name,

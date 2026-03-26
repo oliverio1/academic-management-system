@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LevelRequest;
 use Illuminate\Http\Request;
 use App\Models\Level;
 use App\Models\Modality;
@@ -23,11 +24,7 @@ class LevelController extends Controller
         return view('levels.create', compact('modalities'));
     }
 
-    public function store(Request $request) {
-        $request->validate([
-            'modality_id' => 'required',
-            'name' => 'required|string|max:255'
-        ]);
+    public function store(LevelRequest $request) {
         $level = Level::create([
             'modality_id' => $request->modality_id,
             'name' => $request->name,
@@ -45,12 +42,8 @@ class LevelController extends Controller
         return view('levels.edit', compact('level', 'modalities'));
     }
 
-    public function update(Request $request, $id) {
-        $request->validate([
-            'modality_id' => 'required',
-            'name' => 'required|string|max:255',
-        ]);
-        Level::find($id)->update([
+    public function update(LevelRequest $request, $id) {
+        Level::findOrFail($id)->update([
             'modality_id' => $request->modality_id,
             'name' => $request->name
         ]);

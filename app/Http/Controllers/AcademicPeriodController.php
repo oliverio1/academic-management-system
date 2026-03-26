@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AcademicPeriodRequest;
 use Illuminate\Http\Request;
 use App\Models\Modality;
 use App\Models\AcademicPeriod;
@@ -23,12 +24,7 @@ class AcademicPeriodController extends Controller
         return view('periods.create', compact('modalities'));
     }
 
-    public function store(Request $request) {
-        $request->validate([
-            'name' => 'required',
-            'modality_id' => 'required',
-            'code' => 'required',
-        ]);
+    public function store(AcademicPeriodRequest $request) {
         $period = AcademicPeriod::create([
             'name' => $request->name,
             'modality_id' => $request->modality_id,
@@ -46,13 +42,8 @@ class AcademicPeriodController extends Controller
         return view('periods.edit', compact('period', 'modalities'));
     }
 
-    public function update(Request $request, $id) {
+    public function update(AcademicPeriodRequest $request, $id) {
         $period = AcademicPeriod::findOrFail($id);
-        $request->validate([
-            'name' => 'required',
-            'modality_id' => 'required',
-            'code' => 'required',
-        ]);
         $period->update([
             'name' => $request->name,
             'modality_id' => $request->modality_id,

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\ModalityRequest;
 use App\Models\Modality;
 use App\Http\Controllers\Traits\ActivatableController;
 
@@ -21,10 +21,7 @@ class ModalityController extends Controller
         return view('modalities.create');
     }
 
-    public function store(Request $request) {
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
+    public function store(ModalityRequest $request) {
         $modality = Modality::create([
             'name' => $request->name,
             'is_active' => true
@@ -40,11 +37,8 @@ class ModalityController extends Controller
         return view('modalities.edit', compact('modality'));
     }
 
-    public function update(Request $request, $id) {
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
-        Modality::find($id)->update([
+    public function update(ModalityRequest $request, $id) {
+        Modality::findOrFail($id)->update([
             'name' => $request->name
         ]);
         return redirect()->route('modalities.index')->with('info', 'Registro actualizado exitosamente');
