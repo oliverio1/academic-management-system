@@ -13,9 +13,18 @@ use Carbon\Carbon;
 use App\Models\StudentGroupHistory;
 use App\Services\AttendanceService;
 use App\Services\GradeService;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class StudentController extends Controller
 {
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
+    protected function authorizeActivation($model, $action): void
+    {
+        $this->authorize($action, $model);
+    }
     public function index() {
         $groups = Group::get();
         $students = Student::with(['user', 'group'])->get();
@@ -71,27 +80,7 @@ class StudentController extends Controller
         return redirect()->route('students.index')->with('success', 'Estudiante actualizado');
     }
 
-    public function deactivate(Student $student) {
-        $this->authorize('deactivate', $student);
-        if (! $student->is_active) {
-            return redirect()->route('students.index')->with('info', 'El estudiante ya está dado de baja');
-        }
-        $student->update([
-            'is_active' => false
-        ]);
-        return redirect()->route('students.index')->with('info', 'Estudiante dado de baja correctamente');
-    }
-    
-    public function activate(Student $student) {
-        $this->authorize('activate', $student);
-        if ($student->is_active) {
-            return redirect()->route('students.index')->with('info', 'El estudiante ya está activo');
-        }
-        $student->update([
-            'is_active' => true
-        ]);
-        return redirect()->route('students.index')->with('info', 'Estudiante activado correctamente');
-    }
+
 
     public function show(Student $student) {
         $student->load([

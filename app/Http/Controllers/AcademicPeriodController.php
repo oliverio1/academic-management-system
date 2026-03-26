@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Modality;
 use App\Models\AcademicPeriod;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class AcademicPeriodController extends Controller
 {
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
     public function index() {
         $periods = AcademicPeriod::get();
         return view('periods.index', compact('periods'));
@@ -57,17 +62,5 @@ class AcademicPeriodController extends Controller
             'is_active' => true
         ]);
         return redirect()->route('academic-periods.index')->with('info', 'Registro editado exitosamente');
-    }
-
-    public function activate($id) {
-        $period = AcademicPeriod::findOrFail($id);
-        $period->update(['is_active' => true]);
-        return back()->with('info', 'Periodo activado exitosamente');
-    }
-
-    public function deactivate($id) {
-        $period = AcademicPeriod::findOrFail($id);
-        $period->update(['is_active' => false]);
-        return back()->with('info', 'Periodo desactivado exitosamente');
     }
 }

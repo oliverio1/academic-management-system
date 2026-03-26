@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Modality;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class ModalityController extends Controller
 {
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
     public function index() {
         $modalities = Modality::get();
         return view('modalities.index', compact('modalities'));
@@ -45,17 +50,5 @@ class ModalityController extends Controller
         return redirect()->route('modalities.index')->with('info', 'Registro actualizado exitosamente');
     }
 
-    public function deactivate(Request $request, $id) {
-        $modality = Modality::findOrFail($id);
-        $modality->is_active = false;
-        $modality->save();
-        return redirect()->route('modalities.index')->with('info', 'Registro desactivado exitosamente');
-    }
 
-    public function activate(Request $request, $id) {
-        $modality = Modality::findOrFail($id);
-        $modality->is_active = true;
-        $modality->save();
-        return redirect()->route('modalities.index')->with('info', 'Registro activado exitosamente');
-    }
 }

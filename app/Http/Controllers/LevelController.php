@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Level;
 use App\Models\Modality;
+use App\Http\Controllers\Traits\ActivatableController;
 
 class LevelController extends Controller
 {
+    use ActivatableController;
+
+    protected $activeColumn = 'is_active';
+
     public function index() {
         $levels = Level::get();
         return view('levels.index', compact('levels'));
@@ -52,17 +57,5 @@ class LevelController extends Controller
         return redirect()->route('levels.index')->with('info', 'Registro actualizado exitosamente');
     }
 
-    public function deactivate(Request $request, $id) {
-        $level = Level::findOrFail($id);
-        $level->is_active = false;
-        $level->save();
-        return redirect()->route('levels.index')->with('info', 'Registro desactivado exitosamente');
-    }
 
-    public function activate(Request $request, $id) {
-        $level = Level::findOrFail($id);
-        $level->is_active = true;
-        $level->save();
-        return redirect()->route('levels.index')->with('info', 'Registro activado exitosamente');
-    }
 }
