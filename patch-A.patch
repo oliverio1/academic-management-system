@@ -1,0 +1,33 @@
+diff --git a/app/Http/Controllers/AnnouncementController.php b/app/Http/Controllers/AnnouncementController.php
+index 6c900f1..3850c41 100644
+--- a/app/Http/Controllers/AnnouncementController.php
++++ b/app/Http/Controllers/AnnouncementController.php
+@@ -43,13 +43,15 @@ public function update(Request $request, Announcement $announcement) {
+         $request->validate([
+             'title' => 'required|string|max:255',
+             'body' => 'required|string',
+-            'target' => 'required|in:all,teachers,students,tutors',
++            'scope' => 'required|in:public,internal',
++            'audience' => 'required|in:all,teachers,students,specific,tutors',
+             'is_active' => 'boolean',
+         ]);
+         $announcement->update([
+             'title' => $request->title,
+             'body' => $request->body,
+-            'target' => $request->target,
++            'scope' => $request->scope,
++            'audience' => $request->audience,
+             'is_active' => $request->boolean('is_active'),
+         ]);
+         return redirect()->route('admin.announcements.index')->with('success', 'Aviso actualizado');
+diff --git a/app/Http/Controllers/TeacherController.php b/app/Http/Controllers/TeacherController.php
+index a6a01e7..1db7c13 100644
+--- a/app/Http/Controllers/TeacherController.php
++++ b/app/Http/Controllers/TeacherController.php
+@@ -20,7 +20,7 @@ protected function authorizeActivation($model, $action): void
+     {
+         $this->authorize($action, $model);
+     }
+-{
++
+     public function index() {
