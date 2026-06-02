@@ -13,16 +13,20 @@
                 </div>
 
                 <div class="card-body">
-                    <form method="POST" action="{{ route('admin.announcements.update', $announcement) }}">
+                    <form method="POST" action="{{ route('admin.announcements.update', $announcement) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
 
-                        @include('admin.announcement._form')
+                        <div class="row">
+                            @include('admin.announcements._form')
+                        </div>
 
-                        <button class="btn btn-primary">Guardar</button>
-                        <a href="{{ route('admin.announcements.index') }}" class="btn btn-secondary">
-                            Cancelar
-                        </a>
+                        <div class="mt-3">
+                            <button class="btn btn-primary">Guardar</button>
+                            <a href="{{ route('admin.announcements.index') }}" class="btn btn-secondary">
+                                Cancelar
+                            </a>
+                        </div>
                     </form>
                 </div>
 

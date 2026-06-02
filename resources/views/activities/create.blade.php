@@ -6,28 +6,30 @@
 
 <div class="container-fluid">
 
-    {{-- ===============================
-        SELECCIÓN DE PERIODO
-       =============================== --}}
     <div class="card mb-3">
         <div class="card-body">
-            <label class="form-label"><strong>Periodo académico</strong></label>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Registrar actividades</h5>
+                <button type="button"
+                   id="add-activity-btn"
+                   class="btn btn-primary btn-sm">
+                    + Agregar nueva actividad
+                </button>
+            </div>
+            <label class="form-label"><strong>Periodo academico</strong></label>
             <select id="period-select" class="form-control">
-                <option value="">Seleccione un periodo…</option>
+                <option value="">Seleccione un periodo...</option>
                 @foreach($periods as $period)
                     <option value="{{ $period->id }}">
                         {{ $period->name }}
                         ({{ $period->start_date->format('d/m/Y') }}
-                        – {{ $period->end_date->format('d/m/Y') }})
+                        - {{ $period->end_date->format('d/m/Y') }})
                     </option>
                 @endforeach
             </select>
         </div>
     </div>
 
-    {{-- ===============================
-        CONTENEDOR DE ACTIVIDADES
-       =============================== --}}
     <div id="sessions-container"></div>
 
 </div>
@@ -37,36 +39,35 @@
 @section('page_scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-
-    /* ===============================
-       1️⃣ CARGAR ACTIVIDADES POR PERIODO
-       =============================== */
-
     const periodSelect = document.getElementById('period-select');
     const container = document.getElementById('sessions-container');
+    const addActivityBtn = document.getElementById('add-activity-btn');
+    let criteriaOptionsHtml = '';
 
-    periodSelect.addEventListener('change', () => {
+    const loadSessions = async () => {
         const periodId = periodSelect.value;
         container.innerHTML = '';
 
-        if (!periodId) return;
+        if (!periodId) {
+            return;
+        }
 
-        fetch(`/assignments/{{ $assignment->id }}/activities/period/${periodId}`)
-            .then(res => res.text())
-            .then(html => {
-                container.innerHTML = html;
-            })
-            .catch(() => {
-                alert('Error al cargar las actividades del periodo');
-            });
+        try {
+            const res = await fetch(`/assignments/{{ $assignment->id }}/activities/period/${periodId}`);
+            const html = await res.text();
+            container.innerHTML = html;
+            const criterionSelect = container.querySelector('select[data-field="evaluation_criterion_id"]');
+            criteriaOptionsHtml = criterionSelect ? criterionSelect.innerHTML : '';
+        } catch (_) {
+            alert('Error al cargar las actividades del periodo');
+        }
+    };
+
+    periodSelect.addEventListener('change', () => {
+        loadSessions();
     });
 
-    /* ===============================
-       2️⃣ EDITAR / GUARDAR ACTIVIDAD
-       =============================== */
-
     document.addEventListener('click', async (e) => {
-
         const btn = e.target.closest('.btn-edit');
         if (!btn) return;
 
@@ -75,13 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const periodId = periodSelect.value;
 
         if (!periodId) {
-            alert('Selecciona un periodo académico.');
+            alert('Selecciona un periodo academico.');
             return;
         }
 
-        /* ===============================
-           ENTRAR EN MODO EDICIÓN
-           =============================== */
         if (!isEditing) {
             toggleRow(row, true);
             btn.textContent = 'Guardar';
@@ -90,38 +88,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        /* ===============================
-           GUARDAR
-           =============================== */
-        const payload = {
-            session_date: row.dataset.date,
-            academic_period_id: periodId
-        };
+        const payload = { academic_period_id: periodId };
+        const activityId = row.dataset.activityId ? parseInt(row.dataset.activityId, 10) : null;
+        if (activityId) {
+            payload.activity_id = activityId;
+        }
+
+        const sessionDateInput = row.querySelector('[data-field="session_date"]');
+        payload.session_date = sessionDateInput
+            ? (sessionDateInput.value || row.dataset.date)
+            : row.dataset.date;
 
         row.querySelectorAll('.cell-edit').forEach(input => {
+            if (input.dataset.field === 'session_date') return;
             payload[input.dataset.field] = input.value;
         });
 
-        if (
-            !payload.title ||
-            !payload.evaluation_criterion_id ||
-            !payload.evaluation_mode
-        ) {
-            alert('Debes capturar el nombre, el criterio y el modo de evaluación.');
+        if (!payload.session_date || !payload.title || !payload.evaluation_criterion_id) {
+            alert('Debes capturar fecha, nombre y rubro de evaluacion.');
             return;
         }
 
-        const response = await fetch(
-            "{{ route('activities.store', $assignment) }}",
-            {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            }
-        );
+        const response = await fetch("{{ route('activities.store', $assignment) }}", {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
         const data = await response.json();
 
@@ -131,6 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         updateDisplay(row, payload);
+        if (data.activity_id) {
+            row.dataset.activityId = data.activity_id;
+        }
         toggleRow(row, false);
 
         btn.textContent = 'Editar';
@@ -138,11 +136,82 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.dataset.editing = '0';
     });
 
-});
+    addActivityBtn.addEventListener('click', async () => {
+        if (!periodSelect.value) {
+            alert('Selecciona un periodo academico.');
+            return;
+        }
 
-/* ===============================
-   FUNCIONES AUXILIARES
-   =============================== */
+        if (!container.querySelector('table')) {
+            await loadSessions();
+        }
+
+        if (!criteriaOptionsHtml) {
+            alert('Primero configura al menos un rubro de evaluacion.');
+            return;
+        }
+
+        const tbody = container.querySelector('tbody');
+        if (!tbody) {
+            alert('No se pudo preparar la tabla para agregar actividad.');
+            return;
+        }
+
+        const manualKey = `manual_${Date.now()}`;
+        const rowHtml = `
+            <tr data-date="" data-manual="${manualKey}">
+                <td>
+                    <span class="cell-display d-none">-</span>
+                    <input type="date"
+                        class="form-control form-control-sm cell-edit"
+                        data-field="session_date">
+                </td>
+                <td>
+                    <span class="cell-display d-none">-</span>
+                    <input type="text"
+                        class="form-control form-control-sm cell-edit"
+                        data-field="title"
+                        value="">
+                </td>
+                <td>
+                    <span class="cell-display d-none">-</span>
+                    <select class="form-control form-control-sm cell-edit"
+                            data-field="evaluation_criterion_id">
+                        ${criteriaOptionsHtml}
+                    </select>
+                </td>
+                <td>
+                    <span class="cell-display d-none">10</span>
+                    <input type="number"
+                        class="form-control form-control-sm cell-edit"
+                        data-field="max_score"
+                        value="10">
+                </td>
+                <td>
+                    <span class="cell-display d-none">-</span>
+                    <textarea class="form-control form-control-sm cell-edit"
+                            data-field="description"></textarea>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-success btn-edit" data-editing="1">Guardar</button>
+                </td>
+            </tr>
+        `;
+
+        tbody.insertAdjacentHTML('afterbegin', rowHtml);
+
+        const newRow = tbody.querySelector(`tr[data-manual="${manualKey}"]`);
+        if (newRow) {
+            newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const titleInput = newRow.querySelector('input[data-field="title"]');
+            if (titleInput) titleInput.focus();
+        }
+    });
+
+    if (periodSelect.value) {
+        loadSessions();
+    }
+});
 
 function toggleRow(row, editing) {
     row.querySelectorAll('.cell-display').forEach(el =>
@@ -154,31 +223,20 @@ function toggleRow(row, editing) {
 }
 
 function updateDisplay(row, data) {
+    const dateInput = row.querySelector('[data-field="session_date"]');
+    if (dateInput) {
+        const dateSpan = dateInput.previousElementSibling;
+        const parts = (data.session_date || '').split('-');
+        dateSpan.textContent = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : '-';
+        row.dataset.date = data.session_date || '';
+    }
 
-    row.querySelector('[data-field="title"]')
-        .previousElementSibling.textContent = data.title;
+    row.querySelector('[data-field="title"]').previousElementSibling.textContent = data.title;
+    row.querySelector('[data-field="max_score"]').previousElementSibling.textContent = data.max_score ?? '10';
+    row.querySelector('[data-field="description"]').previousElementSibling.textContent = data.description || '-';
 
-    row.querySelector('[data-field="max_score"]')
-        .previousElementSibling.textContent = data.max_score ?? '10';
-
-    row.querySelector('[data-field="description"]')
-        .previousElementSibling.textContent =
-            data.description || '—';
-
-    const criterionSelect =
-        row.querySelector('[data-field="evaluation_criterion_id"]');
-
-    criterionSelect.previousElementSibling.textContent =
-        criterionSelect.options[criterionSelect.selectedIndex].text;
-
-    const modeMap = {
-        individual: 'Individual',
-        team: 'Por equipo'
-    };
-
-    row.querySelector('[data-field="evaluation_mode"]')
-        .previousElementSibling.textContent =
-            modeMap[data.evaluation_mode];
+    const criterionSelect = row.querySelector('[data-field="evaluation_criterion_id"]');
+    criterionSelect.previousElementSibling.textContent = criterionSelect.options[criterionSelect.selectedIndex].text;
 }
 </script>
 @endsection

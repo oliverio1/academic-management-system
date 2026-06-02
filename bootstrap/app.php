@@ -6,7 +6,12 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
+use Stancl\Tenancy\Middleware\InitializeTenancyByPath;
+use Stancl\Tenancy\Middleware\InitializeTenancyByRequestData;
+use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use App\Providers\ViewServiceProvider;
+use App\Http\Middleware\EnsureCampusAccess;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'tenant.domain' => InitializeTenancyByDomain::class,
+            'tenant.path' => InitializeTenancyByPath::class,
+            'tenant.request' => InitializeTenancyByRequestData::class,
+            'tenant.prevent-central' => PreventAccessFromCentralDomains::class,
+            'campus.access' => EnsureCampusAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

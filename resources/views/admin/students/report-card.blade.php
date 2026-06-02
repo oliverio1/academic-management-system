@@ -63,24 +63,24 @@
 
                         @foreach($periods as $period)
                             <td class="text-center">
-                                {{ $report[$subject->id]['periods'][$period->id]['average'] ?? '---' }}
+                                {{ isset($report[$subject->id]['periods'][$period->id]['average']) ? number_format((float) $report[$subject->id]['periods'][$period->id]['average'], 1) : '---' }}
                             </td>
                             <td class="text-center">
                                 @php
                                     $att = $report[$subject->id]['periods'][$period->id]['attendance'] ?? null;
                                 @endphp
-                                {{ $att !== null ? $att.'%' : '---' }}
+                                {{ $att !== null ? number_format((float) $att, 0).'%' : '---' }}
                             </td>
                         @endforeach
 
                         <td class="text-center font-weight-bold">
-                            {{ $report[$subject->id]['final']['average'] ?? '---' }}
+                            {{ isset($report[$subject->id]['final']['average']) ? number_format((float) $report[$subject->id]['final']['average'], 1) : '---' }}
                         </td>
                         <td class="text-center font-weight-bold">
                             @php
                                 $finalAtt = $report[$subject->id]['final']['attendance'] ?? null;
                             @endphp
-                            {{ $finalAtt !== null ? $finalAtt.'%' : '---' }}
+                            {{ $finalAtt !== null ? number_format((float) $finalAtt, 0).'%' : '---' }}
                         </td>
                     </tr>
                 @endforeach
@@ -93,21 +93,21 @@
 
                     @foreach($periods as $period)
                         <td class="text-center">
-                            {{ $periodAverages[$period->id]['average'] ?? '---' }}
+                            {{ isset($periodAverages[$period->id]['average']) ? number_format((float) $periodAverages[$period->id]['average'], 1) : '---' }}
                         </td>
                         <td class="text-center">
                             @php
                                 $pAtt = $periodAverages[$period->id]['attendance'] ?? null;
                             @endphp
-                            {{ $pAtt !== null ? $pAtt.'%' : '---' }}
+                            {{ $pAtt !== null ? number_format((float) $pAtt, 0).'%' : '---' }}
                         </td>
                     @endforeach
 
                     <td class="text-center">
-                        {{ $generalAverage ?? '---' }}
+                        {{ $generalAverage !== null ? number_format((float) $generalAverage, 1) : '---' }}
                     </td>
                     <td class="text-center">
-                        {{ $generalAttendance !== null ? $generalAttendance.'%' : '---' }}
+                        {{ $generalAttendance !== null ? number_format((float) $generalAttendance, 0).'%' : '---' }}
                     </td>
                 </tr>
 

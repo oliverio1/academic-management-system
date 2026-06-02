@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Asistencia')
@@ -35,18 +34,15 @@
                                             <div class="card-body">
                                                 <h5 class="card-title mb-1">{{ $assignment->subject->name }}</h5>
                                                 <p class="text-muted mb-3"> ({{ $assignment->group->name }})</p>
-                                                <a href="{{ route('teacher.classes.sessions.index', $assignment) }}" class="btn btn-primary btn-sm btn-block">Ver sesiones</a>
-                                                @if($assignment->evaluationCriteria()->exists())
-                                                    <a href="{{ route('teacher.classes.evaluation.index', $assignment) }}"
-                                                    class="btn btn-outline-primary btn-sm btn-block">
-                                                        Editar rubros
-                                                    </a>
-                                                @else
-                                                    <a href="{{ route('teacher.classes.evaluation.index', $assignment) }}"
-                                                    class="btn btn-primary btn-sm btn-block">
-                                                        Configurar rubros
-                                                    </a>
-                                                @endif                                            
+                                                <a href="{{ route('teacher.classes.sessions.index', $assignment) }}" class="btn btn-primary btn-sm btn-block">
+                                                    <i class="fas fa-calendar-alt mr-1"></i>
+                                                    Ver sesiones ({{ $assignment->assigned_sessions_in_period }} de {{ $assignment->total_sessions_in_period }})
+                                                </a>
+                                                <a href="{{ route('teacher.classes.evaluation.index', $assignment) }}"
+                                                   class="btn {{ $assignment->has_evaluation_criteria ? 'btn-warning' : 'btn-danger' }} btn-sm btn-block">
+                                                    <i class="fas fa-sliders-h mr-1"></i>
+                                                    Configurar rubros
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -117,27 +113,35 @@
 
                                                 @foreach($days as $day)
                                                     @php
-                                                        $block = $schedules->first(function ($schedule) use ($day, $slot) {
-                                                            return $schedule->day_of_week === $day
-                                                                && substr($schedule->start_time,0,5).'-'.substr($schedule->end_time,0,5) === $slot;
+                                                        $block = $scheduleBlocks->first(function ($entry) use ($day, $slot) {
+                                                            return $entry['day'] === $day
+                                                                && $entry['slot'] === $slot;
                                                         });
                                                     @endphp
 
                                                     <td class="p-0 align-middle">
                                                         @if($block)
-                                                            <a href="{{ route('teacher.classes.sessions.index', $block->assignment) }}"
+                                                            <a href="{{ route('teacher.classes.sessions.index', $block['schedule']->assignment) }}"
                                                                 class="d-block h-100 w-100 text-dark text-decoration-none">
 
                                                                     <div
                                                                         class="h-100 w-100 d-flex flex-column justify-content-center text-center"
-                                                                        style="background-color: {{ subjectColor($block->assignment->subject_id) }};"
+                                                                        style="background-color: {{ subjectColor($block['schedule']->assignment->subject_id) }};"
                                                                     >
                                                                         <strong>
-                                                                            {{ $block->assignment->subject->name }}
+                                                                            {{ $block['schedule']->assignment->subject->name }}
                                                                         </strong>
 
+                                                                        <div class="small">
+                                                                            Grupo {{ $block['schedule']->assignment->group->name }}
+                                                                        </div>
+
+                                                                        <div class="small">
+                                                                            Sección {{ (int) ($block['schedule']->section_number ?? $block['schedule']->assignment->section_number ?? 1) }}
+                                                                        </div>
+
                                                                         <div class="small text-muted">
-                                                                            {{ ucfirst($block->type) }}
+                                                                            {{ ucfirst($block['schedule']->type) }}
                                                                         </div>
                                                                     </div>
 
@@ -173,5 +177,3 @@
 
 @section('page_scripts')
 @endsection
-
-

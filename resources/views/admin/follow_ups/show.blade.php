@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Detalle del seguimiento')
 
@@ -8,9 +8,14 @@
         <div class="col-md-12 mt-3">
             <div class="card">
 
-                {{-- Encabezado --}}
                 <div class="card-header">
-                    <h4>Seguimiento del alumno</h4>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h4 class="mb-0">Seguimiento del alumno</h4>
+                        <a href="{{ route('coordination.follow-ups.pdf', $followUp) }}"
+                           class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-file-pdf mr-1"></i> Descargar PDF
+                        </a>
+                    </div>
                     <p class="mb-1">
                         <strong>Alumno:</strong>
                         {{ $followUp->student->user->name }}
@@ -26,77 +31,56 @@
                     </p>
                 </div>
 
-                {{-- Cuerpo --}}
                 <div class="card-body">
-
-                    <table class="table table-bordered">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Profesor</th>
+                                <th>Conductual</th>
+                                <th>Academico</th>
+                                <th>Comentarios</th>
+                            </tr>
+                        </thead>
                         <tbody>
+                            @forelse($followUp->teachers as $assignment)
+                                @php
+                                    $response = $assignment->response;
+                                    $questionnaire = $response?->questionnaire ?? [];
 
-                        @foreach($followUp->teachers as $assignment)
-                            @php
-                                $response = $assignment->response;
-                            @endphp
+                                    $behavioral = $questionnaire['behavior']
+                                        ?? $questionnaire['behavioral_performance']
+                                        ?? null;
 
-                            {{-- Cabecera del profesor --}}
-                            <tr class="table-light">
-                                <td colspan="2">
-                                    <strong>
-                                        {{ $assignment->teacher->user->name }}
-                                    </strong>
+                                    $academic = $questionnaire['academic']
+                                        ?? $questionnaire['academic_performance']
+                                        ?? null;
 
-                                    @if($assignment->answered_at)
-                                        <span class="text-muted ms-2">
-                                            respondió el
-                                            {{ $assignment->answered_at->format('d/m/Y') }}
-                                        </span>
-                                    @else
-                                        <span class="badge bg-secondary ms-2">
-                                            Pendiente
-                                        </span>
-                                    @endif
-                                </td>
-                            </tr>
-
-                            {{-- Encabezado de columnas --}}
-                            <tr>
-                                <th width="50%">Seguimiento académico</th>
-                                <th width="50%">Seguimiento conductual</th>
-                            </tr>
-
-                            {{-- Contenido --}}
-                            <tr>
-                                <td>
-                                    @if($response?->questionnaire['academic_performance'] ?? false)
-                                        {{ $response->questionnaire['academic_performance'] }}
-                                    @else
-                                        <span class="text-muted">Sin respuesta</span>
-                                    @endif
-                                </td>
-
-                                <td>
-                                    @if($response?->questionnaire['behavioral_performance'] ?? false)
-                                        {{ $response->questionnaire['behavioral_performance'] }}
-                                    @else
-                                        <span class="text-muted">Sin respuesta</span>
-                                    @endif
-                                </td>
-                            </tr>
-
-                            {{-- Comentarios adicionales --}}
-                            @if($response?->comments)
+                                    $comments = $response?->comments
+                                        ?? ($questionnaire['comments'] ?? null);
+                                @endphp
                                 <tr>
-                                    <td colspan="2">
-                                        <strong>Comentarios adicionales:</strong><br>
-                                        {{ $response->comments }}
+                                    <td>
+                                        <strong>{{ $assignment->teacher->user->name }}</strong>
+                                        <br>
+                                        @if($assignment->answered_at)
+                                            <small class="text-muted">
+                                                Respondio: {{ $assignment->answered_at->format('d/m/Y H:i') }}
+                                            </small>
+                                        @else
+                                            <span class="badge bg-secondary">Pendiente</span>
+                                        @endif
                                     </td>
+                                    <td>{{ $behavioral ?: 'Sin respuesta' }}</td>
+                                    <td>{{ $academic ?: 'Sin respuesta' }}</td>
+                                    <td>{{ $comments ?: 'Sin comentarios' }}</td>
                                 </tr>
-                            @endif
-
-                        @endforeach
-
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">No hay profesores asignados.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
-
                 </div>
 
             </div>

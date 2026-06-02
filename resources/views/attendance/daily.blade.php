@@ -1,16 +1,16 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
-@section('title', 'Calificación masiva')
+@section('title', 'CalificaciÃ³n masiva')
 
 @section('content')
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">
-            {{ $assignment->group->name }} – {{ $assignment->subject->name }}
+            {{ $assignment->group->name }} â€“ {{ $assignment->subject->name }}
         </h3>
     </div>
 
-    <div class="card-body table-responsive p-0">
+    <div class="card-body table-responsive p-3">
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -83,3 +83,4 @@
     });
 </script>
 @endsection
+

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Notifications\StudentFollowUpRequested;
 use App\Models\TeachingAssignment;
 use App\Models\StudentFollowUpTeacher;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class StudentFollowUpController extends Controller
 {
@@ -51,7 +52,6 @@ class StudentFollowUpController extends Controller
     {
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'type' => 'required|in:academic,behavioral,mixed',
             'message' => 'nullable|string',
         ]);
   
@@ -69,7 +69,7 @@ class StudentFollowUpController extends Controller
         $followUp = StudentFollowUp::create([
             'student_id'   => $request->student_id,
             'requested_by' => Auth::id(),
-            'type'         => $request->type,
+            'type'         => 'mixed',
             'message'      => $request->message,
         ]);
     
@@ -115,7 +115,7 @@ class StudentFollowUpController extends Controller
     {
         $followUp->load([
             'student.group',
-            'teachers.teacher',
+            'teachers.teacher.user',
             'teachers.response',
         ]);
 
@@ -129,5 +129,47 @@ class StudentFollowUpController extends Controller
             : 0;
 
         return view('admin.follow_ups.show', compact('followUp', 'progress', 'answered', 'total'));
+    }
+
+    public function pdf(StudentFollowUp $followUp)
+    {
+        $followUp->load([
+            'student.user',
+            'student.group.level',
+            'teachers.teacher.user',
+            'teachers.response',
+            'requester',
+        ]);
+
+        $rows = $followUp->teachers->map(function ($assignment) {
+            $questionnaire = $assignment->response?->questionnaire ?? [];
+
+            $behavioral = $questionnaire['behavior']
+                ?? $questionnaire['behavioral_performance']
+                ?? null;
+
+            $academic = $questionnaire['academic']
+                ?? $questionnaire['academic_performance']
+                ?? null;
+
+            $comments = $assignment->response?->comments
+                ?? ($questionnaire['comments'] ?? null);
+
+            return [
+                'teacher' => $assignment->teacher?->user?->name ?? 'N/D',
+                'behavioral' => $behavioral ?: 'Sin respuesta',
+                'academic' => $academic ?: 'Sin respuesta',
+                'comments' => $comments ?: 'Sin comentarios',
+                'answered_at' => $assignment->answered_at,
+            ];
+        });
+
+        $pdf = Pdf::loadView('admin.follow_ups.pdf', [
+            'followUp' => $followUp,
+            'rows' => $rows,
+            'generatedAt' => now(),
+        ])->setPaper('letter', 'portrait');
+
+        return $pdf->download('seguimiento_'.$followUp->id.'.pdf');
     }
 }

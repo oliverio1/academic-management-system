@@ -13,7 +13,7 @@ use App\Http\Controllers\Imports\GradesImportController;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:admin|coordination'])
+Route::middleware(['auth', 'role:coordinator|admin'])
     ->prefix('imports')
     ->as('imports.')
     ->group(function () {

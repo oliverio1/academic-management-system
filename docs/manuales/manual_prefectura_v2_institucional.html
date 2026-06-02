@@ -1,0 +1,115 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual de Usuario Prefectura v2</title>
+<style>
+  @page { size: A4; margin: 22mm 16mm 18mm 16mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#1f2937; line-height:1.5; font-size:12.5px; }
+  h1 { font-size:26px; margin:0 0 8px 0; }
+  h2 { font-size:18px; border-bottom:1px solid #e5e7eb; padding-bottom:6px; margin-top:24px; }
+  h3 { font-size:14px; margin-top:14px; }
+  .cover { min-height: 92vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
+  .cover .box { border:2px solid #2563eb; border-radius:12px; padding:28px; width:88%; }
+  .muted { color:#6b7280; }
+  .page-break { page-break-before: always; }
+  .toc li { margin:6px 0; }
+  .shot { border:1px solid #d1d5db; border-radius:8px; padding:8px; margin:8px 0 12px 0; }
+  .cap { color:#4b5563; font-size:11px; }
+  .note { background:#f9fafb; border:1px solid #e5e7eb; padding:10px; border-radius:8px; }
+  .footer { position: fixed; bottom: -8mm; left: 0; right: 0; text-align: center; font-size: 10px; color:#6b7280; }
+  svg text { font-family: Arial, Helvetica, sans-serif; }
+</style>
+</head>
+<body>
+<div class="footer">Sistema de Gestión Escolar · Manual Prefectura v2</div>
+
+<section class="cover">
+  <div class="box">
+    <h1>Manual de Usuario</h1>
+    <h1 style="color:#2563eb;">Rol Prefectura</h1>
+    <p class="muted" style="font-size:14px;">Sistema de Gestión Escolar</p>
+    <p><strong>Versión:</strong> 2.0 institucional</p>
+    <p><strong>Fecha:</strong> 19/05/2026</p>
+    <p><strong>Elaborado para:</strong> Operación académica y seguimiento diario</p>
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>Índice</h2>
+  <ol class="toc">
+    <li>Objetivo del manual</li>
+    <li>Alcance del rol Prefectura</li>
+    <li>Ventana 1: Dashboard</li>
+    <li>Ventana 2: Grupos</li>
+    <li>Ventana 3: Asistencia</li>
+    <li>Ventana 4: Reportes</li>
+    <li>Checklist operativo diario</li>
+  </ol>
+</section>
+
+<section class="page-break">
+  <h2>1) Objetivo del manual</h2>
+  <p>Establecer una guía práctica y uniforme para el uso del módulo de Prefectura, con enfoque en captura oportuna, seguimiento de incidencias y control diario de asistencia.</p>
+
+  <h2>2) Alcance del rol Prefectura</h2>
+  <ul>
+    <li>Consulta de grupos asignados en ciclo activo.</li>
+    <li>Captura de asistencia global por alumno y fecha.</li>
+    <li>Registro y seguimiento de reportes/incidencias.</li>
+  </ul>
+  <div class="note"><strong>Nota:</strong> Prefectura no configura materias, ciclos ni esquemas de evaluación.</div>
+</section>
+
+<section class="page-break">
+  <h2>3) Ventana 1: Dashboard</h2>
+  <div class="shot">
+    <svg width="100%" viewBox="0 0 980 310" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="980" height="310" fill="#f8fafc"/><rect x="16" y="16" width="948" height="52" rx="6" fill="#e5e7eb"/><text x="30" y="48" font-size="20" fill="#111827">Dashboard de Prefectura</text><rect x="16" y="86" width="300" height="100" rx="6" fill="#dbeafe"/><text x="30" y="112" font-size="14" fill="#1e3a8a">Asistencia del día</text><text x="30" y="142" font-size="24" fill="#1e40af" font-weight="bold">89%</text><rect x="340" y="86" width="300" height="100" rx="6" fill="#fef3c7"/><text x="354" y="112" font-size="14" fill="#92400e">Pendientes</text><text x="354" y="142" font-size="24" fill="#b45309" font-weight="bold">4 grupos</text><rect x="664" y="86" width="300" height="100" rx="6" fill="#fee2e2"/><text x="678" y="112" font-size="14" fill="#991b1b">Alertas</text><text x="678" y="142" font-size="24" fill="#b91c1c" font-weight="bold">2 casos</text></svg>
+    <div class="cap">Figura 1. Vista de referencia del Dashboard.</div>
+  </div>
+  <h3>Qué hacer aquí</h3>
+  <ul><li>Revisar alertas primero.</li><li>Entrar a captura pendiente.</li><li>Cerrar el día sin pendientes.</li></ul>
+</section>
+
+<section class="page-break">
+  <h2>4) Ventana 2: Grupos</h2>
+  <div class="shot">
+    <svg width="100%" viewBox="0 0 980 340" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="980" height="340" fill="#f8fafc"/><rect x="16" y="16" width="948" height="56" rx="6" fill="#e5e7eb"/><text x="30" y="50" font-size="20" fill="#111827">Grupos</text><rect x="16" y="88" width="948" height="48" rx="6" fill="#fff" stroke="#d1d5db"/><text x="30" y="117" font-size="13" fill="#374151">Filtros por ciclo/campus/nivel</text><rect x="16" y="152" width="948" height="170" rx="6" fill="#fff" stroke="#d1d5db"/></svg>
+    <div class="cap">Figura 2. Vista de referencia de Grupos.</div>
+  </div>
+  <h3>Qué hacer aquí</h3>
+  <ul><li>Identificar grupos pendientes.</li><li>Priorizar atrasos.</li><li>Entrar a tomar lista.</li></ul>
+</section>
+
+<section class="page-break">
+  <h2>5) Ventana 3: Asistencia</h2>
+  <div class="shot">
+    <svg width="100%" viewBox="0 0 980 360" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="980" height="360" fill="#f8fafc"/><rect x="16" y="16" width="948" height="56" rx="6" fill="#e5e7eb"/><text x="30" y="50" font-size="20" fill="#111827">Pase de lista — Grupo 3110</text><rect x="16" y="86" width="948" height="48" rx="6" fill="#fff" stroke="#d1d5db"/><text x="30" y="116" font-size="13" fill="#374151">Fecha y periodo</text><rect x="16" y="148" width="948" height="196" rx="6" fill="#fff" stroke="#d1d5db"/><rect x="780" y="308" width="180" height="30" rx="5" fill="#2563eb"/><text x="840" y="328" font-size="13" fill="#fff">Guardar</text></svg>
+    <div class="cap">Figura 3. Vista de captura de asistencia.</div>
+  </div>
+  <h3>Qué hacer aquí</h3>
+  <ul><li>Marcar estado por alumno.</li><li>Guardar registro del día.</li><li>Verificar confirmación de guardado.</li></ul>
+</section>
+
+<section class="page-break">
+  <h2>6) Ventana 4: Reportes</h2>
+  <div class="shot">
+    <svg width="100%" viewBox="0 0 980 340" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="980" height="340" fill="#f8fafc"/><rect x="16" y="16" width="948" height="56" rx="6" fill="#e5e7eb"/><text x="30" y="50" font-size="20" fill="#111827">Reportes de prefectura</text><rect x="16" y="86" width="948" height="60" rx="6" fill="#fff" stroke="#d1d5db"/><rect x="780" y="100" width="180" height="32" rx="5" fill="#2563eb"/><text x="816" y="121" font-size="13" fill="#fff">+ Nuevo reporte</text><rect x="16" y="160" width="948" height="160" rx="6" fill="#fff" stroke="#d1d5db"/></svg>
+    <div class="cap">Figura 4. Vista de reportes e incidencias.</div>
+  </div>
+  <h3>Qué hacer aquí</h3>
+  <ul><li>Capturar incidencias con claridad.</li><li>Dar seguimiento a estatus.</li><li>Cerrar reportes resueltos.</li></ul>
+</section>
+
+<section class="page-break">
+  <h2>7) Checklist operativo diario</h2>
+  <ul>
+    <li>Revisé Dashboard al inicio, mitad y cierre de turno.</li>
+    <li>No quedaron grupos pendientes de captura.</li>
+    <li>Incidencias relevantes registradas el mismo día.</li>
+    <li>Reportes con estatus actualizado.</li>
+  </ul>
+</section>
+
+</body>
+</html>

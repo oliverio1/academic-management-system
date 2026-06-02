@@ -30,7 +30,7 @@
                         </div>
                         <div class="row">
                             <div class="col-md-5 m-3">
-                                <table class="table table-bordered">
+                                <table data-datatable="true" class="table table-bordered">
                                     <tr>
                                         <th width="30%">ID:</th>
                                         <td>{{ $level->id }}</td>

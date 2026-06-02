@@ -1,0 +1,327 @@
+[
+  {
+    "file": "001_dashboard_index.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Pantalla principal dashboard"
+  },
+  {
+    "file": "002_dashboard_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "003_dashboard_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "004_dashboard_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "005_dashboard_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "006_dashboard_link_6.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Inicio"
+  },
+  {
+    "file": "007_dashboard_link_7.png",
+    "url": "http://127.0.0.1:8000/teacher/classes",
+    "note": "Acci?n: Mis clases"
+  },
+  {
+    "file": "008_dashboard_link_8.png",
+    "url": "http://127.0.0.1:8000/teacher/didactic-plans",
+    "note": "Acci?n: Planeaciones"
+  },
+  {
+    "file": "009_dashboard_link_9.png",
+    "url": "http://127.0.0.1:8000/teacher/follow-ups",
+    "note": "Acci?n: Avisos"
+  },
+  {
+    "file": "010_classes_index.png",
+    "url": "http://127.0.0.1:8000/teacher/classes",
+    "note": "Pantalla principal classes"
+  },
+  {
+    "file": "011_classes_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "012_classes_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "013_classes_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "014_classes_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "015_classes_link_6.png",
+    "url": "http://127.0.0.1:8000/teacher/classes/348/sessions",
+    "note": "Acci?n: Ver sesiones (10 de 57)"
+  },
+  {
+    "file": "016_classes_link_7.png",
+    "url": "http://127.0.0.1:8000/teacher/classes/348/configuration/evaluation",
+    "note": "Acci?n: Configurar rubros"
+  },
+  {
+    "file": "017_classes_link_8.png",
+    "url": "http://127.0.0.1:8000/teacher/classes/349/sessions",
+    "note": "Acci?n: Ver sesiones (0 de 45)"
+  },
+  {
+    "file": "018_classes_link_9.png",
+    "url": "http://127.0.0.1:8000/teacher/classes/349/configuration/evaluation",
+    "note": "Acci?n: Configurar rubros"
+  },
+  {
+    "file": "019_classes_link_10.png",
+    "url": "http://127.0.0.1:8000/teacher/classes/371/sessions",
+    "note": "Acci?n: Ver sesiones (0 de 45)"
+  },
+  {
+    "file": "020_assignments_index.png",
+    "url": "http://127.0.0.1:8000/teacher/assignments",
+    "note": "Pantalla principal assignments"
+  },
+  {
+    "file": "021_assignments_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "022_assignments_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "023_assignments_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "024_assignments_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "025_assignments_link_6.png",
+    "url": "http://127.0.0.1:8000/assignments/348",
+    "note": "Acci?n: Entrar"
+  },
+  {
+    "file": "026_assignments_link_7.png",
+    "url": "http://127.0.0.1:8000/assignments/349",
+    "note": "Acci?n: Entrar"
+  },
+  {
+    "file": "027_assignments_link_8.png",
+    "url": "http://127.0.0.1:8000/assignments/384",
+    "note": "Acci?n: Entrar"
+  },
+  {
+    "file": "028_assignments_link_9.png",
+    "url": "http://127.0.0.1:8000/assignments/371",
+    "note": "Acci?n: Entrar"
+  },
+  {
+    "file": "029_assignments_link_10.png",
+    "url": "http://127.0.0.1:8000/assignments/372",
+    "note": "Acci?n: Entrar"
+  },
+  {
+    "file": "030_question_banks_index.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks",
+    "note": "Pantalla principal question_banks"
+  },
+  {
+    "file": "031_question_banks_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "032_question_banks_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "033_question_banks_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "034_question_banks_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "035_question_banks_link_7.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: + Nuevo banco"
+  },
+  {
+    "file": "036_question_banks_link_8.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/2",
+    "note": "Acci?n: Gestionar"
+  },
+  {
+    "file": "037_question_banks_link_9.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/1",
+    "note": "Acci?n: Gestionar"
+  },
+  {
+    "file": "038_paper_exams_index.png",
+    "url": "http://127.0.0.1:8000/teacher/paper-exams",
+    "note": "Pantalla principal paper_exams"
+  },
+  {
+    "file": "039_paper_exams_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "040_paper_exams_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "041_paper_exams_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "042_paper_exams_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "043_paper_exams_link_6.png",
+    "url": "http://127.0.0.1:8000/teacher/paper-exams/1",
+    "note": "Acci?n: Ver intentos"
+  },
+  {
+    "file": "044_reports_index.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Pantalla principal reports"
+  },
+  {
+    "file": "045_reports_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "046_reports_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "047_reports_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "048_reports_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "049_reports_link_6.png",
+    "url": "http://127.0.0.1:8000/teacher/reports/create",
+    "note": "Acci?n: Nuevo reporte"
+  },
+  {
+    "file": "050_reports_link_7.png",
+    "url": "http://127.0.0.1:8000/teacher/reports/40/edit",
+    "note": "Acci?n: Revisar / Editar"
+  },
+  {
+    "file": "051_reports_link_8.png",
+    "url": "http://127.0.0.1:8000/teacher/reports/39/edit",
+    "note": "Acci?n: Revisar / Editar"
+  },
+  {
+    "file": "052_reports_link_9.png",
+    "url": "http://127.0.0.1:8000/teacher/reports/38",
+    "note": "Acci?n: Ver"
+  },
+  {
+    "file": "053_reports_link_10.png",
+    "url": "http://127.0.0.1:8000/teacher/reports/37",
+    "note": "Acci?n: Ver"
+  },
+  {
+    "file": "054_attendance_index.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Pantalla principal attendance"
+  },
+  {
+    "file": "055_attendance_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "056_attendance_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "057_attendance_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "058_attendance_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "059_didactic_index.png",
+    "url": "http://127.0.0.1:8000/teacher/didactic-plans",
+    "note": "Pantalla principal didactic"
+  },
+  {
+    "file": "060_didactic_link_1.png",
+    "url": "http://127.0.0.1:8000/dashboard",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "061_didactic_link_3.png",
+    "url": "http://127.0.0.1:8000/teacher/question-banks/create",
+    "note": "Acci?n: Nuevo banco"
+  },
+  {
+    "file": "062_didactic_link_4.png",
+    "url": "http://127.0.0.1:8000/teacher/attendance",
+    "note": "Acci?n: Mi asistencia"
+  },
+  {
+    "file": "063_didactic_link_5.png",
+    "url": "http://127.0.0.1:8000/teacher/reports",
+    "note": "Acci?n: Reportes"
+  },
+  {
+    "file": "064_didactic_link_6.png",
+    "url": "http://127.0.0.1:8000/teacher/didactic-plan/2/edit",
+    "note": "Acci?n: Editar"
+  },
+  {
+    "file": "065_didactic_link_9.png",
+    "url": "http://127.0.0.1:8000/teacher/didactic-plan/46/edit",
+    "note": "Acci?n: Editar"
+  }
+]

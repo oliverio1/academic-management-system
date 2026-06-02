@@ -20,7 +20,7 @@ class TeacherController extends Controller
     {
         $this->authorize($action, $model);
     }
-{
+
     public function index() {
         $teachers = Teacher::with('user')->get();
         return view('teachers.index', compact('teachers'));
@@ -35,7 +35,7 @@ class TeacherController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make('password'),
+                'password' => Hash::make('123123123'),
             ]);
             $user->assignRole('teacher');
             Teacher::create([
@@ -45,7 +45,7 @@ class TeacherController extends Controller
                 'is_active' => true,
             ]);
         });
-        return redirect()->route('teachers.index')->with('info', 'Profesor creado correctamente');
+        return redirect()->route('teachers.index')->with('info', 'Profesor creado correctamente. Contrasena inicial: 123123123');
     }
 
     public function edit(Teacher $teacher) {

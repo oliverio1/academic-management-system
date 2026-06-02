@@ -6,6 +6,7 @@ use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\AcademicSession;
 use App\Models\AttendanceJustification;
+use App\Models\PrefectDailyAttendance;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,7 @@ class AttendanceJustificationService
                 ->get();
     
             // 3️⃣ Justificar asistencias reales del alumno
+            $daysToJustifyInPrefecture = [];
             foreach ($sessions as $session) {
     
                 $groupIdForDate = $student->groupHistories
@@ -73,11 +75,32 @@ class AttendanceJustificationService
                     continue;
                 }
     
-                Attendance::where('academic_session_id', $session->id)
-                    ->where('student_id', $student->id)
-                    ->update([
+                Attendance::updateOrCreate(
+                    [
+                        'academic_session_id' => $session->id,
+                        'student_id' => $student->id,
+                    ],
+                    [
                         'status' => 'justified',
-                    ]);
+                    ]
+                );
+
+                $sessionDay = $session->session_date->toDateString();
+                $daysToJustifyInPrefecture[$sessionDay] = (int) $groupIdForDate;
+            }
+
+            foreach ($daysToJustifyInPrefecture as $date => $groupId) {
+                PrefectDailyAttendance::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'attendance_date' => $date,
+                    ],
+                    [
+                        'group_id' => $groupId,
+                        'status' => 'justified',
+                        'recorded_by' => $issuedBy->id,
+                    ]
+                );
             }
     
             return $justification;
@@ -91,9 +114,6 @@ class AttendanceJustificationService
                 [$from->toDateString(), $to->toDateString()]
             )
             ->where('is_cancelled', false)
-            ->whereHas('attendances', fn ($q) =>
-                $q->where('student_id', $student->id)
-            )
             ->with('teachingAssignment')
             ->get()
             ->filter(function ($session) use ($student) {

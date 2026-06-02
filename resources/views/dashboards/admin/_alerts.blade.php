@@ -4,7 +4,7 @@
     </div>
 
     {{-- Seguimientos críticos --}}
-    <div class="col-md-3 mb-3">
+    <div class="col-md-4 mb-3">
         <div class="card border-danger h-100">
             <div class="card-body">
                 <h6 class="text-danger">Seguimientos críticos</h6>
@@ -23,7 +23,7 @@
     </div>
 
     {{-- Asistencia en riesgo --}}
-    <div class="col-md-3 mb-3">
+    <div class="col-md-4 mb-3">
         <div class="card border-danger h-100">
             <div class="card-body">
                 <h6 class="text-danger">Asistencia en riesgo</h6>
@@ -42,39 +42,23 @@
         </div>
     </div>
 
-    {{-- Profesores con bajo registro --}}
-    <div class="col-md-3 mb-3">
-        <div class="card border-danger h-100">
+
+    {{-- Alumnos que se saltan clase --}}
+    <div class="col-md-4 mb-3">
+        <div class="card border-warning h-100">
             <div class="card-body">
-                <h6 class="text-danger">Registro docente bajo</h6>
-                <h3 class="mb-0">{{ $alerts['teachers_low_attendance'] }}</h3>
+                <h6 class="text-warning">Faltas en clase</h6>
+                <h3 class="mb-0">{{ $alerts['students_class_skips'] }}</h3>
                 <small class="text-muted">
-                    &lt; 80% de sesiones registradas
+                    Asisten al plantel, pero faltan a materias
                 </small>
             </div>
             <div class="card-footer bg-transparent border-0">
-                <small class="text-muted">
-                    Reporte detallado pendiente de habilitar
-                </small>
+                <a href="{{ route('coordination.students.class-skips') }}" class="text-warning">
+                    Ver reporte
+                </a>
             </div>
         </div>
     </div>
 
-    {{-- Grupos en alerta --}}
-    <div class="col-md-3 mb-3">
-        <div class="card border-warning h-100">
-            <div class="card-body">
-                <h6 class="text-warning">Grupos en alerta</h6>
-                <h3 class="mb-0">{{ $alerts['groups_in_alert'] }}</h3>
-                <small class="text-muted">
-                    Asistencia &lt; 80%
-                </small>
-            </div>
-            <div class="card-footer bg-transparent border-0">
-                <small class="text-muted">
-                    Reporte detallado pendiente de habilitar
-                </small>
-            </div>
-        </div>
-    </div>
 </div>

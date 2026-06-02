@@ -47,8 +47,9 @@
                                         <td>{{ $student->is_active ? 'Activo' : 'Baja' }}</td>
                                         <td>
                                             @if($student->is_active)
-                                                <form action="{{ route('students.deactivate', $student->id) }}"method="POST" style="display:inline">
+                                                <form action="{{ route('students.deactivate', $student->id) }}"method="POST" style="display:inline" class="js-deactivate-student-form">
                                                     @csrf
+                                                    <input type="hidden" name="deactivation_reason" value="">
                                                     <a href="{{ route('students.show', $student->id) }}"class="btn btn-primary btn-sm"><i class="far fa-eye"></i></a>
                                                     <a href="{{ route('students.edit', $student->id) }}"class="btn btn-warning btn-sm"><i class="far fa-edit"></i></a>
                                                     <button class="btn btn-danger btn-sm" type="submit"><i class="fa fa-times"></i></button>
@@ -306,6 +307,28 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(err => {
                 console.error('Impacto académico:', err);
             });
+        });
+    });
+
+    document.querySelectorAll('.js-deactivate-student-form').forEach(form => {
+        form.addEventListener('submit', function (event) {
+            const reason = window.prompt('Motivo de baja del alumno:');
+            if (reason === null) {
+                event.preventDefault();
+                return;
+            }
+
+            const trimmed = reason.trim();
+            if (!trimmed) {
+                event.preventDefault();
+                window.alert('Debes capturar un motivo para dar de baja.');
+                return;
+            }
+
+            const input = form.querySelector('input[name=\"deactivation_reason\"]');
+            if (input) {
+                input.value = trimmed;
+            }
         });
     });
 });

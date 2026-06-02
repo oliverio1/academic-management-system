@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\Teacher;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use App\Models\Campus;
 
 class UserController extends Controller
 {
@@ -21,22 +22,20 @@ class UserController extends Controller
 
     public function create() {
         $groups = Group::get();
-        $roles = Role::pluck('name');
-        return view('users.create', compact('roles','groups'));
+        $campuses = Campus::query()->where('is_active', true)->orderBy('name')->get();
+        $roles = Role::query()->orderBy('name')->pluck('name');
+        return view('users.create', compact('roles','groups','campuses'));
     }
 
     public function store(UserRequest $request) {
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
-            'role' => 'required|exists:roles,name',
-        ]);
         DB::transaction(function () use ($request) {
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
+                'default_campus_id' => $this->resolveDefaultCampusId($request),
             ]);
+            $user->campuses()->sync($this->campusIds($request));
             $user->assignRole($request->role);
             $this->storeRoleData($user, $request);
         });
@@ -58,16 +57,8 @@ class UserController extends Controller
             case 'teacher':
                 Teacher::create([
                     'user_id' => $user->id,
-                    'phone' => $request->student['phone'],
-                    'address' => $request->student['address'],
-                    'is_active' => true,
-                ]);
-                break;
-            case 'coordination':
-                Coordinator::create([
-                    'user_id' => $user->id,
-                    'area' => $request->coordinator['area'],
-                    'phone' => $request->coordinator['phone'],
+                    'phone' => $request->teacher['phone'] ?? null,
+                    'address' => $request->teacher['address'] ?? null,
                     'is_active' => true,
                 ]);
                 break;
@@ -76,8 +67,9 @@ class UserController extends Controller
 
     public function edit(User $user) {
         $groups = Group::get();
-        $roles = Role::pluck('name');
-        return view('users.edit', compact('roles','groups','user'));
+        $campuses = Campus::query()->where('is_active', true)->orderBy('name')->get();
+        $roles = Role::query()->orderBy('name')->pluck('name');
+        return view('users.edit', compact('roles','groups','user','campuses'));
     }
 
 
@@ -86,7 +78,9 @@ class UserController extends Controller
             $user->update([
                 'name'  => $request->name,
                 'email' => $request->email,
+                'default_campus_id' => $this->resolveDefaultCampusId($request),
             ]);
+            $user->campuses()->sync($this->campusIds($request));
             if ($request->filled('password')) {
                 $user->update([
                     'password' => Hash::make($request->password),
@@ -124,16 +118,6 @@ class UserController extends Controller
                     ]
                 );
                 break;
-            case 'coordination':
-                Coordinator::updateOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'area'      => $request->coordinator['area'] ?? null,
-                        'phone'     => $request->coordinator['phone'] ?? null,
-                        'is_active' => true,
-                    ]
-                );
-                break;
         }
     }
 
@@ -154,8 +138,30 @@ class UserController extends Controller
         if ($user->hasRole('teacher') && $user->teacher) {
             $user->teacher->update(['is_active' => $status]);
         }
-        if ($user->hasRole('coordination') && $user->coordinator) {
-            $user->coordinator->update(['is_active' => $status]);
+    }
+
+    private function campusIds(Request $request): array
+    {
+        return collect($request->input('campus_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function resolveDefaultCampusId(Request $request): ?int
+    {
+        $campusIds = $this->campusIds($request);
+        if (empty($campusIds)) {
+            return null;
         }
+
+        $defaultCampusId = (int) ($request->input('default_campus_id') ?? 0);
+        if ($defaultCampusId > 0 && in_array($defaultCampusId, $campusIds, true)) {
+            return $defaultCampusId;
+        }
+
+        return (int) $campusIds[0];
     }
 }

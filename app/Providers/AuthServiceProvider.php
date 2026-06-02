@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use App\Models\Student;
+use App\Models\Teacher;
+use App\Policies\StudentPolicy;
+use App\Policies\TeacherPolicy;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -18,6 +22,6 @@ class AuthServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        $this->registerPolicies();
     }
 }

@@ -15,6 +15,7 @@ class StudentFollowUp extends Model
     ];
 
     protected $attributes = [
+        'type' => 'mixed',
         'status' => 'open',
     ];
 

@@ -61,7 +61,7 @@
                                         </div>
                                     </div>
                                     <div class="card-body">
-                                        <table class="table table-sm mb-0">
+                                        <table data-datatable="true" class="table table-sm mb-0">
                                             <thead class="thead-light">
                                                 <tr>
                                                     <th>Materia</th>

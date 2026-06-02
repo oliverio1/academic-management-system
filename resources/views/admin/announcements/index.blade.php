@@ -3,41 +3,47 @@
 @section('title', 'Avisos')
 
 @section('content')
-
-@if(session('info'))
-        <div class="alert alert-primary" role="alert">
-            <strong>{{ session('info') }}</strong>
-        </div>    
+<div class="content px-3">
+    @if(session('success'))
+        <div class="alert alert-success" role="alert">
+            {{ session('success') }}
+        </div>
     @endif
-    <div class="content px-3">
-        <div class="clearfix"></div>
-        <div class="row">
-            <div class="col-md-12 mt-3">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <h4>Avisos institucionales</h4>
-                            </div>
-                            <div class="col-sm-6">
-                                <a href="{{ route('admin.announcements.create') }}" class="btn btn-primary">Nuevo aviso</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-bordered">
+
+    <div class="row">
+        <div class="col-md-12 mt-3">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Avisos institucionales</h4>
+                    <a href="{{ route('admin.announcements.create') }}" class="btn btn-primary">Nuevo aviso</a>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped mb-0">
                             <thead>
                                 <tr>
                                     <th>Título</th>
+                                    <th>Tipo</th>
                                     <th>Dirigido a</th>
                                     <th>Activo</th>
+                                    <th style="width: 180px;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($announcements as $a)
+                                @forelse($announcements as $a)
                                     <tr>
                                         <td>{{ $a->title }}</td>
-                                        <td>{{ ucfirst($a->target) }}</td>
+                                        <td>{{ $a->scope === 'public' ? 'Público' : 'Interno' }}</td>
+                                        <td>
+                                            @switch($a->audience)
+                                                @case('all') Todos @break
+                                                @case('teachers') Profesores @break
+                                                @case('students') Estudiantes @break
+                                                @case('specific') Usuarios específicos @break
+                                                @default {{ ucfirst($a->audience) }}
+                                            @endswitch
+                                        </td>
                                         <td>
                                             @if($a->is_active)
                                                 <span class="badge badge-success">Activo</span>
@@ -46,8 +52,9 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <a href="{{ route('admin.announcements.edit', $a) }}"
-                                            class="btn btn-sm btn-warning">Editar</a>
+                                            <a href="{{ route('admin.announcements.edit', $a) }}" class="btn btn-sm btn-warning">
+                                                Editar
+                                            </a>
 
                                             <form method="POST"
                                                 action="{{ route('admin.announcements.destroy', $a) }}"
@@ -61,13 +68,17 @@
                                             </form>
                                         </td>
                                     </tr>
-                                @endforeach
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No hay avisos registrados.</td>
+                                    </tr>
+                                @endforelse
                             </tbody>
                         </table>
-
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 @endsection

@@ -29,4 +29,15 @@ class Subject extends Model
     public function assignments() {
         return $this->hasMany(TeachingAssignment::class);
     }
+
+    public function temarios()
+    {
+        return $this->hasMany(Temario::class);
+    }
+
+    public function cycleGroups()
+    {
+        return $this->belongsToMany(SchoolCycleGroup::class, 'school_cycle_group_subject')
+            ->withTimestamps();
+    }
 }

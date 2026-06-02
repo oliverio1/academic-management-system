@@ -18,7 +18,7 @@ class LoginController extends Controller
     }
 
     protected function authenticated(Request $request, $user) {
-        if ($user->hasRole('admin')) {
+        if ($user->hasAnyRole(['coordinator', 'admin'])) {
             return redirect()->route('dashboard');
         }
         if ($user->hasRole('teacher')) {

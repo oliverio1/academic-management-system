@@ -94,7 +94,7 @@ class AttendanceService
         // SESIONES ASISTIDAS (NUMERADOR)
         // -----------------------------
         $attendedSessions = Attendance::where('student_id', $student->id)
-            ->where('status', 'present')
+            ->whereIn('status', ['present', 'late'])
             ->whereHas('academicSession', function ($q) use ($assignment, $from, $to) {
                 $q->where('teaching_assignment_id', $assignment->id)
                 ->where('is_cancelled', false);

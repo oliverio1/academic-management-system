@@ -35,7 +35,6 @@ class StudentFollowUpRequested extends Notification
             'type' => 'student_follow_up',
             'assignment_id' => $this->assignment->id,
             'student_name' => $this->assignment->followUp->student->user->name,
-            'follow_up_type' => $this->assignment->followUp->type,
             'message' => $this->assignment->followUp->message,
             'url' => route(
                 'teacher.follow-ups.show',

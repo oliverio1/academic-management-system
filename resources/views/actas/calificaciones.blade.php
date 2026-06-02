@@ -2,9 +2,8 @@
 
 @section('content')
 
-{{-- ENCABEZADO --}}
-<p class="center title">ACTA DE CALIFICACIONES</p>
-<p class="center subtitle">Universidad Latinoamericana – Campus Valle</p>
+<p class="center title">ACTA GENERAL DE CALIFICACIONES</p>
+<p class="center subtitle">Universidad Latinoamericana - Campus Valle</p>
 
 <table class="no-border">
     <tr>
@@ -13,32 +12,29 @@
     </tr>
     <tr>
         <td><strong>Docente:</strong> {{ $teachingAssignment->teacher->user->name }}</td>
-        <td><strong>Periodo:</strong> {{ optional($teachingAssignment->activePeriod)->name }}</td>
+        <td><strong>Periodo:</strong> {{ optional($activePeriod)->name }}</td>
     </tr>
 </table>
 
 <br>
 
-{{-- TABLA PRINCIPAL --}}
 <table>
     <thead>
         <tr class="center bold">
-            <th>No.</th>
-            <th>Matrícula</th>
+            <th>Matricula</th>
             <th>Nombre del alumno</th>
-            <th>Calificación final</th>
+            <th>Calificacion final</th>
             <th>% Asistencia</th>
-            <th>Firma / Recibí</th>
+            <th>Firma de aceptado</th>
         </tr>
     </thead>
     <tbody>
         @foreach($rows as $row)
             <tr>
-                <td class="center">{{ $row['num'] }}</td>
                 <td class="center">{{ $row['enrollment'] }}</td>
                 <td>{{ $row['name'] }}</td>
-                <td class="center">{{ $row['grade'] }}</td>
-                <td class="center">{{ $row['attendance'] }}%</td>
+                <td class="center">{{ $row['grade'] !== null ? number_format((float) $row['grade'], 1) : '-' }}</td>
+                <td class="center">{{ number_format((float) $row['attendance'], 0) }}%</td>
                 <td class="signature-line"></td>
             </tr>
         @endforeach
@@ -47,7 +43,6 @@
 
 <br><br>
 
-{{-- FIRMAS --}}
 <table class="no-border">
     <tr class="center">
         <td>

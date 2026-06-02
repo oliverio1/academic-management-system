@@ -33,7 +33,7 @@
                             <div class="card">
                                 <div class="card-body p-0">
 
-                                    <table class="table table-sm mb-0">
+                                    <table data-datatable="true" class="table table-sm mb-0">
                                         <thead class="thead-light">
                                             <tr>
                                                 <th>Alumno</th>

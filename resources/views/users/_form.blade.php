@@ -44,6 +44,42 @@
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>
+    <div class="form-group">
+        <label>Campus asignados</label>
+        @php
+            $selectedCampusIds = collect(old('campus_ids', $user?->campuses?->pluck('id')->all() ?? []))->map(fn($id) => (int) $id)->all();
+        @endphp
+        <select name="campus_ids[]" class="form-control" multiple size="6" required>
+            @foreach($campuses as $campus)
+                <option value="{{ $campus->id }}" {{ in_array((int) $campus->id, $selectedCampusIds, true) ? 'selected' : '' }}>
+                    {{ $campus->name }}
+                </option>
+            @endforeach
+        </select>
+        <small class="text-muted">Selecciona uno o varios campus para este usuario.</small>
+        @error('campus_ids')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+        @enderror
+        @error('campus_ids.*')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+        @enderror
+    </div>
+    <div class="form-group">
+        <label>Campus predeterminado</label>
+        <select name="default_campus_id" class="form-control">
+            <option value="">Selecciona campus por defecto</option>
+            @foreach($campuses as $campus)
+                <option value="{{ $campus->id }}"
+                    {{ (string) old('default_campus_id', $user->default_campus_id ?? '') === (string) $campus->id ? 'selected' : '' }}>
+                    {{ $campus->name }}
+                </option>
+            @endforeach
+        </select>
+        <small class="text-muted">Si no coincide con los campus asignados, se usará el primero asignado.</small>
+        @error('default_campus_id')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+        @enderror
+    </div>
     <hr>
     <div id="student-fields" class="role-fields d-none">
     <h5>Datos del alumno</h5>

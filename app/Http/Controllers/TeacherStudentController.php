@@ -9,6 +9,7 @@ use App\Models\AcademicSession;
 use App\Models\Attendance;
 use App\Models\Activity;
 use App\Models\Grade;
+use App\Models\SchoolCycle;
 
 class TeacherStudentController extends Controller
 {
@@ -18,16 +19,29 @@ class TeacherStudentController extends Controller
     public function index()
     {
         $teacher = auth()->user()->teacher;
+        $activeCycle = $this->activeCycle();
 
-        $groups = TeachingAssignment::where('teacher_id', $teacher->id)
-            ->with('group')
-            ->get()
-            ->pluck('group')
-            ->unique('id')
-            ->values();
+        $groups = collect();
+
+        if ($teacher && $activeCycle) {
+            $groups = TeachingAssignment::query()
+                ->where('teacher_id', $teacher->id)
+                ->where('is_active', true)
+                ->whereHas('schedules', function ($q) use ($activeCycle) {
+                    $q->where('school_cycle_id', $activeCycle->id)
+                        ->where('is_active', true);
+                })
+                ->with('group')
+                ->get()
+                ->pluck('group')
+                ->filter()
+                ->unique('id')
+                ->values();
+        }
 
         return view('teacher.students.index', [
             'groups' => $groups,
+            'activeCycle' => $activeCycle,
         ]);
     }
 
@@ -37,10 +51,21 @@ class TeacherStudentController extends Controller
     public function group(Group $group)
     {
         $teacher = auth()->user()->teacher;
+        $activeCycle = $this->activeCycle();
 
         abort_unless(
-            TeachingAssignment::where('teacher_id', $teacher->id)
+            TeachingAssignment::query()
+                ->where('teacher_id', $teacher->id)
                 ->where('group_id', $group->id)
+                ->where('is_active', true)
+                ->when(
+                    $activeCycle,
+                    fn ($q) => $q->whereHas('schedules', fn ($qq) => $qq
+                        ->where('school_cycle_id', $activeCycle->id)
+                        ->where('is_active', true)
+                    ),
+                    fn ($q) => $q->whereRaw('1 = 0')
+                )
                 ->exists(),
             403
         );
@@ -52,9 +77,16 @@ class TeacherStudentController extends Controller
             ->select('students.*')
             ->get();
 
-        $sessionIds = AcademicSession::whereHas('teachingAssignment', function ($q) use ($group, $teacher) {
+        $sessionIds = AcademicSession::whereHas('teachingAssignment', function ($q) use ($group, $teacher, $activeCycle) {
                 $q->where('group_id', $group->id)
-                  ->where('teacher_id', $teacher->id);
+                  ->where('teacher_id', $teacher->id)
+                  ->when(
+                      $activeCycle,
+                      fn ($qq) => $qq->whereHas('schedules', fn ($s) => $s
+                          ->where('school_cycle_id', $activeCycle->id)
+                          ->where('is_active', true)
+                      )
+                  );
             })
             ->where('session_date', '<=', now())
             ->pluck('id');
@@ -69,9 +101,16 @@ class TeacherStudentController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        $activityIds = Activity::whereHas('teachingAssignment', function ($q) use ($group, $teacher) {
+        $activityIds = Activity::whereHas('teachingAssignment', function ($q) use ($group, $teacher, $activeCycle) {
                 $q->where('group_id', $group->id)
-                  ->where('teacher_id', $teacher->id);
+                  ->where('teacher_id', $teacher->id)
+                  ->when(
+                      $activeCycle,
+                      fn ($qq) => $qq->whereHas('schedules', fn ($s) => $s
+                          ->where('school_cycle_id', $activeCycle->id)
+                          ->where('is_active', true)
+                      )
+                  );
             })
             ->where('is_active', true)
             ->pluck('id');
@@ -99,17 +138,33 @@ class TeacherStudentController extends Controller
     public function show(Student $student)
     {
         $teacher = auth()->user()->teacher;
+        $activeCycle = $this->activeCycle();
 
         abort_unless(
             TeachingAssignment::where('teacher_id', $teacher->id)
                 ->where('group_id', $student->group_id)
+                ->when(
+                    $activeCycle,
+                    fn ($q) => $q->whereHas('schedules', fn ($qq) => $qq
+                        ->where('school_cycle_id', $activeCycle->id)
+                        ->where('is_active', true)
+                    ),
+                    fn ($q) => $q->whereRaw('1 = 0')
+                )
                 ->exists(),
             403
         );
 
-        $sessionIds = AcademicSession::whereHas('teachingAssignment', function ($q) use ($teacher, $student) {
+        $sessionIds = AcademicSession::whereHas('teachingAssignment', function ($q) use ($teacher, $student, $activeCycle) {
                 $q->where('teacher_id', $teacher->id)
-                ->where('group_id', $student->group_id);
+                ->where('group_id', $student->group_id)
+                ->when(
+                    $activeCycle,
+                    fn ($qq) => $qq->whereHas('schedules', fn ($s) => $s
+                        ->where('school_cycle_id', $activeCycle->id)
+                        ->where('is_active', true)
+                    )
+                );
             })
             ->where('session_date', '<=', now())
             ->pluck('id');
@@ -122,9 +177,16 @@ class TeacherStudentController extends Controller
             ')
             ->first();
 
-        $activityIds = Activity::whereHas('teachingAssignment', function ($q) use ($teacher, $student) {
+        $activityIds = Activity::whereHas('teachingAssignment', function ($q) use ($teacher, $student, $activeCycle) {
                 $q->where('teacher_id', $teacher->id)
-                  ->where('group_id', $student->group_id);
+                  ->where('group_id', $student->group_id)
+                  ->when(
+                      $activeCycle,
+                      fn ($qq) => $qq->whereHas('schedules', fn ($s) => $s
+                          ->where('school_cycle_id', $activeCycle->id)
+                          ->where('is_active', true)
+                      )
+                  );
             })
             ->where('is_active', true)
             ->pluck('id');
@@ -138,6 +200,13 @@ class TeacherStudentController extends Controller
 
         $subjects = $teacher->teachingAssignments()
             ->where('group_id', $student->group_id)
+            ->when(
+                $activeCycle,
+                fn ($q) => $q->whereHas('schedules', fn ($qq) => $qq
+                    ->where('school_cycle_id', $activeCycle->id)
+                    ->where('is_active', true)
+                )
+            )
             ->with('subject')
             ->get()
             ->pluck('subject')
@@ -145,6 +214,13 @@ class TeacherStudentController extends Controller
 
         $assignments = $teacher->teachingAssignments()
             ->where('group_id', $student->group_id)
+            ->when(
+                $activeCycle,
+                fn ($q) => $q->whereHas('schedules', fn ($qq) => $qq
+                    ->where('school_cycle_id', $activeCycle->id)
+                    ->where('is_active', true)
+                )
+            )
             ->with('subject')
             ->get();
         
@@ -206,5 +282,21 @@ class TeacherStudentController extends Controller
             'subjects'            => $subjects,
             'summaryBySubject'    => $summaryBySubject,
         ]);
+    }
+
+    private function activeCycle(): ?SchoolCycle
+    {
+        $activeCampusId = (int) session('active_campus_id', 0);
+
+        return SchoolCycle::query()
+            ->where('is_active', true)
+            ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
+                $q->where(function ($nested) use ($activeCampusId) {
+                    $nested->where('campus_id', $activeCampusId)
+                        ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
+                });
+            })
+            ->orderByDesc('start_date')
+            ->first();
     }
 }

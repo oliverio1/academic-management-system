@@ -37,8 +37,8 @@ class ModalityController extends Controller
         return view('modalities.edit', compact('modality'));
     }
 
-    public function update(ModalityRequest $request, $id) {
-        Modality::findOrFail($id)->update([
+    public function update(ModalityRequest $request, Modality $modality) {
+        $modality->update([
             'name' => $request->name
         ]);
         return redirect()->route('modalities.index')->with('info', 'Registro actualizado exitosamente');

@@ -29,6 +29,10 @@ class AcademicSession extends Model
         return $this->belongsTo(Schedule::class);
     }
 
+    public function academicPeriod() {
+        return $this->belongsTo(AcademicPeriod::class);
+    }
+
     public function attendances() {
         return $this->hasMany(Attendance::class);
     }

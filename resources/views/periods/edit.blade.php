@@ -29,7 +29,7 @@
                                     <label class="form-label">Modalidad</label>
                                     <select name="modality_id" class="form-control @error('modality_id') is-invalid @enderror" required>
                                         @foreach($modalities as $modality)
-                                            <option value="{{ $modality->id }}" {{ old('modality_id', $student->modality_id ?? '') == $modality->id ? 'selected' : '' }}> {{ $modality->name }}</option>
+                                            <option value="{{ $modality->id }}" {{ old('modality_id', $period->modality_id ?? '') == $modality->id ? 'selected' : '' }}> {{ $modality->name }}</option>
                                         @endforeach
                                     </select>
                                     @error('modality_id')

@@ -1,6 +1,6 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
-@section('title', 'Seguimientos críticos')
+@section('title', 'Seguimientos crÃ­ticos')
 
 @section('content')
 <div class="content px-3">
@@ -11,21 +11,20 @@
                     <div class="card-header">
                         <div class="row">
                             <div class="col-sm-6">
-                                <h4>Seguimientos críticos</h4>
+                                <h4>Seguimientos crÃ­ticos</h4>
                                 <p class="text-muted mb-0">
-                                    Seguimientos abiertos sin respuesta docente por más de 7 días
+                                    Seguimientos abiertos sin respuesta docente por mÃ¡s de 7 dÃ­as
                                 </p>
                             </div>
                         </div>
                     </div>
                     <div class="card-body">
-                        <table class="table table-hover mb-0">
+                        <table data-datatable="true" class="table table-hover mb-0">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Alumno</th>
-                                    <th>Tipo</th>
-                                    <th>Antigüedad</th>
-                                    <th class="text-center">Acción</th>
+                                    <th>AntigÃ¼edad</th>
+                                    <th class="text-center">AcciÃ³n</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -37,15 +36,8 @@
                                                 {{ $followUp->student->group->name ?? '' }}
                                             </small>
                                         </td>
-
-                                        <td>
-                                            <span class="badge badge-danger">
-                                                {{ ucfirst($followUp->type) }}
-                                            </span>
-                                        </td>
-
                                         <td class="text-danger">
-                                            {{ max(1, (int) $followUp->created_at->diffInDays(now())) }} días sin respuesta
+                                            {{ max(1, (int) $followUp->created_at->diffInDays(now())) }} dÃ­as sin respuesta
                                         </td>
 
                                         <td class="text-center">
@@ -57,8 +49,8 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted p-4">
-                                            No hay seguimientos críticos.
+                                        <td colspan="3" class="text-center text-muted p-4">
+                                            No hay seguimientos crÃ­ticos.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -70,3 +62,5 @@
         </div>
     </div>
 @endsection
+
+

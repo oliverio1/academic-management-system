@@ -27,7 +27,7 @@
                     <div class="card-body">
                         <h3 class="text-center">Listado de niveles</h3>
                         <hr>
-                        <table id="levels" class="table table-hover table-striped">
+                        <table data-datatable="true" id="levels" class="table table-hover table-striped">
                             <thead>
                                 <tr>
                                     <th>ID</th>

@@ -3,212 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <title>Boleta</title>
-
     <style>
-        @page {
-            margin: 20px 25px;
-        }
+        @page { margin: 18px 20px; }
 
         body {
             font-family: DejaVu Sans, sans-serif;
-            font-size: 11px;
+            font-size: 10.5px;
             color: #000;
         }
 
-        .header {
-            font-weight: bold;
-            margin-bottom: 8px;
+        .header-wrap { width: 100%; margin-bottom: 8px; }
+        .logo-box { float: left; width: 35%; }
+        .title-box { float: right; width: 65%; text-align: right; font-weight: 700; margin-top: 8px; }
+        .clear { clear: both; }
+
+        .logo-box img {
+            max-width: 120px;
+            height: auto;
         }
 
-        .student-info {
-            margin-bottom: 10px;
-            line-height: 1.4;
+        .student-grid {
+            width: 100%;
+            margin: 10px 0 8px;
+            border-collapse: collapse;
         }
 
-        .student-info span {
-            margin-right: 18px;
+        .student-grid td {
+            border: none;
+            padding: 2px 3px;
+            vertical-align: top;
         }
 
-        table {
+        .field-label { font-size: 10px; font-weight: 700; }
+        .field-value { font-size: 10.5px; }
+
+        table.main {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
-        th, td {
+        table.main th,
+        table.main td {
             border: 1px solid #000;
             padding: 4px 5px;
-            vertical-align: middle;
         }
 
-        th {
+        table.main th {
+            font-size: 10px;
             text-align: center;
-            font-weight: bold;
+            font-weight: 700;
+        }
+
+        table.main td { font-size: 10px; }
+
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: 700; }
+        .subject-col { width: 42%; }
+        .nrc-col { width: 6%; }
+        .avg-row { background: #f5f5f5; font-weight: 700; }
+
+        .obs {
+            margin-top: 14px;
             font-size: 10px;
         }
-
-        td {
-            font-size: 10.5px;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .bold {
-            font-weight: bold;
-        }
-
-        .observations {
-            margin-top: 20px;
-        }
-
-        .observations-box {
-            height: 55px;
-            border: 1px solid #000;
-            margin-top: 4px;
+        .obs-box {
+            border-bottom: 1px solid #000;
+            height: 24px;
+            margin-top: 3px;
         }
 
         .signatures {
-            margin-top: 35px;
+            margin-top: 38px;
             width: 100%;
         }
-
-        .signature {
+        .sig {
             width: 45%;
-            text-align: center;
             display: inline-block;
+            text-align: center;
+            vertical-align: top;
         }
-
-        .signature-line {
-            margin-top: 35px;
+        .sig.right { float: right; }
+        .sig-line {
             border-top: 1px solid #000;
+            margin-top: 24px;
+            padding-top: 6px;
+            font-weight: 700;
         }
     </style>
 </head>
 <body>
-
-    {{-- ENCABEZADO --}}
-    <div class="header">
-        09-046 UNIVERSIDAD LATINOAMERICANA - CAMPUS VALLE
+    <div class="header-wrap">
+        <div class="logo-box">
+            @php $logoPath = public_path('logo.png'); @endphp
+            @if(file_exists($logoPath))
+                <img src="{{ $logoPath }}" alt="ULA">
+            @else
+                <div style="font-size: 28px; font-weight: 700;">ULA</div>
+            @endif
+        </div>
+        <div class="title-box">
+            UNIVERSIDAD LATINOAMERICANA - CAMPUS VALLE
+        </div>
+        <div class="clear"></div>
     </div>
 
-    {{-- DATOS DEL ALUMNO --}}
-    <div class="student-info">
-        <span><strong>Matrícula:</strong> {{ $student->enrollment_number ?? '—' }}</span>
-        <span><strong>Nombre del alumno:</strong> {{ $student->user->name }}</span>
-        <br>
-        <span><strong>Grupo:</strong> {{ $student->group->name }}</span>
-        <span><strong>Ciclo escolar:</strong> {{ now()->year }}</span>
-        <span><strong>Grado escolar:</strong> {{ $student->group->level->name }}</span>
-    </div>
+    <table class="student-grid">
+        <tr>
+            <td width="14%">
+                <div class="field-label">Matrícula</div>
+                <div class="field-value">{{ $student->enrollment_number ?? '---' }}</div>
+            </td>
+            <td width="36%">
+                <div class="field-label">Nombre del alumno</div>
+                <div class="field-value">{{ $student->user->name }}</div>
+            </td>
+            <td width="10%">
+                <div class="field-label">Grupo</div>
+                <div class="field-value">{{ $student->group->name ?? '---' }}</div>
+            </td>
+            <td width="18%">
+                <div class="field-label">Ciclo escolar</div>
+                <div class="field-value">{{ optional($periods->first())->start_date?->format('Y') }}-{{ optional($periods->last())->end_date?->format('Y') }}</div>
+            </td>
+            <td width="22%">
+                <div class="field-label">Grado escolar</div>
+                <div class="field-value">{{ $student->group->level->name ?? '---' }}</div>
+            </td>
+        </tr>
+    </table>
 
-    {{-- TABLA PRINCIPAL --}}
-    <table>
+    <table class="main">
         <thead>
             <tr>
-                <th rowspan="2">NRC</th>
-                <th rowspan="2">Asignatura</th>
-
+                <th class="nrc-col" rowspan="2">NRC</th>
+                <th class="subject-col" rowspan="2">Asignatura</th>
                 @foreach($periods as $period)
                     <th colspan="2">{{ $period->name }}</th>
                 @endforeach
-
                 <th colspan="2">Promedio</th>
             </tr>
             <tr>
                 @foreach($periods as $period)
-                    <th>Calif.</th>
-                    <th>Asist.</th>
+                    <th>Calificación</th>
+                    <th>Asistencia</th>
                 @endforeach
-                <th>Calif.</th>
-                <th>Asist.</th>
+                <th>Calificación</th>
+                <th>Asistencia</th>
             </tr>
         </thead>
-
         <tbody>
             @foreach($subjects as $subject)
                 <tr>
-                    <td class="text-center">
-                        {{ $report[$subject->id]['nrc'] ?? '—' }}
-                    </td>
-
-                    <td>
-                        {{ $report[$subject->id]['name'] }}
-                    </td>
-
+                    <td class="center">{{ $report[$subject->id]['nrc'] ?? '---' }}</td>
+                    <td>{{ $report[$subject->id]['name'] }}</td>
                     @foreach($periods as $period)
-                        <td class="text-center">
-                            {{ $report[$subject->id]['periods'][$period->id]['average'] ?? '---' }}
-                        </td>
-                        <td class="text-center">
-                            @php
-                                $att = $report[$subject->id]['periods'][$period->id]['attendance'] ?? null;
-                            @endphp
-                            {{ $att !== null ? $att.'%' : '---' }}
-                        </td>
+                        <td class="center">{{ isset($report[$subject->id]['periods'][$period->id]['average']) ? number_format((float) $report[$subject->id]['periods'][$period->id]['average'], 1) : '---' }}</td>
+                        @php $att = $report[$subject->id]['periods'][$period->id]['attendance'] ?? null; @endphp
+                        <td class="center">{{ $att !== null ? number_format((float) $att, 0) : '---' }}</td>
                     @endforeach
-
-                    <td class="text-center bold">
-                        {{ $report[$subject->id]['final']['average'] ?? '---' }}
-                    </td>
-                    <td class="text-center bold">
-                        @php
-                            $finalAtt = $report[$subject->id]['final']['attendance'] ?? null;
-                        @endphp
-                        {{ $finalAtt !== null ? $finalAtt.'%' : '---' }}
-                    </td>
+                    <td class="center bold">{{ isset($report[$subject->id]['final']['average']) ? number_format((float) $report[$subject->id]['final']['average'], 1) : '---' }}</td>
+                    @php $fAtt = $report[$subject->id]['final']['attendance'] ?? null; @endphp
+                    <td class="center bold">{{ $fAtt !== null ? number_format((float) $fAtt, 0) : '---' }}</td>
                 </tr>
             @endforeach
 
-            {{-- PROMEDIO GENERAL --}}
-            <tr class="bold">
-                <td colspan="2" class="text-right">PROMEDIO</td>
-
+            <tr class="avg-row">
+                <td colspan="2">PROMEDIO DEL PARCIAL</td>
                 @foreach($periods as $period)
-                    <td class="text-center">
-                        {{ $periodAverages[$period->id]['average'] ?? '---' }}
-                    </td>
-                    <td class="text-center">
-                        @php
-                            $pAtt = $periodAverages[$period->id]['attendance'] ?? null;
-                        @endphp
-                        {{ $pAtt !== null ? $pAtt.'%' : '---' }}
-                    </td>
+                    <td class="center">{{ isset($periodAverages[$period->id]['average']) ? number_format((float) $periodAverages[$period->id]['average'], 1) : '---' }}</td>
+                    @php $pAtt = $periodAverages[$period->id]['attendance'] ?? null; @endphp
+                    <td class="center">{{ $pAtt !== null ? number_format((float) $pAtt, 0) : '---' }}</td>
                 @endforeach
-
-                <td class="text-center">
-                    {{ $generalAverage ?? '---' }}
-                </td>
-                <td class="text-center">
-                    {{ $generalAttendance !== null ? $generalAttendance.'%' : '---' }}
-                </td>
+                <td class="center">{{ $generalAverage !== null ? number_format((float) $generalAverage, 1) : '---' }}</td>
+                <td class="center">{{ $generalAttendance !== null ? number_format((float) $generalAttendance, 0) : '---' }}</td>
             </tr>
         </tbody>
     </table>
 
-    {{-- OBSERVACIONES --}}
-    <div class="observations">
+    <div class="obs">
         <strong>Observaciones:</strong>
-        <div class="observations-box"></div>
+        <div class="obs-box"></div>
     </div>
 
-    {{-- FIRMAS --}}
     <div class="signatures">
-        <div class="signature">
-            <div class="signature-line"></div>
-            FIRMA DE TUTOR
+        <div class="sig">
+            <div class="sig-line">FIRMA DEL TUTOR</div>
         </div>
-
-        <div class="signature" style="float:right;">
-            <div class="signature-line"></div>
-            DIRECTOR ACADÉMICO
+        <div class="sig right">
+            <div class="sig-line">
+                DIRECTOR ACADÉMICO<br>
+                Miriam Paola Pérez Luna
+            </div>
         </div>
     </div>
-
 </body>
 </html>

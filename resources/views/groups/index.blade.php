@@ -26,7 +26,7 @@
                     <div class="card-body">
                         <h3 class="text-center">Listado de grupos</h3>
                         <hr>
-                        <table id="groups" class="table table-hover table-striped">
+                        <table data-datatable="true" id="groups" class="table table-hover table-striped">
                             <thead>
                                 <tr>
                                     <th>ID</th>

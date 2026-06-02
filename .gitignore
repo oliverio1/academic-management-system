@@ -1,6 +1,8 @@
 *.log
 .DS_Store
 .env
+.env.*
+!.env.example
 .env.backup
 .env.production
 .phpactor.json
@@ -12,6 +14,10 @@
 /.vscode
 /.zed
 /auth.json
+/database/backups/
+/database/respaldo*.sql
+/database/cleanup_keep_cycle_*.sql
+/docs/backups/
 /node_modules
 /public/build
 /public/hot
@@ -19,6 +25,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+test_subject.php
 Homestead.json
 Homestead.yaml
 Thumbs.db

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Seguimiento de alumnos')
 
@@ -19,11 +19,10 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-hover mb-0">
+                    <table data-datatable="true" class="table table-hover mb-0">
                         <thead class="thead-light">
                             <tr>
                                 <th>Alumno</th>
-                                <th>Tipo</th>
                                 <th>Solicitado</th>
                                 <th>Progreso</th>
                                 <th class="text-center">Acciones</th>
@@ -44,12 +43,6 @@
                                     </td>
 
                                     <td>
-                                        <span class="badge badge-info">
-                                            {{ ucfirst($followUp->type) }}
-                                        </span>
-                                    </td>
-
-                                    <td>
                                         {{ $followUp->created_at->format('d M Y') }}
                                     </td>
 
@@ -66,7 +59,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted p-4">
+                                    <td colspan="4" class="text-center text-muted p-4">
                                         No hay seguimientos registrados.
                                     </td>
                                 </tr>
@@ -79,3 +72,4 @@
     </div>
 </div>
 @endsection
+

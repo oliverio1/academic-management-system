@@ -1,26 +1,50 @@
 @extends('layouts.app')
 
-@section('title', 'Resultado importación')
+@section('title', 'Resultado importacion de asistencias')
 
 @section('content')
 <div class="container-fluid">
-    <h3>Resultado de la importación</h3>
+    <div class="row">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Resultado de importacion</h3>
+                    <a href="{{ route('imports.attendances.create') }}" class="btn btn-outline-primary btn-sm">
+                        Nueva importacion
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Registros creados: <strong>{{ $result->created }}</strong></li>
+                        <li>Registros actualizados: <strong>{{ $result->updated }}</strong></li>
+                        <li>Registros omitidos: <strong>{{ $result->skipped }}</strong></li>
+                    </ul>
 
-    <ul>
-        <li>Registros creados: {{ $result->created }}</li>
-        <li>Registros actualizados: {{ $result->updated }}</li>
-        <li>Registros omitidos: {{ $result->skipped }}</li>
-    </ul>
+                    @if (!empty($result->warnings))
+                        <div class="alert alert-warning">
+                            <h5 class="mb-2">Advertencias</h5>
+                            <ul class="mb-0">
+                                @foreach ($result->warnings as $warning)
+                                    <li>{{ $warning }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
-    @if ($result->errors)
-        <div class="alert alert-warning">
-            <h5>Errores</h5>
-            <ul>
-                @foreach ($result->errors as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
+                    @if (!empty($result->errors))
+                        <div class="alert alert-danger">
+                            <h5 class="mb-2">Errores</h5>
+                            <ul class="mb-0">
+                                @foreach ($result->errors as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
-    @endif
+    </div>
 </div>
 @endsection
+

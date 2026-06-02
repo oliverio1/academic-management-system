@@ -8,6 +8,7 @@ class Activity extends Model
 {
     protected $fillable = [
         'teaching_assignment_id',
+        'session_activity_id',
         'evaluation_criterion_id',
         'academic_period_id',
         'title',
@@ -44,5 +45,9 @@ class Activity extends Model
 
     public function teamGrades() {
         return $this->hasMany(TeamGrade::class);
+    }
+
+    public function sessionActivity() {
+        return $this->belongsTo(SessionActivity::class);
     }
 }

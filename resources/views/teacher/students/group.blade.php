@@ -1,4 +1,4 @@
-
+﻿
 @extends('layouts.app')
 
 @section('title', 'Modalidades')
@@ -27,7 +27,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <table class="table table-sm table-hover">
+                        <table data-datatable="true" class="table table-sm table-hover">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Alumno</th>
@@ -52,7 +52,7 @@
                                             @if($stats && $stats->total > 0)
                                                 {{ round(($stats->attended / $stats->total) * 100) }}%
                                             @else
-                                                <span class="text-muted">—</span>
+                                                <span class="text-muted">â€”</span>
                                             @endif
                                         </td>
 

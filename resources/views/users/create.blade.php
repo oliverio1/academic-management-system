@@ -41,7 +41,7 @@
         if (role === 'teacher') {
             document.getElementById('teacher-fields')?.classList.remove('d-none');
         }
-        if (role === 'coordination') {
+        if (role === 'coordinator') {
             document.getElementById('coordination-fields')?.classList.remove('d-none');
         }
     }

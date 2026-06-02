@@ -32,4 +32,13 @@ class Teacher extends Model
     public function followUpAssignments() {
         return $this->hasMany(StudentFollowUpTeacher::class);
     }
+
+    public function studentReports() {
+        return $this->hasMany(TeacherStudentReport::class);
+    }
+
+    public function campusAttendances()
+    {
+        return $this->hasMany(TeacherCampusAttendance::class);
+    }
 }

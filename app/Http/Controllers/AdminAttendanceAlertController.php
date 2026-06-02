@@ -6,12 +6,116 @@ use Illuminate\Http\Request;
 use App\Models\Modality;
 use App\Models\Attendance;
 use App\Models\AcademicSession;
+use App\Models\AcademicPeriod;
 use App\Models\Student;
 use App\Services\AcademicCalendarService;
 use Carbon\Carbon;
 
 class AdminAttendanceAlertController extends Controller
 {
+    public function teachersLowRegistration()
+    {
+        $graceLimitDate = now()->subDays(7);
+        $today = now()->toDateString();
+
+        $activePeriod = AcademicPeriod::query()
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->first();
+
+        $sessionsQuery = AcademicSession::query()
+            ->with([
+                'teachingAssignment.teacher.user',
+                'teachingAssignment.subject',
+                'teachingAssignment.group',
+            ])
+            ->withCount('attendances')
+            ->withCount('sessionActivity')
+            ->whereDate('session_date', '<=', $graceLimitDate->toDateString())
+            ->where('is_cancelled', false)
+            ->whereHas('teachingAssignment.teacher', fn ($q) => $q->where('is_active', true));
+
+        if ($activePeriod) {
+            $sessionsQuery->where('academic_period_id', $activePeriod->id);
+        }
+
+        $sessions = $sessionsQuery
+            ->orderBy('session_date')
+            ->get();
+
+        $rows = [];
+
+        foreach ($sessions as $session) {
+            $assignment = $session->teachingAssignment;
+            $teacher = $assignment?->teacher;
+            $teacherUser = $teacher?->user;
+
+            if (! $teacher || ! $teacherUser) {
+                continue;
+            }
+
+            $teacherId = $teacher->id;
+            $missingAttendance = $session->attendances_count === 0;
+            $missingActivity = $session->session_activity_count === 0;
+
+            if (! isset($rows[$teacherId])) {
+                $rows[$teacherId] = [
+                    'teacher' => $teacher,
+                    'teacher_name' => $teacherUser->name,
+                    'total_overdue_sessions' => 0,
+                    'late_sessions' => 0,
+                    'missing_attendance_sessions' => 0,
+                    'missing_activity_sessions' => 0,
+                    'subjects' => [],
+                    'details' => [],
+                ];
+            }
+
+            $rows[$teacherId]['total_overdue_sessions']++;
+
+            if ($missingAttendance || $missingActivity) {
+                $rows[$teacherId]['late_sessions']++;
+                $rows[$teacherId]['subjects'][$assignment->id] = ($assignment->subject->name ?? 'Materia') . ' - ' . ($assignment->group->name ?? 'Grupo');
+                $rows[$teacherId]['details'][] = [
+                    'date' => $session->session_date,
+                    'subject' => $assignment->subject->name ?? 'Materia',
+                    'group' => $assignment->group->name ?? 'Grupo',
+                    'missing_attendance' => $missingAttendance,
+                    'missing_activity' => $missingActivity,
+                ];
+            }
+
+            if ($missingAttendance) {
+                $rows[$teacherId]['missing_attendance_sessions']++;
+            }
+
+            if ($missingActivity) {
+                $rows[$teacherId]['missing_activity_sessions']++;
+            }
+        }
+
+        $results = collect($rows)
+            ->filter(fn ($row) => $row['late_sessions'] > 0)
+            ->map(function ($row) {
+                $row['subjects'] = collect($row['subjects'])->values()->all();
+
+                $row['details'] = collect($row['details'])
+                    ->sortBy('date')
+                    ->values()
+                    ->all();
+
+                return $row;
+            })
+            ->sortBy('teacher_name')
+            ->values();
+
+        return view('admin.alerts.teacher_low_registration', [
+            'results' => $results,
+            'graceLimitDate' => $graceLimitDate,
+            'activePeriod' => $activePeriod,
+        ]);
+    }
+
     public function fullDayAbsences(Modality $modality, AcademicCalendarService $calendar) {
         $limitDays = 3;
         $endDate = $calendar->getLastSchoolDay(now(), $modality->id);

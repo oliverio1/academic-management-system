@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Announcement;
+use App\Models\User;
+
 class AnnouncementDispatchService
 {
     public function dispatch(Announcement $announcement, array $data = [])
@@ -25,7 +28,8 @@ class AnnouncementDispatchService
             'all'      => User::all(),
             'teachers' => User::whereHas('teacher')->get(),
             'students' => User::whereHas('student')->get(),
-            'specific' => User::whereIn('id', $data['user_ids'])->get(),
+            'specific' => User::whereIn('id', $data['user_ids'] ?? [])->get(),
+            default    => collect(),
         };
     }
 }

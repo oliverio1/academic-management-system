@@ -4,6 +4,10 @@
 @section('title', 'Asistencia')
 
 @section('content')
+    @php
+        $isReadOnly = $isReadOnly ?? $session->isAttendanceClosed();
+        $periodDisabled = $periodDisabled ?? false;
+    @endphp
     @if(session('warning'))
         <div class="alert alert-warning">
             {{ session('warning') }}
@@ -36,13 +40,31 @@
 
                     {{-- Body --}}
                     <div class="card-body">
+                        @php
+                            $hasSuspensionLockedRows = collect($students)->contains(function ($student) use ($attendance) {
+                                $record = $attendance[$student->id] ?? null;
+                                return (bool) optional($record)->is_suspension_locked;
+                            });
+                        @endphp
 
                         {{-- Aviso institucional --}}
-                        @if($session->isAttendanceClosed())
+                        @if($periodDisabled)
+                            <div class="alert alert-secondary">
+                                Este periodo esta deshabilitado por coordinacion.
+                                <br>
+                                <small>Vista en modo consulta.</small>
+                            </div>
+                        @elseif($session->isAttendanceClosed())
                             <div class="alert alert-secondary">
                                 🔒 La asistencia de esta sesión ya está cerrada.
                                 <br>
                                 <small>No se permiten modificaciones.</small>
+                            </div>
+                        @elseif($hasSuspensionLockedRows)
+                            <div class="alert alert-warning">
+                                Hay alumnos con <strong>suspension activa</strong> para esta fecha.
+                                <br>
+                                <small>Esos registros quedan en falta y no se pueden editar desde esta vista.</small>
                             </div>
                         @endif
 
@@ -63,12 +85,18 @@
                                 <tbody>
                                     @foreach($students as $student)
                                         @php
-                                            $status = $attendance[$student->id]->status ?? 'present';
-                                            $disabled = $session->isAttendanceClosed();
+                                            $record = $attendance[$student->id] ?? null;
+                                            $status = $record->status ?? ($isReadOnly ? null : 'present');
+                                            $isSuspensionLocked = (bool) optional($record)->is_suspension_locked;
+                                            $disabled = $isReadOnly || $isSuspensionLocked;
                                         @endphp
                                         <tr>
                                             <td class="text-left">
                                                 {{ $student->user->name }}
+                                                @if($isSuspensionLocked)
+                                                    <span class="badge badge-danger ml-2">Suspendido</span>
+                                                    <div class="small text-muted">Falta bloqueada por coordinacion</div>
+                                                @endif
                                             </td>
 
                                             {{-- PRESENTE --}}
@@ -134,12 +162,12 @@
 
                             {{-- Footer --}}
                             <div class="d-flex justify-content-between mt-3">
-                                <a href="{{ route('dashboard') }}"
+                                <a href="{{ route('teacher.classes.sessions.index', $session->teachingAssignment) }}"
                                     class="btn btn-secondary">
                                     Volver
                                 </a>
 
-                                @unless($session->isAttendanceClosed())
+                                @unless($isReadOnly)
                                     <button class="btn btn-primary">
                                         Guardar asistencia
                                     </button>

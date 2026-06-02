@@ -39,4 +39,13 @@ class Group extends Model
             'modality_id'  // FK en levels
         );
     }
+
+    public function teacherReports() {
+        return $this->hasMany(TeacherStudentReport::class);
+    }
+
+    public function cycleConfigurations()
+    {
+        return $this->hasMany(SchoolCycleGroup::class);
+    }
 }

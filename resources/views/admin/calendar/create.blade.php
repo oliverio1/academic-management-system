@@ -47,16 +47,24 @@
                                 </div>
                                 
                                 <div class="col-md-12 mb-3">
-                                    <div class="form-group">
+                                    <div class="form-group" id="modality-group">
                                         <label>Modalidad</label>
-                                        <select name="modality_id" class="form-control">
-                                            <option value="">Todas las modalidades</option>
+                                        <select name="modality_ids[]" class="form-control" multiple size="6">
                                             @foreach($modalities as $modality)
-                                                <option value="{{ $modality->id }}">
+                                                <option value="{{ $modality->id }}" {{ collect(old('modality_ids', []))->contains($modality->id) ? 'selected' : '' }}>
                                                     {{ $modality->name }}
                                                 </option>
                                             @endforeach
                                         </select>
+                                        <small class="text-muted">
+                                            Selecciona una o varias modalidades. Si no seleccionas ninguna, aplica global (todas).
+                                        </small>
+                                        @error('modality_ids')
+                                            <div class="text-danger">{{ $message }}</div>
+                                        @enderror
+                                        @error('modality_ids.*')
+                                            <div class="text-danger">{{ $message }}</div>
+                                        @enderror
                                     </div>
                                 </div>
 
@@ -137,12 +145,15 @@
         })()
     </script>
     <script>
-        document.getElementById('type').addEventListener('change', function () {
+        const typeSelect = document.getElementById('type');
+        typeSelect.addEventListener('change', function () {
             const single = document.getElementById('single-date');
             const range = document.getElementById('range-dates');
 
             single.style.display = this.value === 'holiday' ? 'block' : 'none';
             range.style.display = this.value === 'vacation' ? 'block' : 'none';
         });
+
+        typeSelect.dispatchEvent(new Event('change'));
     </script>
 @endsection

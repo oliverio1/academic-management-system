@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Seguimientos')
 
@@ -8,94 +8,70 @@
             <strong>{{ session('info') }}</strong>
         </div>
     @endif
+
     <div class="content px-3">
         <div class="clearfix"></div>
         <div class="row">
             <div class="col-md-12 mt-3">
                 <div class="card">
                     <div class="card-header">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <h4>Seguimientos pendientes</h4>
-                            </div>
-                        </div>
+                        <h3 class="mb-0">Seguimientos</h3>
                     </div>
                     <div class="card-body">
-                        @if($pendingFollowUps->isEmpty())
-                            <div class="alert alert-success">
-                                No tienes seguimientos pendientes por atender.
+                        @php
+                            $followUps = $pendingFollowUps->concat($answeredFollowUps);
+                        @endphp
+
+                        @if($followUps->isEmpty())
+                            <div class="alert alert-success mb-0">
+                                No tienes seguimientos registrados.
                             </div>
                         @else
-                            <div class="list-group mb-4">
-                                @foreach($pendingFollowUps as $assignment)
-                                    @php
-                                        $followUp = $assignment->studentFollowUp;
-                                        $student  = $followUp->student;
-                                        $days = $followUp->created_at->diffInDays(now());
-                                    @endphp
-
-                                    <a href="{{ route('teacher.follow-ups.show', $assignment) }}"
-                                    class="list-group-item list-group-item-action">
-
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>{{ $student->user->name }}</strong><br>
-                                                <small class="text-muted">
-                                                    {{ $student->group->name }}
-                                                </small>
-                                            </div>
-
-                                            <span class="badge badge-warning">
-                                                {{ (int) $days }} día{{ (int) $days !== 1 ? 's' : '' }}
-                                            </span>
-                                        </div>
-
-                                        <div class="mt-2 text-warning small">
-                                            Requiere respuesta
-                                        </div>
-                                    </a>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <h4>Historial de seguimientos</h4>
-                    </div>
-                    <div class="card-body">
-                        @if($answeredFollowUps->isEmpty())
-                            <p class="text-muted">
-                                No hay seguimientos contestados.
-                            </p>
-                        @else
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Alumno</th>
-                                        <th>Grupo</th>
-                                        <th class="text-center">Respuesta</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($answeredFollowUps as $assignment)
-                                        @php
-                                            $student = $assignment->studentFollowUp->student;
-                                        @endphp
+                            <div class="table-responsive">
+                                <table data-datatable="true" class="table table-sm mb-0">
+                                    <thead>
                                         <tr>
-                                            <td>{{ $student->user->name }}</td>
-                                            <td>{{ $student->group->name }}</td>
-                                            <td class="text-center">
-                                                <button class="btn btn-outline-secondary btn-sm"
-                                                        data-toggle="modal"
-                                                        data-target="#responseModal{{ $assignment->id }}">
-                                                    Ver respuesta
-                                                </button>
-                                            </td>
+                                            <th>Alumno</th>
+                                            <th>Grupo</th>
+                                            <th>Estatus</th>
+                                            <th class="text-center">Acción</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($followUps as $assignment)
+                                            @php
+                                                $followUp = $assignment->studentFollowUp;
+                                                $student = $followUp->student;
+                                                $isPending = is_null($assignment->responded_at);
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $student->user->name }}</td>
+                                                <td>{{ $student->group->name }}</td>
+                                                <td>
+                                                    @if($isPending)
+                                                        <span class="badge badge-warning">Pendiente</span>
+                                                    @else
+                                                        <span class="badge badge-success">Respondido</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-center">
+                                                    @if($isPending)
+                                                        <a href="{{ route('teacher.follow-ups.show', $assignment) }}" class="btn btn-primary btn-sm">
+                                                            Responder
+                                                        </a>
+                                                    @else
+                                                        <button class="btn btn-outline-secondary btn-sm"
+                                                                data-toggle="modal"
+                                                                data-target="#responseModal{{ $assignment->id }}">
+                                                            Ver respuesta
+                                                        </button>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -132,7 +108,6 @@
                     </div>
 
                     <div class="modal-body">
-
                         <p>
                             <strong>Alumno:</strong><br>
                             {{ $assignment->studentFollowUp->student->user->name }}
@@ -171,8 +146,8 @@
             </div>
         </div>
     @endforeach
-
 @endsection
 
 @section('page_scripts')
 @endsection
+

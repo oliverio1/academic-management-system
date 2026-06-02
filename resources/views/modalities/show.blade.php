@@ -30,7 +30,7 @@
                         </div>
                         <div class="row">
                             <div class="col-md-5 m-3">
-                                <table class="table table-bordered">
+                                <table data-datatable="true" class="table table-bordered">
                                     <tr>
                                         <th width="30%">ID:</th>
                                         <td>{{ $modality->id }}</td>
@@ -62,7 +62,7 @@
                             <h4>Niveles de esta Modalidad</h4>
                             @if($modality->levels->count() > 0)
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-sm">
+                                    <table data-datatable="true" class="table table-bordered table-sm">
                                         <thead>
                                             <tr>
                                                 <th>Nombre</th>

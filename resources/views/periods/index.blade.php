@@ -26,7 +26,7 @@
                     <div class="card-body">
                         <h3 class="text-center">Listado de periodos</h3>
                         <hr>
-                        <table id="periods" class="table table-hover table-striped">
+                        <table data-datatable="true" id="periods" class="table table-hover table-striped">
                             <thead>
                                 <tr>
                                     <th>ID</th>

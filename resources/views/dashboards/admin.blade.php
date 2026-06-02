@@ -26,6 +26,9 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        {{-- NOTIFICACIONES --}}
+                        @include('dashboards.admin._notifications')
+
                         {{-- ALERTAS --}}
                         @include('dashboards.admin._alerts')
 

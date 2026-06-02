@@ -1,10 +1,12 @@
 <div class="col-md-12 mb-3">
     <div class="form-group">
         <label>Nivel</label>
-        <select name="level_id" class="form-control" required>
+        <select name="level_id" id="level_id" class="form-control" required>
             <option value="">Seleccione nivel</option>
             @foreach($levels as $level)
-                <option value="{{ $level->id }}" {{ old('level_id', $group->level_id ?? '') == $level->id ? 'selected' : '' }}>{{ $level->name }} ({{ $level->modality->name }})</option>
+                <option value="{{ $level->id }}" {{ old('level_id', $group->level_id ?? '') == $level->id ? 'selected' : '' }}>
+                    {{ $level->name }} ({{ $level->modality->name }})
+                </option>
             @endforeach
         </select>
     </div>

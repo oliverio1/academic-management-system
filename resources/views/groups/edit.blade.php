@@ -17,7 +17,9 @@
                         @csrf
                         @method('PUT')
 
-                        @include('groups._form')
+                        <div class="row">
+                            @include('groups._form')
+                        </div>
 
                         <button class="btn btn-primary">Guardar</button>
                         <a href="{{ route('groups.index') }}" class="btn btn-secondary">

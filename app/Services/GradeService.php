@@ -7,6 +7,8 @@ use App\Models\Student;
 use App\Models\Grade;
 use App\Models\TeamGrade;
 use App\Models\Team;
+use App\Models\AcademicPeriod;
+use App\Models\EvaluationCriterion;
 use App\Services\AttendanceService;
 use Carbon\Carbon;
 
@@ -62,12 +64,26 @@ class GradeService
     public function criterionAverage(
         TeachingAssignment $assignment,
         Student $student,
-        $criterion
+        $criterion,
+        ?Carbon $from = null,
+        ?Carbon $to = null
     ): ?float {
 
         $scores = [];
 
         foreach ($criterion->activities as $activity) {
+            $activityDate = $activity->due_date
+                ? Carbon::parse($activity->due_date)
+                : Carbon::parse($activity->created_at);
+
+            if ($from && $activityDate->lt($from->copy()->startOfDay())) {
+                continue;
+            }
+
+            if ($to && $activityDate->gt($to->copy()->endOfDay())) {
+                continue;
+            }
+
             $grade = $this->gradeForActivity(
                 $assignment,
                 $student,
@@ -99,40 +115,9 @@ class GradeService
         ?Carbon $to = null
     ): ?float {
 
-        $assignment->load('evaluationCriteria.activities');
+        $breakdown = $this->breakdown($assignment, $student, $from, $to);
 
-        $final = 0;
-        $hasData = false;
-
-        foreach ($assignment->evaluationCriteria as $criterion) {
-
-            // 🔹 CRITERIO DE ASISTENCIA
-            if ($criterion->isAttendance()) {
-                $attendanceScore = $this->attendanceService
-                    ->attendancePercentage($assignment, $student, $from, $to);
-            
-                $final += ($attendanceScore * $criterion->percentage) / 100;
-                continue;
-            }
-
-            // 🔹 CRITERIOS ACADÉMICOS
-            $average = $this->criterionAverage(
-                $assignment,
-                $student,
-                $criterion
-            );
-
-            if ($average === null) {
-                continue;
-            }
-
-            $final += ($average * $criterion->percentage) / 100;
-            $hasData = true;
-        }
-
-        return $hasData
-            ? round($final, 2)
-            : null;
+        return $breakdown['final'];
     }
 
     /* =====================================================
@@ -147,12 +132,18 @@ class GradeService
         ?Carbon $to = null
     ): array {
 
-        $assignment->load('evaluationCriteria.activities');
+        $periodId = $this->resolveAcademicPeriodId($assignment, $from, $to);
+
+        $criteria = EvaluationCriterion::query()
+            ->forAssignmentAndPeriod($assignment, $periodId)
+            ->with(['activities', 'cyclePartial.academicPeriod'])
+            ->orderBy('id')
+            ->get();
 
         $rows = [];
         $final = 0;
 
-        foreach ($assignment->evaluationCriteria as $criterion) {
+        foreach ($criteria as $criterion) {
 
             /*
             |--------------------------------------------------
@@ -160,6 +151,7 @@ class GradeService
             |--------------------------------------------------
             */
             if ($criterion->isAttendance()) {
+                // Usar exactamente el mismo porcentaje mostrado en actas/PDF.
                 $attendancePercentage = $this->attendanceService
                     ->attendancePercentage($assignment, $student, $from, $to);
                 
@@ -169,6 +161,9 @@ class GradeService
 
                 $final += $contribution;
                 $rows[] = [
+                    'partial'      => $criterion->cyclePartial?->name
+                        ?? $criterion->cyclePartial?->academicPeriod?->name
+                        ?? null,
                     'criterion'    => $criterion->name,          // "Asistencia"
                     'percentage'   => $criterion->percentage,
                     'average'      => round($attendanceScore, 2),
@@ -185,7 +180,9 @@ class GradeService
             $average = $this->criterionAverage(
                 $assignment,
                 $student,
-                $criterion
+                $criterion,
+                $from,
+                $to
             );
 
             $average = $average ?? 0;
@@ -193,6 +190,9 @@ class GradeService
             $contribution = ($average * $criterion->percentage) / 100;
 
             $rows[] = [
+                'partial'      => $criterion->cyclePartial?->name
+                    ?? $criterion->cyclePartial?->academicPeriod?->name
+                    ?? null,
                 'criterion'    => $criterion->name,
                 'percentage'   => $criterion->percentage,
                 'average'      => round($average, 2),
@@ -206,5 +206,21 @@ class GradeService
             'rows'  => $rows,
             'final' => round($final, 2),
         ];
+    }
+
+    private function resolveAcademicPeriodId(
+        TeachingAssignment $assignment,
+        ?Carbon $from = null,
+        ?Carbon $to = null
+    ): ?int {
+        if (! $from || ! $to) {
+            return null;
+        }
+
+        return AcademicPeriod::query()
+            ->where('modality_id', $assignment->group->level->modality_id)
+            ->whereDate('start_date', '<=', $from->toDateString())
+            ->whereDate('end_date', '>=', $to->toDateString())
+            ->value('id');
     }
 }

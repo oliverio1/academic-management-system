@@ -31,3 +31,15 @@
     </div>
 </div>
 @endsection
+
+@section('page_scripts')
+<script>
+    (function () {
+        if (!window.jQuery || !$.fn.select2) return;
+        $('.js-group-select').select2({
+            width: '100%',
+            placeholder: 'Selecciona un grupo'
+        });
+    })();
+</script>
+@endsection

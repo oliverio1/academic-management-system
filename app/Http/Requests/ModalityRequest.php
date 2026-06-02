@@ -13,7 +13,8 @@ class ModalityRequest extends FormRequest
 
     public function rules(): array
     {
-        $modalityId = $this->route('modality')?->id;
+        $modalityParam = $this->route('modality');
+        $modalityId = is_object($modalityParam) ? $modalityParam->id : $modalityParam;
 
         return [
             'name' => 'required|string|max:255|unique:modalities,name,' . $modalityId,

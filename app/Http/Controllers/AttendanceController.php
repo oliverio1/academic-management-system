@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Services\AttendanceService;
 use App\Services\AcademicCalendarService;
+use App\Services\EconomicActaLockService;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceController extends Controller
@@ -26,7 +27,7 @@ class AttendanceController extends Controller
         return view('attendance.index', compact('schedule','students','existing','date','isNonWorkingDay'));
     }
 
-    public function create(AcademicSession $academicSession) {
+    public function create(AcademicSession $academicSession, EconomicActaLockService $lockService) {
         $teacher = auth()->user()->teacher;
 
         // 🔒 El profesor debe ser el asignado a la sesión
@@ -35,41 +36,61 @@ class AttendanceController extends Controller
             403
         );
 
+        $periodDisabled = $academicSession->academicPeriod && ! $academicSession->academicPeriod->is_active;
+
         // ❌ Sesión cancelada
         if ($academicSession->is_cancelled) {
             return redirect()
-                ->route('dashboard')
+                ->route('teacher.classes.sessions.index', $academicSession->teachingAssignment)
                 ->with('warning', 'Esta sesión fue cancelada.');
         }
 
-        // 🔒 Sesión cerrada por el sistema
-        if ($academicSession->isAttendanceClosed()) {
+        if (! $this->canCaptureAttendanceNow($academicSession)) {
             return redirect()
-                ->route('attendance.edit', $academicSession)
-                ->with('info', 'La asistencia de esta sesión ya está cerrada.');
+                ->route('teacher.classes.sessions.index', $academicSession->teachingAssignment)
+                ->with('warning', $this->attendanceLockedMessage($academicSession));
         }
 
+
+        $isReadOnly = $periodDisabled
+            || $academicSession->isAttendanceClosed()
+            || $lockService->isSessionLocked($academicSession);
+
         // 👥 Alumnos activos según pertenencia REAL
-        $students = $academicSession
-            ->teachingAssignment
-            ->group
-            ->students()
-            ->where('is_active', true)
-            ->get();
+        $students = $this->studentsForAssignment($academicSession->teachingAssignment)->get();
+
+        $attendance = $academicSession
+            ->attendances()
+            ->get()
+            ->keyBy('student_id');
 
         return view('attendance.create', [
-            'session'   => $academicSession,
-            'students'  => $students,
-            'attendance'=> collect(), // vacía
+            'session' => $academicSession,
+            'students' => $students,
+            'attendance' => $attendance,
+            'isReadOnly' => $isReadOnly,
+            'periodDisabled' => $periodDisabled,
         ]);
     }
 
-    public function store(Request $request, AcademicSession $academicSession) {
+    public function store(Request $request, AcademicSession $academicSession, EconomicActaLockService $lockService) {
         $teacher = auth()->user()->teacher;
     
         abort_if(
             $academicSession->teachingAssignment->teacher_id !== $teacher->id,
             403
+        );
+
+        abort_if(
+            $academicSession->academicPeriod && ! $academicSession->academicPeriod->is_active,
+            403,
+            'Este periodo esta deshabilitado por coordinacion. Solo consulta.'
+        );
+
+        abort_if(
+            ! $this->canCaptureAttendanceNow($academicSession),
+            403,
+            $this->attendanceLockedMessage($academicSession)
         );
     
         // 🔒 No permitir guardar si ya está cerrada
@@ -79,46 +100,66 @@ class AttendanceController extends Controller
             'La asistencia de esta sesión ya está cerrada.'
         );
     
+        abort_if(
+            $lockService->isSessionLocked($academicSession),
+            403,
+            'El parcial de esta sesion ya tiene acta economica cerrada o enviada. Solo consulta.'
+        );
+
         $data = $request->validate([
             'attendance'   => 'required|array',
             'attendance.*' => 'required|in:present,absent,late,justified',
         ]);
+
+        $allowedStudentIds = $this->studentsForAssignment($academicSession->teachingAssignment)
+            ->pluck('students.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     
-        DB::transaction(function () use ($data, $academicSession) {
+        DB::transaction(function () use ($data, $academicSession, $allowedStudentIds) {
     
             foreach ($data['attendance'] as $studentId => $status) {
-    
-                Attendance::updateOrCreate(
-                    [
-                        'academic_session_id' => $academicSession->id,
-                        'student_id'          => $studentId,
-                    ],
-                    [
-                        'status' => $status,
-                    ]
-                );
+                if (! in_array((int) $studentId, $allowedStudentIds, true)) {
+                    continue;
+                }
+                $attendance = Attendance::firstOrNew([
+                    'academic_session_id' => $academicSession->id,
+                    'student_id'          => $studentId,
+                ]);
+
+                // Un status justificado no puede sobreescribirse manualmente.
+                if ($attendance->exists && $attendance->status === 'justified') {
+                    continue;
+                }
+
+                if ($attendance->exists && (bool) $attendance->is_suspension_locked) {
+                    continue;
+                }
+
+                $attendance->status = $status;
+                $attendance->save();
             }
         });
     
         return redirect()
-            ->route('dashboard')
+            ->route('teacher.classes.sessions.index', $academicSession->teachingAssignment)
             ->with('success', 'Asistencia registrada correctamente.');
     }
 
-    public function edit(AcademicSession $academicSession) {
+    public function edit(AcademicSession $academicSession, EconomicActaLockService $lockService) {
         $teacher = auth()->user()->teacher;
     
         abort_if(
             $academicSession->teachingAssignment->teacher_id !== $teacher->id,
             403
         );
+
+        $periodDisabled = $academicSession->academicPeriod && ! $academicSession->academicPeriod->is_active;
+        $isReadOnly = $periodDisabled
+            || $academicSession->isAttendanceClosed()
+            || $lockService->isSessionLocked($academicSession);
     
-        $students = $academicSession
-            ->teachingAssignment
-            ->group
-            ->students()
-            ->where('is_active', true)
-            ->get();
+        $students = $this->studentsForAssignment($academicSession->teachingAssignment)->get();
     
         $attendance = $academicSession
             ->attendances()
@@ -129,6 +170,8 @@ class AttendanceController extends Controller
             'session'    => $academicSession,
             'students'   => $students,
             'attendance' => $attendance,
+            'isReadOnly' => $isReadOnly,
+            'periodDisabled' => $periodDisabled,
         ]);
     }    
 
@@ -155,37 +198,77 @@ class AttendanceController extends Controller
 
     public function massive(TeachingAssignment $assignment, AttendanceService $attendanceService, AcademicCalendarService $calendar) {
         $period = AcademicPeriod::where('is_active', true)->firstOrFail();
-        $assignment->load(['group.students.user','schedules.attendances']);
-        $students = $assignment->group->students;
-        $modalityId = $assignment->group->level->modality_id;
-        $sessions = [];
-        foreach ($assignment->schedules as $schedule) {
-            foreach ($attendanceService->generateSessions($schedule, $period) as $session) {
-                $sessions[] = $session;
-            }
-        }
-        $sessions = collect($sessions)->unique(fn ($s) => $s['schedule_id'].'_'.$s['class_date'])->sortBy('class_date')->values();
+        $assignment->load(['academicSessions.attendances']);
+        $students = $this->studentsForAssignment($assignment)->get();
+        $sessions = $assignment->academicSessions
+            ->filter(function ($session) use ($period) {
+                return !$session->is_cancelled
+                    && $session->session_date >= $period->start_date
+                    && $session->session_date <= $period->end_date;
+            })
+            ->map(fn ($session) => [
+                'academic_session_id' => $session->id,
+                'schedule_id' => $session->schedule_id,
+                'class_date' => $session->session_date->toDateString(),
+            ])
+            ->values();
+
         $this->ensureDefaultAttendances($students, $sessions);
         return view('attendance.massive', ['assignment' => $assignment,'students' => $students,'sessions' => $sessions,]);
     }
 
-    public function storeInline(Request $request) {
-        Attendance::updateOrCreate(
-            [
-                'schedule_id' => $request->schedule_id,
-                'student_id' => $request->student_id,
-                'class_date' => $request->class_date,
-            ],
-            [
-                'status' => $request->status
-            ]
+    public function storeInline(Request $request, EconomicActaLockService $lockService) {
+        $request->validate([
+            'schedule_id' => 'required|exists:schedules,id',
+            'student_id' => 'required|exists:students,id',
+            'class_date' => 'required|date',
+            'status' => 'required|in:present,absent,late,justified',
+        ]);
+
+        $session = AcademicSession::query()
+            ->where('schedule_id', $request->schedule_id)
+            ->whereDate('session_date', $request->class_date)
+            ->firstOrFail();
+
+        $allowedStudentIds = $this->studentsForAssignment($session->teachingAssignment)
+            ->pluck('students.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        abort_if(! in_array((int) $request->student_id, $allowedStudentIds, true), 403);
+
+        abort_if(
+            $lockService->isSessionLocked($session),
+            403,
+            'El parcial de esta sesion ya tiene acta economica cerrada o enviada. Solo consulta.'
         );
+
+        $attendance = Attendance::firstOrNew([
+            'academic_session_id' => $session->id,
+            'student_id' => $request->student_id,
+        ]);
+
+        if (!($attendance->exists && $attendance->status === 'justified') && !($attendance->exists && (bool) $attendance->is_suspension_locked)) {
+            $attendance->status = $request->status;
+            $attendance->save();
+        }
+
         return response()->json(['ok' => true]);
     }
 
-    public function adjustScoreInline(Request $request) {
-        Attendance::where('id', $request->attendance_id)
-            ->update(['status' => $request->status]);
+    public function adjustScoreInline(Request $request, EconomicActaLockService $lockService) {
+        $attendance = Attendance::query()
+            ->with('academicSession.schedule')
+            ->findOrFail($request->attendance_id);
+
+        abort_if(
+            $lockService->isSessionLocked($attendance->academicSession),
+            403,
+            'El parcial de esta sesion ya tiene acta economica cerrada o enviada. Solo consulta.'
+        );
+
+        if ($attendance->status !== 'justified' && !(bool) $attendance->is_suspension_locked) {
+            $attendance->update(['status' => $request->status]);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -201,15 +284,17 @@ class AttendanceController extends Controller
             foreach ($students as $student) {
                 foreach ($sessions as $session) {
     
-                    // ⚠️ USAR class_date
-                    if ($session['class_date'] > $today) {
+                    if (($session['class_date'] ?? null) > $today) {
+                        continue;
+                    }
+
+                    if (empty($session['academic_session_id'])) {
                         continue;
                     }
     
                     $rows[] = [
-                        'schedule_id' => $session['schedule_id'],
+                        'academic_session_id' => $session['academic_session_id'],
                         'student_id'  => $student->id,
-                        'class_date'  => $session['class_date'],
                         'status'      => 'present',
                         'created_at'  => $now,
                         'updated_at'  => $now,
@@ -219,9 +304,61 @@ class AttendanceController extends Controller
     
             Attendance::upsert(
                 $rows,
-                ['schedule_id', 'student_id', 'class_date'],
+                ['academic_session_id', 'student_id'],
                 [] // NO sobrescribe si ya existe
             );
         });
     }
+
+    private function canCaptureAttendanceNow(AcademicSession $academicSession): bool
+    {
+        $sessionDate = optional($academicSession->session_date)->toDateString();
+        if (! $sessionDate) {
+            return true;
+        }
+
+        $startTime = $academicSession->start_time ?: optional($academicSession->schedule)->start_time;
+        if (! $startTime) {
+            return true;
+        }
+
+        $classStart = Carbon::parse($sessionDate . ' ' . substr((string) $startTime, 0, 8));
+        $allowedFrom = $classStart->copy()->subMinutes(10);
+
+        return now()->greaterThanOrEqualTo($allowedFrom);
+    }
+
+    private function attendanceLockedMessage(AcademicSession $academicSession): string
+    {
+        $sessionDate = optional($academicSession->session_date)->toDateString();
+        $startTime = $academicSession->start_time ?: optional($academicSession->schedule)->start_time;
+
+        if (! $sessionDate || ! $startTime) {
+            return 'Aun no es posible tomar asistencia para esta sesion.';
+        }
+
+        $classStart = Carbon::parse($sessionDate . ' ' . substr((string) $startTime, 0, 8));
+        $allowedFrom = $classStart->copy()->subMinutes(10);
+
+        return 'La asistencia se habilita 10 minutos antes del horario de clase (' . $allowedFrom->format('d/m/Y H:i') . ').';
+    }
+
+    private function studentsForAssignment(TeachingAssignment $assignment)
+    {
+        if ($assignment->students()->exists()) {
+            return $assignment->students()
+                ->where('students.is_active', true)
+                ->where('students.group_id', (int) $assignment->group_id)
+                ->with('user')
+                ->orderBy('students.id');
+        }
+
+        return $assignment->group->students()
+            ->where('is_active', true)
+            ->with('user')
+            ->orderBy('id');
+    }
+
 }
+
+

@@ -1,0 +1,152 @@
+[
+  {
+    "file": "001_subjects_index.png",
+    "url": "http://127.0.0.1:8000/student/subjects",
+    "note": "Pantalla principal subjects"
+  },
+  {
+    "file": "002_subjects_link_1.png",
+    "url": "http://127.0.0.1:8000/student/subjects",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "003_subjects_link_2.png",
+    "url": "http://127.0.0.1:8000/student/reports",
+    "note": "Acci?n: Mis reportes"
+  },
+  {
+    "file": "004_subjects_link_3.png",
+    "url": "http://127.0.0.1:8000/student/followups",
+    "note": "Acci?n: Mis seguimientos"
+  },
+  {
+    "file": "005_subjects_link_4.png",
+    "url": "http://127.0.0.1:8000/student/exams",
+    "note": "Acci?n: Exámenes en línea"
+  },
+  {
+    "file": "006_subjects_link_5.png",
+    "url": "http://127.0.0.1:8000/student/subjects/371",
+    "note": "Acci?n: Metodología de la investigación Oliver Martínez Anaya"
+  },
+  {
+    "file": "007_subjects_link_6.png",
+    "url": "http://127.0.0.1:8000/student/subjects/372",
+    "note": "Acci?n: Temas selectos de Química II Oliver Martínez Anaya"
+  },
+  {
+    "file": "008_subjects_link_7.png",
+    "url": "http://127.0.0.1:8000/student/subjects/375",
+    "note": "Acci?n: Detectar y dar seguimiento Hilda Cortes"
+  },
+  {
+    "file": "009_reports_index.png",
+    "url": "http://127.0.0.1:8000/student/reports",
+    "note": "Pantalla principal reports"
+  },
+  {
+    "file": "010_reports_link_1.png",
+    "url": "http://127.0.0.1:8000/student/subjects",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "011_reports_link_2.png",
+    "url": "http://127.0.0.1:8000/student/reports",
+    "note": "Acci?n: Mis reportes"
+  },
+  {
+    "file": "012_reports_link_3.png",
+    "url": "http://127.0.0.1:8000/student/followups",
+    "note": "Acci?n: Mis seguimientos"
+  },
+  {
+    "file": "013_reports_link_4.png",
+    "url": "http://127.0.0.1:8000/student/exams",
+    "note": "Acci?n: Exámenes en línea"
+  },
+  {
+    "file": "014_incident_reports_index.png",
+    "url": "http://127.0.0.1:8000/student/incident-reports",
+    "note": "Pantalla principal incident_reports"
+  },
+  {
+    "file": "015_incident_reports_link_1.png",
+    "url": "http://127.0.0.1:8000/student/subjects",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "016_incident_reports_link_2.png",
+    "url": "http://127.0.0.1:8000/student/reports",
+    "note": "Acci?n: Mis reportes"
+  },
+  {
+    "file": "017_incident_reports_link_3.png",
+    "url": "http://127.0.0.1:8000/student/followups",
+    "note": "Acci?n: Mis seguimientos"
+  },
+  {
+    "file": "018_incident_reports_link_4.png",
+    "url": "http://127.0.0.1:8000/student/exams",
+    "note": "Acci?n: Exámenes en línea"
+  },
+  {
+    "file": "019_incident_reports_link_5.png",
+    "url": "http://127.0.0.1:8000/student/incident-reports/create",
+    "note": "Acci?n: Nuevo reporte"
+  },
+  {
+    "file": "020_followups_index.png",
+    "url": "http://127.0.0.1:8000/student/followups",
+    "note": "Pantalla principal followups"
+  },
+  {
+    "file": "021_followups_link_1.png",
+    "url": "http://127.0.0.1:8000/student/subjects",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "022_followups_link_2.png",
+    "url": "http://127.0.0.1:8000/student/reports",
+    "note": "Acci?n: Mis reportes"
+  },
+  {
+    "file": "023_followups_link_3.png",
+    "url": "http://127.0.0.1:8000/student/followups",
+    "note": "Acci?n: Mis seguimientos"
+  },
+  {
+    "file": "024_followups_link_4.png",
+    "url": "http://127.0.0.1:8000/student/exams",
+    "note": "Acci?n: Exámenes en línea"
+  },
+  {
+    "file": "025_exams_index.png",
+    "url": "http://127.0.0.1:8000/student/exams",
+    "note": "Pantalla principal exams"
+  },
+  {
+    "file": "026_exams_link_1.png",
+    "url": "http://127.0.0.1:8000/student/subjects",
+    "note": "Acci?n: Ver dashboard"
+  },
+  {
+    "file": "027_exams_link_2.png",
+    "url": "http://127.0.0.1:8000/student/reports",
+    "note": "Acci?n: Mis reportes"
+  },
+  {
+    "file": "028_exams_link_3.png",
+    "url": "http://127.0.0.1:8000/student/followups",
+    "note": "Acci?n: Mis seguimientos"
+  },
+  {
+    "file": "029_exams_link_4.png",
+    "url": "http://127.0.0.1:8000/student/exams",
+    "note": "Acci?n: Exámenes en línea"
+  },
+  {
+    "file": "030_exams_link_5.png",
+    "url": "http://127.0.0.1:8000/student/exams/2",
+    "note": "Acci?n: Abrir"
+  }
+]

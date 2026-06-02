@@ -1,0 +1,54 @@
+@extends('layouts.app')
+
+@section('title', 'Intentos de examen')
+
+@section('content')
+<div class="content px-3 mt-3">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0">{{ $paperExam->title }}</h4>
+            <small class="text-muted">{{ $paperExam->assignment->subject->name ?? 'N/D' }} - Grupo {{ $paperExam->assignment->group->name ?? 'N/D' }}</small>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Alumno</th>
+                            <th>Intento</th>
+                            <th>Estado</th>
+                            <th>Inicio</th>
+                            <th>Envío</th>
+                            <th>Puntaje</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($paperExam->attempts->sortByDesc('id') as $attempt)
+                            <tr>
+                                <td>{{ optional(optional($attempt->student)->user)->name ?? 'N/D' }}</td>
+                                <td>{{ $attempt->attempt_number }}</td>
+                                <td><span class="badge badge-{{ in_array($attempt->status, ['graded', 'submitted']) ? 'success' : 'warning' }}">{{ $attempt->status }}</span></td>
+                                <td>{{ optional($attempt->started_at)->format('d/m/Y H:i') ?: '-' }}</td>
+                                <td>{{ optional($attempt->submitted_at)->format('d/m/Y H:i') ?: '-' }}</td>
+                                <td>
+                                    @php
+                                        $baseTen = ($attempt->score !== null && (float) $attempt->max_score > 0)
+                                            ? (((float) $attempt->score / (float) $attempt->max_score) * 10)
+                                            : null;
+                                    @endphp
+                                    {{ $baseTen !== null ? number_format($baseTen, 1) : '-' }}
+                                </td>
+                                <td><a href="{{ route('teacher.paper-exams.attempts.review', [$paperExam, $attempt]) }}" class="btn btn-outline-primary btn-sm">Revisar</a></td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7" class="text-center text-muted">Sin intentos todavía.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <a href="{{ route('teacher.paper-exams.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+        </div>
+    </div>
+</div>
+@endsection

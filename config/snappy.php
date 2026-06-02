@@ -1,5 +1,27 @@
 <?php
 
+$quoteBinary = static function (?string $path): ?string {
+    if (!$path) {
+        return $path;
+    }
+
+    $path = trim($path);
+
+    if (str_starts_with($path, '"') && str_ends_with($path, '"')) {
+        return $path;
+    }
+
+    return '"' . $path . '"';
+};
+
+$defaultPdfBinary = PHP_OS_FAMILY === 'Windows'
+    ? 'C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe'
+    : 'wkhtmltopdf';
+
+$defaultImgBinary = PHP_OS_FAMILY === 'Windows'
+    ? 'C:/Program Files/wkhtmltopdf/bin/wkhtmltoimage.exe'
+    : 'wkhtmltoimage';
+
 return [
 
     /*
@@ -35,7 +57,7 @@ return [
     
     'pdf' => [
         'enabled' => true,
-        'binary'  => '"C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe"',
+        'binary'  => $quoteBinary(env('WKHTML_PDF_BINARY', $defaultPdfBinary)),
         'timeout' => false,
         'options' => [
             'encoding' => 'UTF-8',
@@ -48,7 +70,7 @@ return [
     
     'image' => [
         'enabled' => true,
-        'binary'  => env('WKHTML_IMG_BINARY', '/usr/local/bin/wkhtmltoimage'),
+        'binary'  => $quoteBinary(env('WKHTML_IMG_BINARY', $defaultImgBinary)),
         'timeout' => false,
         'options' => [],
         'env'     => [],

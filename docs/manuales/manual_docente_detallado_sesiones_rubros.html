@@ -1,0 +1,121 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual Docente Detallado</title>
+<style>
+  @page { size: A4; margin: 18mm 14mm 16mm 14mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#1f2937; line-height:1.45; font-size:12px; }
+  h1 { font-size:24px; margin:0 0 6px 0; }
+  h2 { font-size:17px; margin-top:22px; border-bottom:1px solid #e5e7eb; padding-bottom:6px; }
+  h3 { font-size:13px; margin-top:12px; }
+  .cover { min-height:90vh; display:flex; align-items:center; justify-content:center; }
+  .coverbox { width:90%; border:2px solid #2563eb; border-radius:10px; padding:24px; text-align:center; }
+  .muted { color:#6b7280; }
+  .page-break { page-break-before: always; }
+  .shot { border:1px solid #d1d5db; border-radius:8px; padding:6px; background:#fff; margin:8px 0; }
+  .shot img { width:100%; height:auto; display:block; }
+  .cap { font-size:11px; color:#4b5563; margin-top:4px; }
+  .note { border:1px solid #e5e7eb; border-radius:8px; padding:10px; background:#f9fafb; }
+  ul li, ol li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<section class="cover">
+  <div class="coverbox">
+    <h1>Manual de Usuario · Docente</h1>
+    <h1 style="color:#2563eb;">Módulo detallado</h1>
+    <p class="muted">Ver sesiones y Configurar rubros</p>
+    <p><strong>Fecha:</strong> 19/05/2026</p>
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>Índice</h2>
+  <ol>
+    <li>Entrada a Mis clases</li>
+    <li>Ver sesiones (paso a paso)</li>
+    <li>Configurar rubros (paso a paso)</li>
+    <li>Errores frecuentes y solución</li>
+  </ol>
+</section>
+
+<section class="page-break">
+  <h2>1) Entrada a Mis clases</h2>
+  <div class="shot"><img src="capturas_docente_detalle/01_clases_index.png" alt="Mis clases"></div>
+  <div class="cap">Figura 1. Pantalla de clases del docente.</div>
+  <h3>Objetivo</h3>
+  <p>Desde aquí eliges la materia-grupo que vas a trabajar y entras a sesiones o a configuración de evaluación.</p>
+  <h3>Qué revisar antes de entrar</h3>
+  <ul>
+    <li>Que sea la clase correcta (materia y grupo).</li>
+    <li>Que estés en el periodo que vas a capturar.</li>
+  </ul>
+</section>
+
+<section class="page-break">
+  <h2>2) Ver sesiones (paso a paso)</h2>
+  <div class="shot"><img src="capturas_docente_detalle/02_ver_sesiones.png" alt="Ver sesiones"></div>
+  <div class="cap">Figura 2. Vista de sesiones de la clase.</div>
+
+  <h3>¿Para qué sirve?</h3>
+  <ul>
+    <li>Consultar sesiones ya creadas por fecha.</li>
+    <li>Identificar si hay sesiones disponibles para registrar actividades.</li>
+    <li>Detectar rápidamente faltantes por periodo.</li>
+  </ul>
+
+  <h3>Flujo recomendado</h3>
+  <ol>
+    <li>Entrar a <strong>Mis clases</strong>.</li>
+    <li>Abrir la opción <strong>Ver sesiones</strong> de la clase.</li>
+    <li>Validar fechas del parcial activo.</li>
+    <li>Confirmar que existan sesiones antes de crear actividades ligadas a sesión.</li>
+  </ol>
+
+  <div class="note"><strong>Tip operativo:</strong> si el periodo no tiene sesiones, primero confirma el calendario/captura de clase para evitar bloqueos al registrar actividades.</div>
+</section>
+
+<section class="page-break">
+  <h2>3) Configurar rubros (paso a paso)</h2>
+  <div class="shot"><img src="capturas_docente_detalle/03_configurar_rubros.png" alt="Configurar rubros"></div>
+  <div class="cap">Figura 3. Configuración general de rubros por clase/parcial.</div>
+
+  <div class="shot"><img src="capturas_docente_detalle/04_rubros_form_detalle.png" alt="Formulario de rubros"></div>
+  <div class="cap">Figura 4. Formulario de captura de rubros y porcentajes.</div>
+
+  <h3>¿Para qué sirve?</h3>
+  <ul>
+    <li>Definir los criterios de evaluación del parcial.</li>
+    <li>Asignar porcentaje a cada rubro.</li>
+    <li>Asegurar que las actividades impacten correctamente en calificaciones.</li>
+  </ul>
+
+  <h3>Flujo recomendado</h3>
+  <ol>
+    <li>Entrar a la clase y abrir <strong>Configuración de evaluación</strong>.</li>
+    <li>Agregar rubros requeridos (ej. Evaluación continua, Proyecto, Examen).</li>
+    <li>Asignar porcentaje a cada rubro.</li>
+    <li>Verificar que el total sea exactamente <strong>100%</strong>.</li>
+    <li>Guardar esquema.</li>
+  </ol>
+
+  <h3>Validaciones clave</h3>
+  <ul>
+    <li>La suma total debe ser 100%.</li>
+    <li>No dejar rubros duplicados por error de captura.</li>
+    <li>Evitar cambiar rubros una vez que ya haya calificaciones registradas, salvo ajustes autorizados.</li>
+  </ul>
+</section>
+
+<section class="page-break">
+  <h2>4) Errores frecuentes y solución</h2>
+  <ul>
+    <li><strong>“La suma debe ser 100%”:</strong> corrige porcentajes hasta cerrar en 100 exacto.</li>
+    <li><strong>No aparecen todos los rubros al guardar:</strong> revisa que cada fila tenga nombre y porcentaje válido.</li>
+    <li><strong>No puedo editar configuración:</strong> puede haber bloqueo por calificaciones existentes o cierre operativo.</li>
+    <li><strong>Actividad no refleja calificación esperada:</strong> confirma que esté asociada al rubro correcto del parcial.</li>
+  </ul>
+</section>
+</body>
+</html>

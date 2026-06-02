@@ -2,70 +2,79 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Attendance;
+use App\Models\PrefectDailyAttendance;
+use App\Models\SchoolCycle;
+use App\Models\SchoolCycleGroup;
 use Illuminate\Support\Facades\DB;
 
 class CoordinationAttendanceRiskController extends Controller
 {
     public function index()
     {
-        // Reglas institucionales (luego pueden ir a config)
         $fromDate = now()->subDays(7);
         $minAbsences = 3;
+        $activeCampusId = $this->resolveActiveCampusId();
+        if ($activeCampusId <= 0) {
+            return view('coordination.students.attendance-risk', ['students' => collect()]);
+        }
 
-        $students = Attendance::query()
-            ->join(
-                'academic_sessions',
-                'academic_sessions.id',
-                '=',
-                'attendances.academic_session_id'
+        $activeCycleIds = SchoolCycle::query()
+            ->where('is_active', true)
+            ->where('campus_id', $activeCampusId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $activeGroupIds = SchoolCycleGroup::query()
+            ->whereIn('school_cycle_id', $activeCycleIds)
+            ->where('campus_id', $activeCampusId)
+            ->where('is_active', true)
+            ->pluck('group_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->all();
+
+        $students = PrefectDailyAttendance::query()
+            ->join('students', 'students.id', '=', 'prefect_daily_attendances.student_id')
+            ->join('users', 'users.id', '=', 'students.user_id')
+            ->leftJoin('groups', 'groups.id', '=', 'students.group_id')
+            ->where('prefect_daily_attendances.status', 'absent')
+            ->whereDate('prefect_daily_attendances.attendance_date', '>=', $fromDate->toDateString())
+            ->when(
+                ! empty($activeGroupIds),
+                fn ($q) => $q->whereIn('prefect_daily_attendances.group_id', $activeGroupIds),
+                fn ($q) => $q->whereRaw('1 = 0')
             )
-            ->where('attendances.status', 'absent')
-            ->whereDate('academic_sessions.session_date', '>=', $fromDate)
-
-            // Excluir asistencias justificadas por rango de fechas
-            ->whereNotExists(function ($query) {
-                $query->selectRaw(1)
-                    ->from('attendance_justifications')
-                    ->whereColumn(
-                        'attendance_justifications.student_id',
-                        'attendances.student_id'
-                    )
-                    ->whereColumn(
-                        'academic_sessions.session_date',
-                        '>=',
-                        'attendance_justifications.from_date'
-                    )
-                    ->whereColumn(
-                        'academic_sessions.session_date',
-                        '<=',
-                        'attendance_justifications.to_date'
-                    );
-            })
-
-            // Agrupar por alumno
             ->select(
-                'attendances.student_id',
+                'prefect_daily_attendances.student_id',
                 DB::raw('COUNT(*) as absences'),
-                DB::raw('MAX(academic_sessions.session_date) as last_absence')
+                DB::raw('MAX(prefect_daily_attendances.attendance_date) as last_absence'),
+                DB::raw('MAX(users.name) as student_name'),
+                DB::raw('MAX(groups.name) as group_name')
             )
-            ->groupBy('attendances.student_id')
+            ->groupBy('prefect_daily_attendances.student_id')
             ->having('absences', '>=', $minAbsences)
-
-            // Cargar relaciones necesarias para la vista
-            ->with([
-                'student.user',
-                'student.group',
-            ])
-
-            // Priorizar a quienes tienen más faltas
             ->orderByDesc('absences')
             ->get();
 
-        return view(
-            'coordination.students.attendance-risk',
-            compact('students')
-        );
+        return view('coordination.students.attendance-risk', compact('students'));
+    }
+
+    private function resolveActiveCampusId(): int
+    {
+        $activeCampusId = (int) session('active_campus_id', 0);
+        $user = auth()->user();
+        $allowedCampusIds = $user
+            ? $user->campuses()->pluck('campuses.id')->map(fn ($id) => (int) $id)->all()
+            : [];
+
+        if ($activeCampusId <= 0 || ! in_array($activeCampusId, $allowedCampusIds, true)) {
+            $activeCampusId = (int) ($allowedCampusIds[0] ?? 0);
+            if ($activeCampusId > 0) {
+                session(['active_campus_id' => $activeCampusId]);
+            }
+        }
+
+        return $activeCampusId;
     }
 }

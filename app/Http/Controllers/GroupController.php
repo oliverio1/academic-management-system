@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use App\Models\Level;
+use App\Models\Campus;
 use App\Services\GradeService;
 use App\Services\AcademicPerformanceService;
 use App\Http\Requests\GroupRequest;
@@ -21,12 +22,29 @@ class GroupController extends Controller
         $this->authorize($action, $model);
     }
     public function index() {
+        $activeCampusId = (int) session('active_campus_id', 0);
+        $isValleCampus = false;
+
+        if ($activeCampusId > 0) {
+            $activeCampusName = (string) Campus::query()->whereKey($activeCampusId)->value('name');
+            $isValleCampus = str_contains(mb_strtolower($activeCampusName), 'valle');
+        }
+
         $groups = Group::with('level')->get();
+
+        if ($isValleCampus) {
+            $groups->load('students');
+        } else {
+            $groups->each(function (Group $group) {
+                $group->setRelation('students', collect());
+            });
+        }
+
         return view('groups.index', compact('groups'));
     }
 
     public function create() {
-        $levels = Level::orderBy('name')->get();
+        $levels = Level::with('modality')->orderBy('name')->get();
         return view('groups.create', compact('levels'));
     }
 
@@ -41,7 +59,7 @@ class GroupController extends Controller
     }
 
     public function edit(Group $group) {
-        $levels = Level::orderBy('name')->get();
+        $levels = Level::with('modality')->orderBy('name')->get();
         return view('groups.edit', compact('group', 'levels'));
     }
 

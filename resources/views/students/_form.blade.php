@@ -32,7 +32,7 @@
     @else
         {{-- Alta: sí se selecciona grupo --}}
         <select name="group_id"
-                class="form-control @error('group_id') is-invalid @enderror"
+                class="form-control js-group-select @error('group_id') is-invalid @enderror"
                 required>
             <option value="">Seleccione un grupo</option>
             @foreach($groups as $group)

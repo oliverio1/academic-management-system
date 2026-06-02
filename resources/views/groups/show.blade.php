@@ -64,7 +64,7 @@
                                 <div class="col-md-3">
                                     <div class="small-box bg-danger">
                                         <div class="inner">
-                                            <h3>{{ $attendancePercentage }}%</h3>
+                                            <h3>{{ number_format((float) $attendancePercentage, 0) }}%</h3>
                                             <p>Asistencia</p>
                                         </div>
                                         <div class="icon"><i class="fas fa-calendar-check"></i></div>
@@ -80,7 +80,7 @@
                             </h4>
                         </div>
                         <div class="card-body p-0">
-                            <table class="table table-hover">
+                            <table data-datatable="true" class="table table-hover">
                                 <thead>
                                     <tr>
                                         <th>#</th>

@@ -14,6 +14,10 @@ use App\Models\StudentGroupHistory;
 use App\Services\AttendanceService;
 use App\Services\GradeService;
 use App\Http\Controllers\Traits\ActivatableController;
+use App\Models\TeachingAssignment;
+use App\Models\SchoolCycleGroup;
+use App\Models\SchoolCycle;
+use Illuminate\Support\Str;
 
 class StudentController extends Controller
 {
@@ -26,18 +30,57 @@ class StudentController extends Controller
         $this->authorize($action, $model);
     }
     public function index() {
-        $groups = Group::get();
-        $students = Student::with(['user', 'group'])->get();
+        $activeCampusId = (int) session('active_campus_id', 0);
+        $allowedGroupIds = $this->activeCampusGroupIds();
+        $groups = Group::query()
+            ->when($activeCampusId > 0, fn ($q) => $q->where('campus_id', $activeCampusId), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(!empty($allowedGroupIds), fn ($q) => $q->whereIn('id', $allowedGroupIds), fn ($q) => $q->whereRaw('1 = 0'))
+            ->get();
+        $students = Student::with(['user', 'group'])
+            ->when($activeCampusId > 0, fn ($q) => $q->whereHas('group', fn ($groupQ) => $groupQ->where('campus_id', $activeCampusId)), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(!empty($allowedGroupIds), fn ($q) => $q->whereIn('group_id', $allowedGroupIds), fn ($q) => $q->whereRaw('1 = 0'))
+            ->get();
         return view('students.index', compact('students', 'groups'));
     }
 
-    public function create() {
-        $groups = Group::orderBy('name')->get();
+    public function create(Request $request) {
+        $activeCampusId = (int) session('active_campus_id', 0);
+        $cycleId = $request->integer('school_cycle_id') ?: null;
+        $allowedGroupIds = $this->activeCampusGroupIds();
+
+        $groups = Group::query()
+            ->when($activeCampusId > 0, fn ($q) => $q->where('campus_id', $activeCampusId), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(!empty($allowedGroupIds), fn ($q) => $q->whereIn('id', $allowedGroupIds), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($cycleId, function ($query) use ($cycleId) {
+                $groupIds = SchoolCycleGroup::query()
+                    ->where('school_cycle_id', $cycleId)
+                    ->where('is_active', true)
+                    ->pluck('group_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+
+                if (empty($groupIds)) {
+                    $query->whereRaw('1 = 0');
+                    return;
+                }
+
+                $query->whereIn('id', $groupIds);
+            })
+            ->orderBy('name')
+            ->get();
+
         return view('students.create', compact('groups'));
     }
 
     public function store(StudentRequest $request) {
         DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name' => $request->name ?? $request->email,
+                'email' => $request->email,
+                'password' => Hash::make('123123123'),
+            ]);
+
+            $user->assignRole('student');
 
             $student = Student::create([
                 'user_id' => $user->id,
@@ -53,11 +96,112 @@ class StudentController extends Controller
                 'reason'     => 'ingreso',
             ]);
         });
-        return redirect()->route('students.index')->with('success', 'Estudiante creado correctamente');
+
+        if ($request->input('source') === 'active-cycle') {
+            return redirect()
+                ->route('coordination.students.active-cycle', [
+                    'group_id' => $request->group_id,
+                ])
+                ->with('success', 'Estudiante creado correctamente. Contrasena inicial: 123123123');
+        }
+
+        return redirect()->route('students.index')->with('success', 'Estudiante creado correctamente. Contrasena inicial: 123123123');
+    }
+
+    public function bulkStore(Request $request)
+    {
+        $data = $request->validate([
+            'group_id' => 'required|exists:groups,id',
+            'bulk_rows' => 'required|string',
+            'email_domain' => 'nullable|string|max:120',
+        ]);
+
+        $allowedGroupIds = $this->activeCampusGroupIds();
+        abort_unless(in_array((int) $data['group_id'], $allowedGroupIds, true), 422, 'El grupo seleccionado no pertenece al campus activo.');
+
+        $domain = trim((string) ($data['email_domain'] ?? 'my.ula.edu.mx'));
+        if ($domain === '') {
+            $domain = 'my.ula.edu.mx';
+        }
+
+        $rows = preg_split('/\r\n|\r|\n/', (string) $data['bulk_rows']);
+        $rows = array_values(array_filter(array_map('trim', $rows), fn ($line) => $line !== ''));
+
+        if (empty($rows)) {
+            return back()->withErrors(['bulk_rows' => 'Debes capturar al menos una fila.'])->withInput();
+        }
+
+        $created = 0;
+        $skipped = [];
+
+        DB::transaction(function () use ($rows, $data, $domain, &$created, &$skipped) {
+            foreach ($rows as $index => $line) {
+                [$name, $enrollment, $email] = $this->parseBulkRow($line);
+
+                if ($name === '') {
+                    $skipped[] = 'Fila ' . ($index + 1) . ': nombre vacío.';
+                    continue;
+                }
+
+                $enrollment = $enrollment !== '' ? $this->normalizeEnrollment($enrollment) : $this->generateEnrollmentNumber();
+                if (Student::query()->where('enrollment_number', $enrollment)->exists()) {
+                    $enrollment = $this->generateEnrollmentNumber();
+                }
+
+                if ($email === '') {
+                    $email = $this->generateEmailFromEnrollment($enrollment, $domain);
+                }
+
+                if (User::query()->where('email', $email)->exists()) {
+                    $email = $this->generateUniqueEmail($email);
+                }
+
+                $user = User::create([
+                    'name' => $name,
+                    'email' => $email,
+                    'password' => Hash::make('123123123'),
+                ]);
+
+                $user->assignRole('student');
+
+                $student = Student::create([
+                    'user_id' => $user->id,
+                    'group_id' => (int) $data['group_id'],
+                    'enrollment_number' => $enrollment,
+                    'is_active' => true,
+                ]);
+
+                StudentGroupHistory::create([
+                    'student_id' => $student->id,
+                    'group_id' => (int) $data['group_id'],
+                    'start_date' => now(),
+                    'reason' => 'ingreso',
+                ]);
+
+                $created++;
+            }
+        });
+
+        $message = "Alta masiva finalizada. Creados: {$created}.";
+        if (! empty($skipped)) {
+            $message .= ' Omitidos: ' . count($skipped) . '.';
+        }
+
+        return redirect()->route('students.index')->with('success', $message);
     }
 
     public function edit(Student $student) {
-        $groups = Group::orderBy('name')->get();
+        $activeCampusId = (int) session('active_campus_id', 0);
+        if ($activeCampusId > 0 && (int) optional($student->group)->campus_id !== $activeCampusId) {
+            abort(403, 'No puedes editar alumnos de otro campus.');
+        }
+
+        $allowedGroupIds = $this->activeCampusGroupIds();
+        $groups = Group::query()
+            ->when($activeCampusId > 0, fn ($q) => $q->where('campus_id', $activeCampusId), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(!empty($allowedGroupIds), fn ($q) => $q->whereIn('id', $allowedGroupIds), fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('name')
+            ->get();
         return view('students.edit', compact('student', 'groups'));
     }
 
@@ -104,13 +248,13 @@ class StudentController extends Controller
             ->groupBy('partial')
             ->map(function ($a) {
                 return round(
-                    ($a->where('present', true)->count() / max($a->count(),1)) * 100,
+                    ($a->whereIn('status', ['present', 'late', 'justified'])->count() / max($a->count(),1)) * 100,
                     1
                 );
             });
     
         $asistenciaGeneral = round(
-            ($student->attendances->where('present', true)->count() / max($student->attendances->count(),1)) * 100,
+            ($student->attendances->whereIn('status', ['present', 'late', 'justified'])->count() / max($student->attendances->count(),1)) * 100,
             1
         );
     
@@ -149,11 +293,12 @@ class StudentController extends Controller
                 ->whereNull('end_date')
                 ->first();
     
-            if ($currentHistory && $startDate->lt($currentHistory->start_date)) {
-                throw new \Exception(
-                    'La fecha efectiva no puede ser anterior al ingreso al grupo actual.'
-                );
-            }
+            // Validación deshabilitada temporalmente para permitir cambios de grupo.
+            // if ($currentHistory && $startDate->startOfDay()->lt($currentHistory->start_date->startOfDay())) {
+            //     throw new \Exception(
+            //         'La fecha efectiva no puede ser anterior al ingreso al grupo actual.'
+            //     );
+            // }
     
             // Cerrar historial actual
             if ($currentHistory) {
@@ -284,6 +429,133 @@ class StudentController extends Controller
         ];
     
         return response()->json($response);
+    }
+
+    public function deactivate(Request $request, Student $student)
+    {
+        $this->authorize('deactivate', $student);
+
+        $data = $request->validate([
+            'deactivation_reason' => ['required', 'string', 'max:255'],
+        ]);
+
+        if (! $student->is_active) {
+            return back()->with('info', 'Estudiante ya esta inactivo.');
+        }
+
+        DB::transaction(function () use ($student, $data) {
+            $currentHistory = StudentGroupHistory::query()
+                ->where('student_id', $student->id)
+                ->whereNull('end_date')
+                ->orderByDesc('start_date')
+                ->first();
+
+            if ($currentHistory) {
+                $existingReason = trim((string) $currentHistory->reason);
+                $newReason = 'baja: ' . trim((string) $data['deactivation_reason']);
+
+                $currentHistory->update([
+                    'end_date' => now()->toDateString(),
+                    'reason' => $existingReason !== '' ? ($existingReason . ' | ' . $newReason) : $newReason,
+                ]);
+            }
+
+            $student->update(['is_active' => false]);
+        });
+
+        return back()->with('success', 'Estudiante dado de baja correctamente.');
+    }
+
+    public function activate(Student $student)
+    {
+        $this->authorize('activate', $student);
+
+        if ($student->is_active) {
+            return back()->with('info', 'Estudiante ya esta activo.');
+        }
+
+        $student->update(['is_active' => true]);
+
+        return back()->with('success', 'Estudiante activado correctamente.');
+    }
+
+    private function activeCampusGroupIds(): array
+    {
+        $activeCampusId = (int) session('active_campus_id', 0);
+        if ($activeCampusId <= 0) {
+            return [0];
+        }
+
+        $activeCycleId = SchoolCycle::query()
+            ->where('is_active', true)
+            ->whereHas('campuses', fn ($q) => $q->where('campuses.id', $activeCampusId))
+            ->orderByDesc('start_date')
+            ->value('id');
+
+        if (! $activeCycleId) {
+            return [0];
+        }
+
+        return SchoolCycleGroup::query()
+            ->where('school_cycle_id', (int) $activeCycleId)
+            ->where('campus_id', $activeCampusId)
+            ->where('is_active', true)
+            ->pluck('group_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function parseBulkRow(string $line): array
+    {
+        $parts = preg_split('/\s*[,\|\t;]\s*/', $line);
+        $parts = array_map(fn ($value) => trim((string) $value), $parts ?: []);
+
+        $name = $parts[0] ?? '';
+        $enrollment = $parts[1] ?? '';
+        $email = $parts[2] ?? '';
+
+        return [$name, $enrollment, $email];
+    }
+
+    private function normalizeEnrollment(string $enrollment): string
+    {
+        $value = preg_replace('/\s+/', '', trim($enrollment)) ?? '';
+        return strtoupper($value);
+    }
+
+    private function generateEnrollmentNumber(): string
+    {
+        do {
+            $value = 'TMP' . now()->format('ymd') . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        } while (Student::query()->where('enrollment_number', $value)->exists());
+
+        return $value;
+    }
+
+    private function generateEmailFromEnrollment(string $enrollment, string $domain): string
+    {
+        $local = Str::lower(preg_replace('/[^a-zA-Z0-9._-]/', '', $enrollment) ?: 'alumno');
+        $email = $local . '@' . $domain;
+
+        return $this->generateUniqueEmail($email);
+    }
+
+    private function generateUniqueEmail(string $email): string
+    {
+        [$localPart, $domain] = array_pad(explode('@', $email, 2), 2, '');
+        $localPart = $localPart !== '' ? $localPart : 'alumno';
+        $domain = $domain !== '' ? $domain : 'my.ula.edu.mx';
+
+        $candidate = $localPart . '@' . $domain;
+        $suffix = 1;
+        while (User::query()->where('email', $candidate)->exists()) {
+            $candidate = $localPart . '.' . $suffix . '@' . $domain;
+            $suffix++;
+        }
+
+        return $candidate;
     }
     
 }

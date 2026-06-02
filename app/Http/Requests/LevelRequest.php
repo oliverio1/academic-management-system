@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class LevelRequest extends FormRequest
 {
@@ -17,7 +18,14 @@ class LevelRequest extends FormRequest
 
         return [
             'modality_id' => 'required|exists:modalities,id',
-            'name' => 'required|string|max:255|unique:levels,name,' . $levelId,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('levels', 'name')
+                    ->ignore($levelId)
+                    ->where(fn ($q) => $q->where('modality_id', $this->input('modality_id'))),
+            ],
         ];
     }
 }

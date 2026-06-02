@@ -14,21 +14,21 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RoleSeeder::class,
-            ModalitySeeder::class,
-            LevelSeeder::class,
-            GroupSeeder::class,
-            SubjectSeeder::class,
-            TeacherSeeder::class,
-            StudentSeeder::class,
-            ScheduleSeeder::class,
-            AcademicPeriodsSeeder::class,
-            AcademicCalendarHolidaySeeder::class,
-            AttendanceSeeder::class,
-            CourseConfigurationSeeder::class,
-            ActivitiesSeeder::class,
-            GradesSeeder::class,
-            StudentFollowUpSeeder::class,
-            AnnouncementSeeder::class,
+            // ModalitySeeder::class,
+            // LevelSeeder::class,
+            // GroupSeeder::class,
+            // SubjectSeeder::class,
+            // TeacherSeeder::class,
+            // StudentSeeder::class,
+            // ScheduleSeeder::class,
+            // AcademicPeriodsSeeder::class,
+            // AcademicCalendarHolidaySeeder::class,
+            // AttendanceSeeder::class,
+            // CourseConfigurationSeeder::class,
+            // ActivitiesSeeder::class, // Se desactiva para crear actividades desde UI (sesiones o manuales)
+            // GradesSeeder::class,
+            // StudentFollowUpSeeder::class,
+            // AnnouncementSeeder::class,
         ]);
     }
 }

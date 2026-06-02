@@ -25,7 +25,7 @@
                         <form action="{{ route('modalities.store') }}" method="POST">
                             @csrf
                             <div class="row">
-                                @include('groups._form')
+                                @include('modalities._form')
                             </div>
                         </div>
                         <div class="card-footer">

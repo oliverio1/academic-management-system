@@ -26,7 +26,7 @@
                     <div class="card-body">
                         <h3 class="text-center">Listado de usuarios</h3>
                         <hr>
-                        <table id="users" class="table table-hover table-striped">
+                        <table data-datatable="true" id="users" class="table table-hover table-striped">
                             <thead>
                                 <tr>
                                     <th>ID</th>

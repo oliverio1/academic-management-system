@@ -12,6 +12,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
+        'default_campus_id',
         'name',
         'email',
         'password',
@@ -37,16 +38,28 @@ class User extends Authenticatable
         return $this->hasOne(Teacher::class);
     }
 
+    public function guardedStudents() {
+        return $this->hasMany(Student::class, 'guardian_user_id');
+    }
+
     public function isAdmin() {
-        return $this->role === 'admin';
+        return $this->hasRole('admin');
+    }
+
+    public function isCoordinator() {
+        return $this->hasRole('coordinator');
     }
 
     public function isTeacher() {
-        return $this->role === 'teacher';
+        return $this->hasRole('teacher');
+    }
+
+    public function isPrefect() {
+        return $this->hasRole('prefect');
     }
 
     public function isStudent() {
-        return $this->role === 'student';
+        return $this->hasRole('student');
     }
 
     public function getIsActiveAttribute(): bool {
@@ -58,9 +71,8 @@ class User extends Authenticatable
             return (bool) $this->teacher->is_active;
         }
 
-        if ($this->hasRole('coordination') && $this->coordinator) {
-            return (bool) $this->coordinator->is_active;
-        }
+        if ($this->hasRole('coordinator')) return true;
+        if ($this->hasRole('guardian') || $this->hasRole('tutor')) return true;
 
         if ($this->hasRole('admin')) {
             return true;
@@ -72,8 +84,10 @@ class User extends Authenticatable
     public function getRoleLabelAttribute() {
         $map = [
             'teacher'     => 'Profesor',
-            'coordinator' => 'Coordinación',
+            'prefect'     => 'Prefecto',
+            'coordinator' => 'Coordinacion',
             'student'     => 'Alumno',
+            'guardian'    => 'Tutor',
             'tutor'       => 'Tutor',
             'admin'       => 'Administrador',
         ];
@@ -81,5 +95,22 @@ class User extends Authenticatable
         $role = $this->getRoleNames()->first();
 
         return $map[$role] ?? ucfirst($role);
+    }
+
+    public function campuses()
+    {
+        return $this->belongsToMany(Campus::class)->withTimestamps();
+    }
+
+    public function defaultCampus()
+    {
+        return $this->belongsTo(Campus::class, 'default_campus_id');
+    }
+
+    public function chatParticipations()
+    {
+        return $this->belongsToMany(ChatConversation::class, 'chat_participants', 'user_id', 'conversation_id')
+            ->withPivot('last_read_at')
+            ->withTimestamps();
     }
 }

@@ -1,10 +1,22 @@
 @if(request('tab') === 'activities')
 
+    @if(session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="alert alert-danger">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">
-            Actividades del periodo
-            @if($activePeriod)
-                <small class="text-muted">({{ $activePeriod->name }})</small>
+            Actividades del ciclo (primer y segundo parcial)
+            @if(!empty($activeCycle))
+                <small class="text-muted">({{ $activeCycle->name }})</small>
             @endif
         </h5>
 
@@ -20,7 +32,7 @@
         </div>
     @elseif($activities->isEmpty())
         <div class="alert alert-info">
-            No hay actividades registradas en este periodo.
+            No hay actividades registradas para primer y segundo parcial en este ciclo.
         </div>
     @else
 
@@ -48,7 +60,7 @@
                         <td>{{ optional($activity->due_date)->format('d/m/Y') }}</td>
                         <td>
                             <span class="badge {{ $activity->graded_count == $totalStudents ? 'bg-success' : 'bg-warning' }}">
-                                {{ $activity->graded_count }} de {{ $totalStudents }} / {{ $activity->evaluation_mode === 'team' ? 'Equipo' : 'Individual' }}
+                                {{ $activity->graded_count }} de {{ $totalStudents }} / Individual
                             </span>
                         </td>
                         <td>
@@ -56,6 +68,16 @@
                             class="btn btn-success btn-sm">
                                 Calificar
                             </a>
+                            <form method="POST"
+                                  action="{{ route('activities.destroy', $activity) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Se eliminara esta actividad. Deseas continuar?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    Eliminar
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 @endforeach

@@ -57,13 +57,6 @@
                                     @enderror
                                 </div>
                                 <div class="col-md-12 mb-3">
-                                    <label class="form-label">Fecha de inicio</label>
-                                    <input type="date" class="form-control @error('start_date') is-invalid @enderror" name="start_date" value="{{ old('start_date') }}">
-                                    @error('start_date')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-12 mb-3">
                                     <label class="form-label">Fecha de termino</label>
                                     <input type="date" class="form-control @error('end_date') is-invalid @enderror" name="end_date" value="{{ old('end_date') }}">
                                     @error('end_date')

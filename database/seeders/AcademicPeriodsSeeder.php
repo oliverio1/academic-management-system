@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\AcademicPeriod;
+use App\Models\CyclePartial;
 use App\Models\Modality;
+use App\Models\SchoolCycle;
 use Carbon\Carbon;
 
 class AcademicPeriodsSeeder extends Seeder
@@ -13,33 +15,65 @@ class AcademicPeriodsSeeder extends Seeder
     {
         $sep  = Modality::where('name', 'Bachillerato SEP 26-2')->first();
         if (!$sep) {
-            $this->command->error('No se encontraron las modalidades');
+            $sep = Modality::first();
+        }
+
+        if (! $sep) {
+            $this->command->error('No hay modalidades para generar ciclos/parciales');
             return;
         }
-        $periods = [
+
+        $cycle = SchoolCycle::updateOrCreate(
+            ['code' => 'SEP-2026-A'],
             [
                 'modality_id' => $sep->id,
-                'name' => 'Primer Periodo',
-                'code' => 'SEP-P1',
+                'name' => 'Ciclo Escolar SEP 2026-A',
+                'start_date' => '2026-01-19',
+                'end_date' => '2026-04-17',
+                'is_active' => true,
+            ]
+        );
+
+        $partials = [
+            [
+                'name' => 'Parcial 1',
+                'code' => 'SEP-2026-A-P1',
+                'sort_order' => 1,
                 'start_date' => '2026-01-19',
                 'end_date' => '2026-02-27',
             ],
             [
-                'modality_id' => $sep->id,
-                'name' => 'Segundo Periodo',
-                'code' => 'SEP-P2',
+                'name' => 'Parcial 2',
+                'code' => 'SEP-2026-A-P2',
+                'sort_order' => 2,
                 'start_date' => '2026-03-02',
                 'end_date' => '2026-04-17',
             ],
         ];
-        foreach ($periods as $period) {
-            AcademicPeriod::updateOrCreate(
-                ['code' => $period['code']],
+
+        foreach ($partials as $partial) {
+            $period = AcademicPeriod::updateOrCreate(
+                ['code' => $partial['code']],
                 [
-                    'modality_id' => $period['modality_id'],
-                    'name' => $period['name'],
-                    'start_date' => Carbon::parse($period['start_date']),
-                    'end_date' => Carbon::parse($period['end_date']),
+                    'modality_id' => $sep->id,
+                    'name' => $partial['name'],
+                    'start_date' => Carbon::parse($partial['start_date']),
+                    'end_date' => Carbon::parse($partial['end_date']),
+                    'is_active' => true,
+                ]
+            );
+
+            CyclePartial::updateOrCreate(
+                [
+                    'school_cycle_id' => $cycle->id,
+                    'sort_order' => $partial['sort_order'],
+                ],
+                [
+                    'academic_period_id' => $period->id,
+                    'name' => $partial['name'],
+                    'code' => $partial['code'],
+                    'start_date' => Carbon::parse($partial['start_date']),
+                    'end_date' => Carbon::parse($partial['end_date']),
                     'is_active' => true,
                 ]
             );

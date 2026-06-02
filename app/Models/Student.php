@@ -10,6 +10,7 @@ class Student extends Model
 {
     protected $fillable = [
         'user_id',
+        'guardian_user_id',
         'group_id',
         'enrollment_number',
         'phone',
@@ -23,6 +24,10 @@ class Student extends Model
 
     public function group() {
         return $this->belongsTo(Group::class);
+    }
+
+    public function guardian() {
+        return $this->belongsTo(User::class, 'guardian_user_id');
     }
 
     public function attendances() {
@@ -51,5 +56,19 @@ class Student extends Model
 
     public function attendanceJustifications() {
         return $this->hasMany(AttendanceJustification::class);
+    }
+
+    public function teacherReports() {
+        return $this->hasMany(TeacherStudentReport::class);
+    }
+
+    public function incidentReports() {
+        return $this->hasMany(StudentIncidentReport::class);
+    }
+
+    public function teachingAssignments()
+    {
+        return $this->belongsToMany(TeachingAssignment::class, 'teaching_assignment_student')
+            ->withTimestamps();
     }
 }

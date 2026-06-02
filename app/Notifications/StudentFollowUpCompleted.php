@@ -40,10 +40,14 @@ class StudentFollowUpCompleted extends Notification
 
     public function toDatabase($notifiable)
     {
+        $studentName = $this->followUp->student->user->name ?? 'Alumno';
+
         return [
             'type' => 'student_follow_up_completed',
+            'title' => 'Seguimiento contestado',
+            'message' => "Se recibio una respuesta de seguimiento para {$studentName}.",
             'follow_up_id' => $this->followUp->id,
-            'student_name' => $this->followUp->student->user->name,
+            'student_name' => $studentName,
             'url' => route(
                 'coordination.follow-ups.show',
                 $this->followUp

@@ -19,17 +19,13 @@
                                 <h4>Calificar actividad: {{ $activity->title }}</h4>
                                 <p>
                                     Criterio: {{ $activity->evaluationCriterion->name }} |
-                                    Modo: <strong>{{ ucfirst($activity->evaluation_mode) }}</strong>
+                                    Modo: <strong>Individual</strong>
                                 </p>
                             </div>
                         </div>
                     </div>
                     <div class="card-body">
-                        @if ($activity->evaluation_mode === 'individual')
-                            @include('activities.grading._individual')
-                        @elseif ($activity->evaluation_mode === 'team')
-                            @include('activities.grading._team')
-                        @endif
+                        @include('activities.grading._individual')
                     </div>
                 </div>
             </div>

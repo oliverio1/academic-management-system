@@ -2,198 +2,276 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Activity;
-use App\Models\TeachingAssignment;
 use App\Models\AcademicPeriod;
+use App\Models\Activity;
 use App\Models\EvaluationCriterion;
+use App\Models\TeachingAssignment;
+use App\Services\EconomicActaLockService;
 use Illuminate\Http\Request;
-use App\Services\AcademicCalendarService;
-use Carbon\Carbon;
 
 class ActivityController extends Controller
 {
-    public function index(TeachingAssignment $assignment) {
+    public function index(TeachingAssignment $assignment)
+    {
         $activities = $assignment->activities()->where('is_active', true)->get();
-        $otherAssignments = auth()->user()->teacher->teachingAssignments()->where('id', '!=', $assignment->id)->with('group', 'subject')->get();
+        $otherAssignments = auth()->user()->teacher
+            ->teachingAssignments()
+            ->where('id', '!=', $assignment->id)
+            ->with('group', 'subject')
+            ->get();
+
         return view('activities.index', compact('assignment', 'activities', 'otherAssignments'));
     }
 
     public function create(TeachingAssignment $assignment)
     {
-        abort_if($assignment->teacher_id !== auth()->user()->teacher->id,403);
-        $periods = AcademicPeriod::where('modality_id',$assignment->group->level->modality_id)->orderBy('start_date')->get();
-        $criteria = EvaluationCriterion::where('teaching_assignment_id',$assignment->id)->get();
-        $activePeriod = AcademicPeriod::where('modality_id',$assignment->group->level->modality_id)->where('is_active', 1)->firstOrFail();
-    
-        return view('activities.create', compact('assignment','periods','criteria','activePeriod'));
+        abort_if($assignment->teacher_id !== auth()->user()->teacher->id, 403);
+
+        $periods = AcademicPeriod::query()
+            ->where('modality_id', $assignment->group->level->modality_id)
+            ->orderBy('start_date')
+            ->get();
+
+        $criteria = EvaluationCriterion::query()
+            ->forAssignmentAndPeriod($assignment, (int) $periods->first()?->id)
+            ->orderBy('name')
+            ->get();
+
+        $activePeriod = AcademicPeriod::query()
+            ->where('modality_id', $assignment->group->level->modality_id)
+            ->where('is_active', 1)
+            ->firstOrFail();
+
+        return view('activities.create', compact('assignment', 'periods', 'criteria', 'activePeriod'));
     }
 
-    public function sessionsByPeriod(
-        TeachingAssignment $assignment,
-        AcademicPeriod $period,
-        AcademicCalendarService $calendar
-    ) {
-        abort_if(
-            $assignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
-    
-        $sessions = [];
-        $cursor = $period->start_date->copy();
-        $end = $period->end_date->copy();
-    
-        while ($cursor->lte($end)) {
-            if (
-                !$cursor->isWeekend() &&
-                !$calendar->isNonWorkingDay(
-                    $cursor,
-                    $period->modality_id
-                )
-            ) {
-                $dayName = $cursor->locale('es')->dayName;
-    
-                if (
-                    $assignment->schedules()
-                        ->where('day_of_week', $dayName)
-                        ->exists()
-                ) {
-                    $sessions[] = $cursor->copy();
-                }
-            }
-    
-            $cursor->addDay();
-        }
-    
-        $activities = Activity::where(
-            'teaching_assignment_id',
-            $assignment->id
-        )
-        ->where('academic_period_id', $period->id)
-        ->get()
-        ->keyBy(fn ($a) => $a->due_date->toDateString());
-
-        $criteria = EvaluationCriterion::where(
-            'teaching_assignment_id',
-            $assignment->id
-        )->get();
-    
-        return view(
-            'activities.partials.sessions-table',
-            compact('sessions', 'activities', 'period', 'criteria')
-        );
-    }
-    
-
-    public function store(Request $request, TeachingAssignment $assignment)
+    public function sessionsByPeriod(TeachingAssignment $assignment, AcademicPeriod $period)
     {
-        abort_if(
-            $assignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
-    
+        abort_if($assignment->teacher_id !== auth()->user()->teacher->id, 403);
+
+        $sessions = \App\Models\AcademicSession::query()
+            ->where('teaching_assignment_id', $assignment->id)
+            ->where('academic_period_id', $period->id)
+            ->where('is_cancelled', false)
+            ->orderBy('session_date')
+            ->pluck('session_date')
+            ->map(fn ($date) => \Carbon\Carbon::parse($date))
+            ->values();
+
+        $activities = Activity::query()
+            ->where('teaching_assignment_id', $assignment->id)
+            ->where('academic_period_id', $period->id)
+            ->whereNotNull('due_date')
+            ->get()
+            ->keyBy(fn ($activity) => \Carbon\Carbon::parse($activity->due_date)->toDateString());
+
+        $criteria = EvaluationCriterion::query()
+            ->forAssignmentAndPeriod($assignment, (int) $period->id)
+            ->orderBy('name')
+            ->get();
+
+        return view('activities.partials.sessions-table', compact('sessions', 'activities', 'period', 'criteria'));
+    }
+
+    public function store(Request $request, TeachingAssignment $assignment, EconomicActaLockService $lockService)
+    {
+        abort_if($assignment->teacher_id !== auth()->user()->teacher->id, 403);
+
         try {
             $data = $request->validate([
+                'activity_id' => 'nullable|integer|exists:activities,id',
                 'session_date' => 'required|date',
                 'academic_period_id' => 'required|exists:academic_periods,id',
                 'title' => 'required|string|max:255',
-                'evaluation_criterion_id' => 'required|exists:evaluation_criteria,id',
+                'evaluation_criterion_id' => 'required|integer',
                 'max_score' => 'nullable|numeric|min:0',
                 'description' => 'nullable|string',
-                'evaluation_mode' => 'required|in:individual,team',
             ]);
-    
-            $period = AcademicPeriod::where('id', $data['academic_period_id'])
+
+            $period = AcademicPeriod::query()
+                ->where('id', $data['academic_period_id'])
                 ->where('modality_id', $assignment->group->level->modality_id)
                 ->first();
-    
-            if (!$period) {
+
+            if (! $period) {
                 return response()->json([
                     'ok' => false,
-                    'message' => 'Periodo inválido'
+                    'message' => 'Periodo inválido',
                 ], 422);
             }
-    
-            Activity::updateOrCreate(
-                [
+
+            if ($lockService->isAssignmentPeriodLocked($assignment, (int) $period->id)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'El parcial de esta actividad ya tiene acta economica cerrada o enviada. Solo consulta.',
+                ], 422);
+            }
+
+            $validCriterionIds = EvaluationCriterion::query()
+                ->forAssignmentAndPeriod($assignment, (int) $period->id)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (! in_array((int) $data['evaluation_criterion_id'], $validCriterionIds, true)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'El rubro no pertenece al parcial seleccionado.',
+                ], 422);
+            }
+
+            $activity = null;
+
+            if (! empty($data['activity_id'])) {
+                $activity = Activity::query()
+                    ->where('id', (int) $data['activity_id'])
+                    ->where('teaching_assignment_id', $assignment->id)
+                    ->first();
+            }
+
+            if ($activity) {
+                $activity->update([
+                    'title' => $data['title'],
+                    'evaluation_criterion_id' => $data['evaluation_criterion_id'],
+                    'evaluation_mode' => 'individual',
+                    'max_score' => $data['max_score'] ?? 10,
+                    'due_date' => $data['session_date'],
+                    'description' => $data['description'],
+                    'is_active' => true,
+                ]);
+            } else {
+                $activity = Activity::create([
                     'teaching_assignment_id' => $assignment->id,
                     'academic_period_id' => $period->id,
                     'due_date' => $data['session_date'],
-                ],
-                [
                     'title' => $data['title'],
                     'evaluation_criterion_id' => $data['evaluation_criterion_id'],
-                    'evaluation_mode' => $data['evaluation_mode'],
+                    'evaluation_mode' => 'individual',
                     'max_score' => $data['max_score'] ?? 10,
                     'description' => $data['description'],
                     'is_active' => true,
-                ]
-            );
-    
-            return response()->json(['ok' => true]);
-    
-        } catch (\Illuminate\Validation\ValidationException $e) {
+                ]);
+            }
+
+            return response()->json([
+                'ok' => true,
+                'activity_id' => $activity->id,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Datos inválidos',
-                'errors' => $e->errors()
+                'errors' => $exception->errors(),
             ], 422);
-        } catch (\Throwable $e) {
+        } catch (\Throwable $exception) {
             \Log::error('Error guardando actividad', [
-                'error' => $e->getMessage()
+                'error' => $exception->getMessage(),
             ]);
-    
+
             return response()->json([
                 'ok' => false,
-                'message' => 'Error interno del servidor'
+                'message' => 'Error interno del servidor',
             ], 500);
         }
     }
 
-    public function edit(Activity $activity) {
+    public function edit(Activity $activity)
+    {
         $assignment = $activity->assignment;
-        $criteria = EvaluationCriterion::where('teaching_assignment_id',$assignment->id)->get();
-        $periods = AcademicPeriod::where('level_id', $assignment->group->level_id)->orderBy('start_date')->get();
+
+        $criteria = EvaluationCriterion::query()
+            ->forAssignmentAndPeriod($assignment, (int) $activity->academic_period_id)
+            ->orderBy('name')
+            ->get();
+
+        $periods = AcademicPeriod::query()
+            ->where('level_id', $assignment->group->level_id)
+            ->orderBy('start_date')
+            ->get();
+
         return view('activities.edit', compact('activity', 'assignment', 'periods', 'criteria'));
     }
 
-    public function update(Request $request, Activity $activity) {
+    public function update(Request $request, Activity $activity)
+    {
         $data = $request->validate([
-            'name'               => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'academic_period_id' => 'required|exists:academic_periods,id',
-            'weight'             => 'required|numeric|min:0|max:100',
-            'due_date'           => 'required|date',
-            'description'        => 'nullable|string',
+            'weight' => 'required|numeric|min:0|max:100',
+            'due_date' => 'required|date',
+            'description' => 'nullable|string',
             'evaluation_criterion_id' => 'required|exists:evaluation_criteria,id',
         ]);
+
         $assignment = $activity->assignment;
-        $currentWeight = Activity::where('teaching_assignment_id', $assignment->id)->where('academic_period_id', $data['academic_period_id'])->where('id', '!=', $activity->id)->sum('weight');
+        $currentWeight = Activity::query()
+            ->where('teaching_assignment_id', $assignment->id)
+            ->where('academic_period_id', $data['academic_period_id'])
+            ->where('id', '!=', $activity->id)
+            ->sum('weight');
+
         if ($currentWeight + $data['weight'] > 100) {
             return back()->withInput()->withErrors(['weight' => 'La ponderación del periodo excede el 100%']);
         }
+
         $activity->update($data);
-        return redirect()->route('activities.index', $assignment)->with('success', 'Actividad actualizada correctamente');
+
+        return redirect()
+            ->route('activities.index', $assignment)
+            ->with('success', 'Actividad actualizada correctamente');
     }
 
-    public function show(Activity $activity) {
+    public function show(Activity $activity)
+    {
         $assignment = TeachingAssignment::findOrFail($activity->teaching_assignment_id);
-        $students = $assignment->group->students()->with(['user','grades' => fn ($q) => $q->where('activity_id', $activity->id)])->get();
+        $students = $assignment->group->students()->with([
+            'user',
+            'grades' => fn ($query) => $query->where('activity_id', $activity->id),
+        ])->get();
+
         return view('activities.show', compact('activity', 'students'));
     }
 
-    public function inlineUpdate(
-        Request $request,
-        TeachingAssignment $assignment
-    ) {
-        abort_if(
-            $assignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
-    
-        $period = AcademicPeriod::whereDate('start_date', '<=', now())
+    public function destroy(Activity $activity, EconomicActaLockService $lockService)
+    {
+        $assignment = $activity->assignment;
+
+        abort_if(! $assignment || $assignment->teacher_id !== auth()->user()->teacher->id, 403);
+
+        if ($lockService->isAssignmentPeriodLocked($assignment, (int) $activity->academic_period_id)) {
+            return back()->withErrors([
+                'criteria' => 'El parcial de esta actividad ya tiene acta economica cerrada o enviada. Solo consulta.',
+            ]);
+        }
+
+        if ($activity->grades()->exists()) {
+            return back()->withErrors([
+                'criteria' => 'No puedes eliminar una actividad que ya tiene calificaciones registradas.',
+            ]);
+        }
+
+        $activity->delete();
+
+        return back()->with('success', 'Actividad eliminada correctamente.');
+    }
+
+    public function inlineUpdate(Request $request, TeachingAssignment $assignment, EconomicActaLockService $lockService)
+    {
+        abort_if($assignment->teacher_id !== auth()->user()->teacher->id, 403);
+
+        $period = AcademicPeriod::query()
+            ->whereDate('start_date', '<=', now())
             ->whereDate('end_date', '>=', now())
             ->firstOrFail();
-    
-        $activity = Activity::firstOrCreate(
+
+        if ($lockService->isAssignmentPeriodLocked($assignment, (int) $period->id)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'El parcial de esta actividad ya tiene acta economica cerrada o enviada. Solo consulta.',
+            ], 422);
+        }
+
+        $activity = Activity::query()->firstOrCreate(
             [
                 'teaching_assignment_id' => $assignment->id,
                 'academic_period_id' => $period->id,
@@ -204,11 +282,12 @@ class ActivityController extends Controller
                 'is_active' => true,
             ]
         );
-    
+
         $activity->update([
             $request->field => $request->value,
         ]);
-    
+
         return response()->json(['ok' => true]);
-    }    
+    }
 }
+

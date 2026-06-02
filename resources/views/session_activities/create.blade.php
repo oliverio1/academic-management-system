@@ -4,6 +4,10 @@
 @section('title', 'Actividad')
 
 @section('content')
+    @php
+        $isReadOnly = $isReadOnly ?? $session->isAttendanceClosed();
+        $periodDisabled = $periodDisabled ?? false;
+    @endphp
     @if(session('warning'))
         <div class="alert alert-warning">
             {{ session('warning') }}
@@ -37,7 +41,13 @@
                     {{-- Body --}}
                     <div class="card-body">
                         {{-- Aviso de cierre --}}
-                        @if($session->isAttendanceClosed())
+                        @if($periodDisabled)
+                            <div class="alert alert-secondary">
+                                Este periodo esta deshabilitado por coordinacion.
+                                <br>
+                                <small>Vista en modo consulta.</small>
+                            </div>
+                        @elseif($session->isAttendanceClosed())
                             <div class="alert alert-secondary">
                                 🔒 La semana académica está cerrada.
                                 <br>
@@ -61,8 +71,81 @@
                                     class="form-control"
                                     placeholder="Ej. Resolver ejercicios 5–10 del cuaderno"
                                     value="{{ old('title', optional($activity)->title) }}"
-                                    {{ $session->isAttendanceClosed() ? 'disabled' : '' }}
+                                    {{ $isReadOnly ? 'disabled' : '' }}
                                     required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="evaluation_criterion_id">
+                                    Rubro de la actividad
+                                </label>
+                                <select id="evaluation_criterion_id"
+                                    name="evaluation_criterion_id"
+                                    class="form-control"
+                                    {{ $isReadOnly ? 'disabled' : '' }}>
+                                    <option value="">Sin rubro</option>
+                                    @foreach($criteria as $criterion)
+                                        <option value="{{ $criterion->id }}"
+                                            {{ (string) old('evaluation_criterion_id', optional($activity)->evaluation_criterion_id) === (string) $criterion->id ? 'selected' : '' }}>
+                                            {{ $criterion->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    Puedes dejar esta actividad sin rubro asignado.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="temario_point_id">
+                                    Tema del temario visto en esta sesion
+                                </label>
+                                @php
+                                    $selectedSubtopics = collect(old('temario_subtopic_ids', optional($activity)->temario_subtopic_ids ?? []))
+                                        ->map(fn ($id) => (string) $id)
+                                        ->values();
+                                @endphp
+                                <select id="temario_point_id"
+                                    name="temario_point_id"
+                                    class="form-control"
+                                    {{ $isReadOnly ? 'disabled' : '' }}>
+                                    <option value="">Sin tema especifico</option>
+                                    @foreach(($topicOptions ?? collect()) as $topic)
+                                        <option value="{{ $topic['id'] }}"
+                                            {{ (string) old('temario_point_id', optional($activity)->temario_point_id) === (string) $topic['id'] ? 'selected' : '' }}>
+                                            {{ $topic['text'] }}
+                                            @if(!empty($topic['unit_text']))
+                                                | Unidad: {{ $topic['unit_text'] }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    Selecciona un tema (nivel 2 del temario).
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="temario_subtopic_ids">
+                                    Subtemas vistos en esta sesion
+                                </label>
+                                <select id="temario_subtopic_ids"
+                                    name="temario_subtopic_ids[]"
+                                    class="form-control"
+                                    size="8"
+                                    multiple
+                                    {{ $isReadOnly ? 'disabled' : '' }}>
+                                    @foreach(($subtopicOptions ?? collect()) as $subtopic)
+                                        <option value="{{ $subtopic['id'] }}"
+                                            data-topic-id="{{ $subtopic['topic_id'] }}"
+                                            {{ $selectedSubtopics->contains((string) $subtopic['id']) ? 'selected' : '' }}>
+                                            {{ $subtopic['text'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    Puedes elegir varios subtemas manteniendo presionada la tecla Ctrl.
+                                </small>
                             </div>
 
                             {{-- Descripción --}}
@@ -75,17 +158,17 @@
                                     rows="3"
                                     class="form-control"
                                     placeholder="Indicaciones adicionales, observaciones, etc."
-                                    {{ $session->isAttendanceClosed() ? 'disabled' : '' }}>{{ old('description', optional($activity)->description) }}</textarea>
+                                    {{ $isReadOnly ? 'disabled' : '' }}>{{ old('description', optional($activity)->description) }}</textarea>
                             </div>
 
                             {{-- Footer --}}
                             <div class="d-flex justify-content-between mt-4">
-                                <a href="{{ route('dashboard') }}"
+                                <a href="{{ route('teacher.classes.sessions.index', $session->teachingAssignment) }}"
                                 class="btn btn-secondary">
                                     Volver
                                 </a>
 
-                                @unless($session->isAttendanceClosed())
+                                @unless($isReadOnly)
                                     <button class="btn btn-primary">
                                         {{ $activity ? 'Actualizar actividad' : 'Guardar actividad' }}
                                     </button>
@@ -175,21 +258,30 @@
 
 @section('page_scripts')
     <script>
-        $(document).ready(function () {
-            $('#modalities').DataTable({
-                dom: '<"area-fluid"<"row"<"col"l><"col"B><"col"f>>>rtip',
-                "columnDefs": [
-                    { "type": "num", "targets": 0 }
-                ],
-                "order": [[ 0, "asc" ]],
-                buttons: [
-                    'excelHtml5',
-                    'pdfHtml5'
-                ],
-                language: {
-                    url: '/datatables.json'
-                }
-            });
-        });
+        (function () {
+            const topicSelect = document.getElementById('temario_point_id');
+            const subtopicSelect = document.getElementById('temario_subtopic_ids');
+
+            if (!topicSelect || !subtopicSelect) {
+                return;
+            }
+
+            function filterSubtopicsByTopic() {
+                const topicId = topicSelect.value;
+                Array.from(subtopicSelect.options).forEach((option) => {
+                    const belongsTo = option.getAttribute('data-topic-id');
+                    const visible = topicId !== '' && belongsTo === topicId;
+                    option.hidden = !visible;
+                    if (!visible) {
+                        option.selected = false;
+                    }
+                });
+            }
+
+            topicSelect.addEventListener('change', filterSubtopicsByTopic);
+            filterSubtopicsByTopic();
+        })();
     </script>
 @endsection
+
+

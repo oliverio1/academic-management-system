@@ -27,7 +27,7 @@
                             @csrf
                             @method('PUT')
                             <div class="row">
-                                @include('groups._form')
+                                @include('modalities._form')
                             </div>
                         </div>
                         <div class="card-footer">

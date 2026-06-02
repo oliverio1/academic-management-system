@@ -18,15 +18,16 @@
     </div>
 
     <div class="col-md-3 mb-3">
-        <a href="{{ route('coordination.students.index') }}"
+        <a href="{{ route('admin.announcements.index') }}"
            class="btn btn-outline-success btn-block">
-            Alumnos
+            Avisos
         </a>
     </div>
 
     <div class="col-md-3 mb-3">
-        <small class="text-muted">
-            Reporte detallado pendiente de habilitar
-        </small>
+        <a href="{{ route('academic-calendar-days.index') }}"
+           class="btn btn-outline-info btn-block">
+            Calendarios
+        </a>
     </div>
 </div>

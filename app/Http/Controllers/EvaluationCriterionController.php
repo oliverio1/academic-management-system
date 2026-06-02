@@ -2,277 +2,284 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\TeachingAssignment;
+use App\Models\CyclePartial;
 use App\Models\EvaluationCriterion;
+use App\Models\TeachingAssignment;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class EvaluationCriterionController extends Controller
 {
-    public function index(TeachingAssignment $assignment) {
-        abort_if($assignment->teacher_id !== auth()->user()->teacher->id,403);
-        $criteria = $assignment->evaluationCriteria()->orderBy('id')->get();
+    public function index(TeachingAssignment $assignment)
+    {
+        $this->authorizeAssignmentOwner($assignment);
+
+        $partials = $this->partialsForAssignment($assignment);
+        $selectedPartial = $this->selectedPartial($partials, (int) request('partial_id', 0));
+        $selectedPartialId = $selectedPartial?->id;
+
+        $criteria = EvaluationCriterion::query()
+            ->forAssignmentAndPartial($assignment, $selectedPartialId, false)
+            ->orderBy('id')
+            ->get();
+
         $total = $criteria->sum('percentage');
-        return view('teacher.evaluation_criteria.index',compact('assignment', 'criteria', 'total'));
+
+        return view('teacher.evaluation_criteria.index', compact(
+            'assignment',
+            'criteria',
+            'total',
+            'partials',
+            'selectedPartial',
+            'selectedPartialId'
+        ));
     }
 
-    public function create(TeachingAssignment $teachingAssignment) {
-        // 🔒 Seguridad: solo el profesor dueño
-        abort_if(
-            $teachingAssignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
+    public function store(Request $request, TeachingAssignment $assignment)
+    {
+        $this->authorizeAssignmentOwner($assignment);
 
-        // 🔒 Regla: no permitir si ya hay calificaciones
-        abort_if(
-            $teachingAssignment->hasGrades(),
-            403,
-            'No puedes configurar la evaluación porque ya existen calificaciones.'
-        );
+        $allowedPartialIds = $this->partialsForAssignment($assignment)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
-        // 🔁 Si ya existen criterios, manda a editar
-        if ($teachingAssignment->evaluationCriteria()->exists()) {
-            return redirect()
-                ->route('teacher.evaluation.edit', $teachingAssignment)
-                ->with('info', 'La evaluación ya está configurada. Puedes editarla.');
-        }
-
-        // 📦 Cargar relaciones útiles (opcional pero recomendado)
-        $teachingAssignment->load(['subject', 'group']);
-
-        return view(
-            'teacher.evaluation.create',
-            compact('teachingAssignment')
-        );
-    }
-
-    public function store(Request $request, TeachingAssignment $teachingAssignment) {
-
-        // 🔒 Seguridad: solo el profesor dueño
-        abort_if(
-            $teachingAssignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
-    
-        // 🔒 Regla: no permitir si ya hay calificaciones
-        abort_if(
-            $teachingAssignment->hasGrades(),
-            403,
-            'No puedes configurar la evaluación porque ya existen calificaciones.'
-        );
-    
-        // 🔒 Regla: no permitir duplicar criterios
-        abort_if(
-            $teachingAssignment->evaluationCriteria()->exists(),
-            403,
-            'Esta asignación ya tiene criterios definidos.'
-        );
-    
-        // 📥 Validación base
         $data = $request->validate([
+            'cycle_partial_id' => [
+                'required',
+                'integer',
+                Rule::in($allowedPartialIds),
+            ],
             'criteria' => 'required|array|min:1',
             'criteria.*.name' => 'required|string|max:255',
             'criteria.*.percentage' => 'required|numeric|min:0',
         ]);
-    
-        // 🧮 Validar suma = 100
-        $total = collect($data['criteria'])->sum('percentage');
-    
+
+        $partialId = (int) $data['cycle_partial_id'];
+        $partial = $this->partialsForAssignment($assignment)->firstWhere('id', $partialId);
+
+        abort_if(
+            $assignment->evaluationCriteria()
+                ->where('cycle_partial_id', $partialId)
+                ->exists(),
+            403,
+            'Este parcial ya tiene criterios definidos.'
+        );
+
+        $total = collect($data['criteria'])->sum(function ($criterion) {
+            return (float) ($criterion['percentage'] ?? 0);
+        });
+
+        if ($this->hasDuplicateNames($data['criteria'])) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'criteria' => 'No puedes repetir nombres de rubro dentro del mismo parcial.',
+                ]);
+        }
+
         if (round($total, 2) !== 100.00) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'criteria' => 'La suma de los porcentajes debe ser exactamente 100%.'
+                    'criteria' => 'La suma de los porcentajes debe ser exactamente 100%.',
                 ]);
         }
-    
-        // 💾 Guardado atómico
-        DB::transaction(function () use ($data, $teachingAssignment) {
+
+        DB::transaction(function () use ($data, $assignment, $partialId) {
             foreach ($data['criteria'] as $criterion) {
-                if ($key === 'attendance') {
-                    $teachingAssignment->evaluationCriteria()->updateOrCreate(
-                        ['name' => 'Asistencia'],
-                        ['percentage' => $criterion['percentage']]
-                    );
-                    continue;
-                }
-                $teachingAssignment->evaluationCriteria()->create([
-                    'name' => $criterion['name'],
+                $assignment->evaluationCriteria()->create([
+                    'cycle_partial_id' => $partialId,
+                    'name' => trim($criterion['name']),
                     'percentage' => $criterion['percentage'],
                 ]);
             }
         });
-    
+
         return redirect()
-            ->route('assignments.show', [
-                $teachingAssignment,
-                'tab' => 'evaluation',
+            ->route('teacher.classes.evaluation.index', [
+                'assignment' => $assignment,
+                'partial_id' => $partialId,
             ])
-            ->with('success', 'Evaluación configurada correctamente.');
+            ->with('success', 'Evaluacion configurada correctamente.');
     }
 
-    public function edit(TeachingAssignment $teachingAssignment) {
-        // 🔒 Seguridad
-        abort_if(
-            $teachingAssignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
+    public function update(Request $request, TeachingAssignment $assignment)
+    {
+        $this->authorizeAssignmentOwner($assignment);
 
-        // 🔒 No tiene sentido editar si no hay criterios
-        abort_if(
-            !$teachingAssignment->evaluationCriteria()->exists(),
-            404,
-            'No hay criterios para editar.'
-        );
+        $allowedPartialIds = $this->partialsForAssignment($assignment)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
-        $teachingAssignment->load([
-            'evaluationCriteria.activities'
-        ]);
-
-        return view(
-            'teacher.evaluation.edit',
-            compact('teachingAssignment')
-        );
-    }
-
-    public function update(
-        Request $request,
-        TeachingAssignment $assignment
-    ) {
-        // 🔒 Seguridad: solo el profesor dueño
-        abort_if(
-            $assignment->teacher_id !== auth()->user()->teacher->id,
-            403
-        );
-    
-        // 📥 Validación base
         $data = $request->validate([
+            'cycle_partial_id' => [
+                'required',
+                'integer',
+                Rule::in($allowedPartialIds),
+            ],
             'criteria' => 'required|array|min:1',
             'criteria.*.name' => 'required|string|max:255',
             'criteria.*.percentage' => 'required|numeric|min:0',
         ]);
-    
-        /**
-         * 🧠 Obtener criterio Asistencia REAL del assignment
-         */
-        $attendanceCriterion = $assignment
-            ->evaluationCriteria()
-            ->where('name', 'Asistencia')
-            ->first();
-    
-        abort_if(
-            !$attendanceCriterion,
-            500,
-            'No existe el criterio obligatorio Asistencia.'
-        );
-    
-        /**
-         * 🧮 Validar suma = 100
-         */
-        $total = collect($data['criteria'])->sum('percentage');
-    
+
+        $partialId = (int) $data['cycle_partial_id'];
+
+        $total = collect($data['criteria'])->sum(function ($criterion) {
+            return (float) ($criterion['percentage'] ?? 0);
+        });
+
+        if ($this->hasDuplicateNames($data['criteria'])) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'criteria' => 'No puedes repetir nombres de rubro dentro del mismo parcial.',
+                ]);
+        }
+
         if (round($total, 2) !== 100.00) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'criteria' => 'La suma de los porcentajes debe ser exactamente 100%.'
+                    'criteria' => 'La suma de los porcentajes debe ser exactamente 100%.',
                 ]);
         }
-    
-        DB::transaction(function () use (
-            $data,
-            $assignment,
-            $attendanceCriterion
-        ) {
-    
-            /**
-             * 🔁 Normalizar IDs recibidos
-             * attendance → ID real
-             */
-            $incomingIds = collect($data['criteria'])
+
+        DB::transaction(function () use ($data, $assignment, $partialId) {
+            $normalizedIncomingIds = collect($data['criteria'])
                 ->keys()
-                ->map(function ($key) use ($attendanceCriterion) {
-                    return $key === 'attendance'
-                        ? $attendanceCriterion->id
-                        : (int) $key;
-                });
-    
-            /**
-             * 📦 Criterios actuales
-             */
-            $existing = $assignment->evaluationCriteria()->get();
-    
+                ->map(fn ($key) => is_numeric($key) ? (int) $key : null)
+                ->filter()
+                ->values();
+
+            $existing = $assignment->evaluationCriteria()
+                ->where('cycle_partial_id', $partialId)
+                ->get();
+
             foreach ($existing as $criterion) {
-    
-                /**
-                 * ❌ Eliminación
-                 */
-                if (!$incomingIds->contains($criterion->id)) {
-    
-                    if ($criterion->name === 'Asistencia') {
-                        abort(403, 'El rubro Asistencia no puede eliminarse.');
-                    }
-    
+                if (!$normalizedIncomingIds->contains((int) $criterion->id)) {
                     if ($criterion->activities()->exists()) {
                         abort(403, 'No puedes eliminar un criterio con actividades asociadas.');
                     }
-    
+
                     $criterion->delete();
                     continue;
                 }
-    
-                /**
-                 * ✏️ Actualización
-                 */
-                if ($criterion->name === 'Asistencia') {
-    
+
+                if (isset($data['criteria'][$criterion->id])) {
                     $criterion->update([
-                        'percentage' =>
-                            $data['criteria']['attendance']['percentage'],
+                        'name' => trim($data['criteria'][$criterion->id]['name']),
+                        'percentage' => $data['criteria'][$criterion->id]['percentage'],
                     ]);
-    
-                    continue;
                 }
-    
-                $criterion->update([
-                    'name' =>
-                        $data['criteria'][$criterion->id]['name'],
-                    'percentage' =>
-                        $data['criteria'][$criterion->id]['percentage'],
-                ]);
             }
-    
-            /**
-             * ➕ Nuevos criterios (claves negativas o nuevas)
-             */
+
             foreach ($data['criteria'] as $key => $criterion) {
-    
-                if ($key === 'attendance') {
-                    continue;
-                }
-    
-                if (!is_numeric($key) || (int) $key <= 0) {
-    
+                $incomingId = is_numeric($key) ? (int) $key : null;
+                $alreadyExists = $incomingId
+                    ? $existing->contains('id', $incomingId)
+                    : false;
+
+                if (!$alreadyExists) {
                     $assignment->evaluationCriteria()->create([
-                        'name' => $criterion['name'],
+                        'cycle_partial_id' => $partialId,
+                        'name' => trim($criterion['name']),
                         'percentage' => $criterion['percentage'],
                     ]);
                 }
             }
         });
-    
+
         return redirect()
-            ->route('assignments.show', [
-                $assignment,
-                'tab' => 'evaluation',
+            ->route('teacher.classes.evaluation.index', [
+                'assignment' => $assignment,
+                'partial_id' => $partialId,
             ])
-            ->with('success', 'Criterios de evaluación actualizados correctamente.');
+            ->with('success', 'Criterios de evaluacion actualizados correctamente.');
     }
 
-    public function destroy(EvaluationCriterion $criterion) {
-        $assignment = $criterion->teachingAssignment;
-        abort_if($assignment->teacher_id !== auth()->user()->teacher->id,403);
+    public function destroy(EvaluationCriterion $criterion)
+    {
+        $assignment = $criterion->assignment;
+
+        $this->authorizeAssignmentOwner($assignment);
+
+        if ($criterion->activities()->exists()) {
+            return back()->withErrors([
+                'criteria' => 'No puedes eliminar un criterio con actividades asociadas.',
+            ]);
+        }
+
         $criterion->delete();
-        return back()->with('success', 'Criterio eliminado');
+
+        return back()->with('success', 'Criterio eliminado.');
+    }
+
+    private function authorizeAssignmentOwner(TeachingAssignment $assignment): void
+    {
+        $teacherId = auth()->user()?->teacher?->id;
+
+        abort_if(
+            !$teacherId || $assignment->teacher_id !== $teacherId,
+            403
+        );
+    }
+
+    private function partialsForAssignment(TeachingAssignment $assignment)
+    {
+        $cycleId = (int) (
+            $assignment->schoolCycleGroup?->school_cycle_id
+            ?: $assignment->schedules()
+                ->where('is_active', true)
+                ->orderByDesc('school_cycle_id')
+                ->value('school_cycle_id')
+        );
+
+        if (! $cycleId) {
+            return collect();
+        }
+
+        return CyclePartial::query()
+            ->where('school_cycle_id', $cycleId)
+            ->whereNotNull('academic_period_id')
+            ->with('academicPeriod')
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    private function selectedPartial($partials, int $requestedId): ?CyclePartial
+    {
+        if ($partials->isEmpty()) {
+            return null;
+        }
+
+        if ($requestedId > 0) {
+            $byRequest = $partials->firstWhere('id', $requestedId);
+            if ($byRequest) {
+                return $byRequest;
+            }
+        }
+
+        $today = now()->toDateString();
+        $active = $partials->first(function (CyclePartial $partial) use ($today) {
+            return $partial->start_date
+                && $partial->end_date
+                && $partial->start_date->toDateString() <= $today
+                && $partial->end_date->toDateString() >= $today;
+        });
+
+        return $active ?: $partials->first();
+    }
+
+    private function hasDuplicateNames(array $criteria): bool
+    {
+        $names = collect($criteria)
+            ->map(fn ($row) => mb_strtolower(trim((string) ($row['name'] ?? ''))))
+            ->filter()
+            ->values();
+
+        return $names->count() !== $names->unique()->count();
     }
 }

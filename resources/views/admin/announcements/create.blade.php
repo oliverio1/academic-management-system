@@ -18,12 +18,12 @@
                         <div class="row">
                             @include('admin.announcements._form')
                         </div>
-                    </div>
-                    <div class="card-footer">
-                        <button class="btn btn-primary">Guardar</button>
-                        <a href="{{ route('admin.announcements.index') }}" class="btn btn-secondary">
-                            Cancelar
-                        </a>
+                        <div class="mt-3">
+                            <button class="btn btn-primary">Guardar</button>
+                            <a href="{{ route('admin.announcements.index') }}" class="btn btn-secondary">
+                                Cancelar
+                            </a>
+                        </div>
                     </form>
                 </div>
             </div>

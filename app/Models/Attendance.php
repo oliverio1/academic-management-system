@@ -8,12 +8,16 @@ class Attendance extends Model
 {
     protected $fillable = [
         'academic_session_id',
+        'student_id',
+        'student_suspension_id',
         'status',
-        'notes',
+        'is_suspension_locked',
     ];
 
     protected $casts = [
-        'class_date' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'is_suspension_locked' => 'boolean',
     ];
 
     public function academicSession() {
@@ -22,5 +26,10 @@ class Attendance extends Model
 
     public function student() {
         return $this->belongsTo(Student::class);
+    }
+
+    public function suspension()
+    {
+        return $this->belongsTo(StudentSuspension::class, 'student_suspension_id');
     }
 }

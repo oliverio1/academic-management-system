@@ -22,11 +22,20 @@
                 <div class="card">
                     <div class="card-header">
                         <h4 class="mb-3">Alumnos</h4>
+                        @if($activeCycle)
+                            <small class="text-muted">
+                                Ciclo activo: {{ $activeCycle->name }} ({{ $activeCycle->code }})
+                            </small>
+                        @endif
                     </div>
                     <div class="card-body">
-                        @if($groups->isEmpty())
+                        @if(!$activeCycle)
+                            <div class="alert alert-warning">
+                                No hay un ciclo escolar activo configurado.
+                            </div>
+                        @elseif($groups->isEmpty())
                             <div class="alert alert-info">
-                                No tienes grupos asignados actualmente.
+                                No tienes grupos asignados en el ciclo activo.
                             </div>
                         @else
                             <div class="row">

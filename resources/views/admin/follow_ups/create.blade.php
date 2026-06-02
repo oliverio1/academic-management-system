@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Nuevo seguimiento')
 
@@ -23,20 +23,12 @@
                     @foreach($students as $student)
                         <option value="{{ $student->id }}">
                             {{ $student->user->name }}
-                            — {{ $student->group->name ?? '' }}
+                             ({{ $student->group->name ?? '' }})
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>Tipo de seguimiento</label>
-                <select name="type" class="form-control" required>
-                    <option value="academic">Académico</option>
-                    <option value="behavioral">Conductual</option>
-                    <option value="mixed">Mixto</option>
-                </select>
-            </div>
 
             <div class="form-group">
                 <label>Mensaje para los profesores (opcional)</label>
