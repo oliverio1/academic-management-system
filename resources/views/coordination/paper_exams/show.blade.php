@@ -87,7 +87,7 @@
             <ol>
                 @foreach($paperExam->examQuestions as $examQuestion)
                     <li class="mb-2">
-                        <strong>[{{ $examQuestion->question->type }}]</strong>
+                        <strong>[{{ $examQuestion->question->type_label }}]</strong>
                         {{ $examQuestion->question->prompt }}
                     </li>
                 @endforeach

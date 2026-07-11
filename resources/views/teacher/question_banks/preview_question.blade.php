@@ -8,7 +8,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="mb-0">Vista previa (alumno)</h4>
-                <small class="text-muted">{{ $questionBank->name }} | Tipo: {{ $question->type }}</small>
+                <small class="text-muted">{{ $questionBank->name }} | Tipo: {{ $question->type_label }}</small>
             </div>
             <a href="{{ route('teacher.question-banks.show', $questionBank) }}" class="btn btn-outline-secondary btn-sm">Volver</a>
         </div>
@@ -18,7 +18,7 @@
                     <strong>Pregunta:</strong> {{ $question->prompt }}
                 </div>
                 <div class="mb-2">
-                    <span class="badge badge-info">{{ $question->type }}</span>
+                    <span class="badge badge-info">{{ $question->type_label }}</span>
                     <span class="badge badge-secondary">{{ number_format((float)$question->points, 2) }} pts</span>
                 </div>
 
@@ -80,4 +80,3 @@ window.MathJax = {
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 @endsection
-

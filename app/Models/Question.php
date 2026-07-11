@@ -40,5 +40,15 @@ class Question extends Model
     {
         return $this->hasMany(QuestionFillBlank::class)->orderBy('sort_order');
     }
-}
 
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'multiple_choice' => 'Opción múltiple',
+            'matching' => 'Relación de columnas',
+            'fill_blank' => 'Completado de oraciones',
+            'open' => 'Abierta',
+            default => (string) $this->type,
+        };
+    }
+}

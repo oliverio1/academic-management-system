@@ -43,6 +43,22 @@
     </a>
 </li>
 
+<li class="nav-item">
+    <a href="{{ route('coordination.quality.index') }}"
+       class="nav-link {{ isActive('coordination.quality.*') }}">
+        <i class="nav-icon fas fa-clipboard-check"></i>
+        <p>SGC / Calidad</p>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('coordination.inventory.index') }}"
+       class="nav-link {{ isActive('coordination.inventory.*') }}">
+        <i class="nav-icon fas fa-boxes"></i>
+        <p>Inventario</p>
+    </a>
+</li>
+
 <li class="nav-item {{ isOpen(['coordination.reports.*', 'coordination.student-incident-reports.*', 'coordination.prefect-reports.*']) }}">
     <a href="#"
        class="nav-link {{ isActive(['coordination.reports.*', 'coordination.student-incident-reports.*', 'coordination.prefect-reports.*']) }}">
@@ -111,6 +127,14 @@
        class="nav-link {{ isActive('coordination.schedules.groups-calendar') }}">
         <i class="nav-icon fas fa-calendar-alt"></i>
         <p>Calendario de grupos</p>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('coordination.paper-exams.schedule') }}"
+       class="nav-link {{ isActive('coordination.paper-exams.schedule') }}">
+        <i class="nav-icon fas fa-calendar-check"></i>
+        <p>Horarios de exámenes</p>
     </a>
 </li>
 
@@ -194,7 +218,15 @@
     <a href="{{ route('coordination.quality.index') }}"
        class="nav-link {{ isActive('coordination.quality.*') }}">
         <i class="nav-icon fas fa-clipboard-check"></i>
-        <p>Control de calidad</p>
+        <p>SGC / Calidad</p>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('coordination.inventory.index') }}"
+       class="nav-link {{ isActive('coordination.inventory.*') }}">
+        <i class="nav-icon fas fa-boxes"></i>
+        <p>Inventario</p>
     </a>
 </li>
 
@@ -453,10 +485,10 @@
             </a>
         </li>
         <li class="nav-item">
-            <a href="{{ route('coordination.paper-exams.index') }}"
-               class="nav-link {{ isActive('coordination.paper-exams.*') }}">
+            <a href="{{ route('coordination.paper-exams.schedule') }}"
+               class="nav-link {{ isActive('coordination.paper-exams.schedule') }}">
                 <i class="far fa-circle nav-icon"></i>
-                <p>Exámenes (crear/ver)</p>
+                <p>Horarios de exámenes</p>
             </a>
         </li>
     </ul>
@@ -501,48 +533,34 @@
 
 <li class="nav-item">
     <a href="{{ route('teacher.classes.index') }}"
-       class="nav-link {{ isActive(['teacher.classes.*', 'teacher.evaluation.*']) }}">
+       class="nav-link {{ isActive(['teacher.classes.*', 'teacher.evaluation.*', 'practices.*']) }}">
         <i class="nav-icon fas fa-chalkboard-teacher"></i>
         <p>Mis clases</p>
     </a>
 </li>
 
-<li class="nav-item {{ isOpen(['teacher.question-banks.*', 'teacher.paper-exams.*']) }}">
-    <a href="#"
-       class="nav-link {{ isActive(['teacher.question-banks.*', 'teacher.paper-exams.*']) }}">
-        <i class="nav-icon fas fa-question-circle"></i>
-        <p>Exámenes <i class="right fas fa-angle-left"></i></p>
+<li class="nav-item">
+    <a href="{{ route('teacher.attendance.index') }}"
+       class="nav-link {{ isActive('teacher.attendance.*') }}">
+        <i class="nav-icon fas fa-user-check"></i>
+        <p>Registro de asistencia</p>
     </a>
-    <ul class="nav nav-treeview">
-        <li class="nav-item">
-            <a href="{{ route('teacher.question-banks.index') }}"
-               class="nav-link {{ isActive(['teacher.question-banks.index','teacher.question-banks.create','teacher.question-banks.show']) }}">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Bancos de preguntas</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('teacher.question-banks.create') }}"
-               class="nav-link {{ isActive('teacher.question-banks.create') }}">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Nuevo banco</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('teacher.question-banks.template.download') }}"
-               class="nav-link">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Plantilla de carga</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('teacher.paper-exams.index') }}"
-               class="nav-link {{ isActive('teacher.paper-exams.*') }}">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Revisar intentos</p>
-            </a>
-        </li>
-    </ul>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('teacher.didactic-plans.index') }}"
+       class="nav-link {{ isActive('teacher.didactic-plans.*') }}">
+        <i class="nav-icon fas fa-file-alt"></i>
+        <p>Generación de planeaciones</p>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('teacher.question-banks.index') }}"
+       class="nav-link {{ isActive('teacher.question-banks.*') }}">
+        <i class="nav-icon fas fa-question-circle"></i>
+        <p>Configuración de exámenes</p>
+    </a>
 </li>
 
 <li class="nav-item">
@@ -595,6 +613,14 @@
        class="nav-link {{ isActive(['dashboard', 'student.subjects', 'student.subjects.show']) }}">
         <i class="nav-icon fas fa-home"></i>
         <p>Inicio</p>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('student.practices.index') }}"
+       class="nav-link {{ isActive('student.practices.*') }}">
+        <i class="nav-icon fas fa-flask"></i>
+        <p>Entregables</p>
     </a>
 </li>
 

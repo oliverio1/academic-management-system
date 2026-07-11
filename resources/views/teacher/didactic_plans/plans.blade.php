@@ -10,13 +10,13 @@
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">Planeaciones didacticas</h4>
+                            <h4 class="mb-0">Planeaciones didácticas</h4>
                             <small class="text-muted">{{ $assignment->subject->name }} - Grupo {{ $assignment->group->name }}</small>
                         </div>
                         <div>
                             <a href="{{ route('teacher.didactic-plans.create', $assignment) }}"
                                class="btn btn-primary btn-sm">
-                                Nueva planeacion
+                                Nueva planeación
                             </a>
                             <a href="{{ route('teacher.didactic-plans.index') }}"
                                class="btn btn-secondary btn-sm">
@@ -32,14 +32,14 @@
 
                     @if($plans->isEmpty())
                         <div class="alert alert-light border mb-0">
-                            Aun no hay planeaciones registradas para esta materia.
+                            Aún no hay planeaciones registradas para esta materia.
                         </div>
                     @else
                         <div class="table-responsive">
                             <table data-datatable="true" class="table table-sm table-hover">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>Titulo</th>
+                                        <th>Título</th>
                                         <th>Ciclo</th>
                                         <th>Parcial</th>
                                         <th>Rango</th>
@@ -72,7 +72,7 @@
                                                 <form method="POST"
                                                       action="{{ route('teacher.didactic-plans.destroy', $plan) }}"
                                                       class="d-inline"
-                                                      onsubmit="return confirm('Se eliminara la planeacion. Continuar?');">
+                                                      onsubmit="return confirm('Se eliminará la planeación. ¿Continuar?');">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button class="btn btn-outline-danger btn-sm">Eliminar</button>

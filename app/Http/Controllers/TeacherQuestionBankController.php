@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CyclePartial;
+use App\Models\PaperExam;
 use App\Models\Question;
 use App\Models\QuestionBank;
 use App\Models\QuestionFillBlank;
@@ -42,13 +43,16 @@ class TeacherQuestionBankController extends Controller
             ->orderBy('name')
             ->get();
 
-        $cycles = SchoolCycle::query()
+        $activeCycle = SchoolCycle::query()
             ->where('is_active', true)
             ->orderByDesc('start_date')
-            ->get();
+            ->first();
+
+        $cycles = collect($activeCycle ? [$activeCycle] : []);
 
         $partials = CyclePartial::query()
-            ->whereIn('school_cycle_id', $cycles->pluck('id'))
+            ->when($activeCycle, fn ($query) => $query->where('school_cycle_id', $activeCycle->id))
+            ->when(! $activeCycle, fn ($query) => $query->whereRaw('1 = 0'))
             ->orderBy('sort_order')
             ->get();
 
@@ -67,6 +71,11 @@ class TeacherQuestionBankController extends Controller
             'school_cycle_id' => ['nullable', 'integer', 'exists:school_cycles,id'],
             'cycle_partial_id' => ['nullable', 'integer', 'exists:cycle_partials,id'],
         ]);
+
+        if (! empty($data['cycle_partial_id'])) {
+            $partial = CyclePartial::query()->find((int) $data['cycle_partial_id']);
+            $data['school_cycle_id'] = $partial?->school_cycle_id ?? ($data['school_cycle_id'] ?? null);
+        }
 
         $bank = QuestionBank::create([
             'teacher_id' => $teacher->id,
@@ -98,6 +107,103 @@ class TeacherQuestionBankController extends Controller
         ]);
 
         return view('teacher.question_banks.show', compact('questionBank'));
+    }
+
+    public function configureExam(QuestionBank $questionBank)
+    {
+        $teacher = auth()->user()->teacher;
+        abort_if(! $teacher || (int) $questionBank->teacher_id !== (int) $teacher->id, 403);
+
+        $questionBank->load([
+            'subject',
+            'partial',
+            'questions' => fn ($query) => $query
+                ->where('is_active', true)
+                ->orderBy('sort_order'),
+        ]);
+
+        $exams = PaperExam::query()
+            ->with([
+                'assignment.group',
+                'assignment.subject',
+                'partial',
+                'examQuestions',
+            ])
+            ->withCount('examQuestions')
+            ->where('is_active', true)
+            ->whereHas('assignment', function ($query) use ($teacher, $questionBank) {
+                $query->where('teacher_id', $teacher->id)
+                    ->where('subject_id', $questionBank->subject_id);
+            })
+            ->when($questionBank->cycle_partial_id, fn ($query) => $query->where('cycle_partial_id', $questionBank->cycle_partial_id))
+            ->when($questionBank->school_cycle_id, fn ($query) => $query->where('school_cycle_id', $questionBank->school_cycle_id))
+            ->orderByDesc('online_available_from')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('teacher.question_banks.configure_exam', compact('questionBank', 'exams'));
+    }
+
+    public function updateExamConfiguration(Request $request, QuestionBank $questionBank)
+    {
+        $teacher = auth()->user()->teacher;
+        abort_if(! $teacher || (int) $questionBank->teacher_id !== (int) $teacher->id, 403);
+
+        $data = $request->validate([
+            'paper_exam_id' => ['required', 'integer', 'exists:paper_exams,id'],
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['integer', 'exists:questions,id'],
+        ]);
+
+        $paperExam = PaperExam::query()
+            ->with('assignment')
+            ->whereKey((int) $data['paper_exam_id'])
+            ->whereHas('assignment', function ($query) use ($teacher, $questionBank) {
+                $query->where('teacher_id', $teacher->id)
+                    ->where('subject_id', $questionBank->subject_id);
+            })
+            ->when($questionBank->cycle_partial_id, fn ($query) => $query->where('cycle_partial_id', $questionBank->cycle_partial_id))
+            ->when($questionBank->school_cycle_id, fn ($query) => $query->where('school_cycle_id', $questionBank->school_cycle_id))
+            ->firstOrFail();
+
+        if ($paperExam->attempts()->exists()) {
+            return back()
+                ->withInput()
+                ->withErrors(['question_ids' => 'No se pueden modificar preguntas porque ya existen intentos registrados.']);
+        }
+
+        $questionIds = collect($data['question_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $validQuestionIds = Question::query()
+            ->where('question_bank_id', $questionBank->id)
+            ->where('is_active', true)
+            ->whereIn('id', $questionIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($validQuestionIds->count() !== $questionIds->count()) {
+            return back()
+                ->withInput()
+                ->withErrors(['question_ids' => 'Solo puedes seleccionar preguntas activas de este banco.']);
+        }
+
+        DB::transaction(function () use ($paperExam, $questionIds) {
+            $paperExam->examQuestions()->delete();
+
+            $questionIds->each(function ($questionId, $index) use ($paperExam) {
+                $paperExam->examQuestions()->create([
+                    'question_id' => $questionId,
+                    'sort_order' => $index + 1,
+                ]);
+            });
+        });
+
+        return redirect()
+            ->route('teacher.question-banks.exam.configure', $questionBank)
+            ->with('info', 'Preguntas del examen configuradas correctamente.');
     }
 
     public function storeQuestion(Request $request, QuestionBank $questionBank)

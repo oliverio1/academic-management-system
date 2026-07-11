@@ -1,17 +1,28 @@
 @extends('layouts.app')
 
-@section('title', $mode === 'create' ? 'Nuevo PNO' : 'Editar PNO')
+@section('title', $mode === 'create' ? 'Nuevo documento SGC' : 'Editar documento SGC')
 
 @section('content')
 <div class="content px-3 mt-3">
     <div class="card">
         <div class="card-header">
-            <h4 class="mb-0">{{ $mode === 'create' ? 'Nuevo PNO' : 'Editar PNO' }}</h4>
+            <h4 class="mb-0">{{ $mode === 'create' ? 'Nuevo documento SGC' : 'Editar documento SGC' }}</h4>
         </div>
         <form method="POST" action="{{ $mode === 'create' ? route('coordination.quality.documents.store') : route('coordination.quality.documents.update', $document) }}">
             @csrf
             @if($mode === 'edit') @method('PUT') @endif
             <div class="card-body">
+                @if($errors->any())
+                    <div class="alert alert-danger">
+                        <strong>Revisa la información:</strong>
+                        <ul class="mb-0">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <div class="form-row">
                     <div class="form-group col-md-4">
                         <label>Proceso</label>
@@ -37,6 +48,16 @@
                         <input type="text" name="version" class="form-control" value="{{ old('version', $document->version) }}">
                     </div>
                     <div class="form-group col-md-3">
+                        <label>Tipo de documento</label>
+                        <select name="document_type" class="form-control" required>
+                            @foreach($documentTypeLabels as $key => $label)
+                                <option value="{{ $key }}" {{ old('document_type', $document->document_type ?: 'procedure') === $key ? 'selected' : '' }}>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
                         <label>Estatus</label>
                         <select name="status" class="form-control" required>
                             @foreach(['draft' => 'Borrador', 'active' => 'Vigente', 'obsolete' => 'Obsoleto'] as $key => $label)
@@ -49,15 +70,23 @@
                         <input type="date" name="effective_date" class="form-control" value="{{ old('effective_date', optional($document->effective_date)->format('Y-m-d')) }}">
                     </div>
                     <div class="form-group col-md-3">
-                        <label>Fecha revisión</label>
+                        <label>Fecha de revisión</label>
                         <input type="date" name="review_date" class="form-control" value="{{ old('review_date', optional($document->review_date)->format('Y-m-d')) }}">
                     </div>
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-4">
                         <label>Responsable</label>
                         <input type="text" name="owner" class="form-control" value="{{ old('owner', $document->owner) }}">
                     </div>
+                    <div class="form-group col-md-4">
+                        <label>Cláusulas ISO 9001</label>
+                        <input type="text" name="iso_9001_clauses" class="form-control" placeholder="Ej. 7.5, 9.2" value="{{ old('iso_9001_clauses', $document->iso_9001_clauses) }}">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Cláusulas ISO 21001</label>
+                        <input type="text" name="iso_21001_clauses" class="form-control" placeholder="Ej. 7.5, 8.5, 9.2" value="{{ old('iso_21001_clauses', $document->iso_21001_clauses) }}">
+                    </div>
                     <div class="form-group col-md-12">
-                        <label>Contenido del PNO</label>
+                        <label>Contenido del documento</label>
                         <textarea name="content" rows="12" class="form-control">{{ old('content', $document->content) }}</textarea>
                     </div>
                     <div class="form-group col-md-12">

@@ -25,12 +25,18 @@
                         {{ $firstClassStart ? $firstClassStart->format('H:i') : 'Sin clase programada' }}
                     </div>
 
+                    @if(! $canClockAttendance)
+                        <div class="alert alert-info">
+                            No tienes sesiones programadas hoy en este plantel. El registro de entrada está desactivado.
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('teacher.attendance.clock') }}" class="mb-4" id="teacher-attendance-clock-form">
                         @csrf
                         <input type="hidden" name="latitude" id="geo_latitude">
                         <input type="hidden" name="longitude" id="geo_longitude">
-                        <button class="btn btn-primary" type="submit">
-                            {{ ! $todayRecord?->check_in_time ? 'Registrar entrada' : (! $todayRecord?->check_out_time ? 'Registrar salida' : 'Registro completo') }}
+                        <button class="btn {{ $canClockAttendance ? 'btn-primary' : 'btn-secondary' }}" type="submit" @disabled(! $canClockAttendance)>
+                            {{ ! $canClockAttendance ? 'Sin sesiones hoy' : (! $todayRecord?->check_in_time ? 'Registrar entrada' : (! $todayRecord?->check_out_time ? 'Registrar salida' : 'Registro completo')) }}
                         </button>
                     </form>
 

@@ -5,8 +5,20 @@
 @section('content')
 <div class="content px-3 mt-3">
     <div class="card">
-        <div class="card-header">
-            <h4 class="mb-0">Exámenes asignados</h4>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">Exámenes asignados</h4>
+                @if($selectedAssignment)
+                    <small class="text-muted">
+                        {{ $selectedAssignment->subject->name ?? 'N/D' }} - Grupo {{ $selectedAssignment->group->name ?? 'N/D' }}
+                    </small>
+                @elseif(($selectedFilters['subject_id'] ?? 0) || ($selectedFilters['cycle_partial_id'] ?? 0))
+                    <small class="text-muted">
+                        Exámenes filtrados por banco de preguntas.
+                    </small>
+                @endif
+            </div>
+            <a href="{{ route('teacher.classes.index') }}" class="btn btn-outline-secondary btn-sm">Volver a mis clases</a>
         </div>
         <div class="card-body table-responsive">
             <table class="table table-sm table-hover">
@@ -17,7 +29,7 @@
                         <th>Grupo</th>
                         <th>Preguntas</th>
                         <th>En línea</th>
-                        <th></th>
+                        <th class="text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -32,10 +44,21 @@
                                     {{ $exam->is_online_enabled ? 'Sí' : 'No' }}
                                 </span>
                             </td>
-                            <td><a class="btn btn-outline-primary btn-sm" href="{{ route('teacher.paper-exams.show', $exam) }}">Ver intentos</a></td>
+                            <td class="text-right">
+                                <a class="btn btn-outline-success btn-sm" href="{{ route('teacher.paper-exams.questions.edit', $exam) }}">
+                                    Seleccionar preguntas
+                                </a>
+                                <a class="btn btn-outline-primary btn-sm" href="{{ route('teacher.paper-exams.show', $exam) }}">
+                                    Ver intentos
+                                </a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted">No hay exámenes asignados.</td></tr>
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">
+                                No hay exámenes asignados para esta clase.
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
@@ -43,4 +66,3 @@
     </div>
 </div>
 @endsection
-

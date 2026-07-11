@@ -4,25 +4,48 @@ namespace App\Http\Controllers;
 
 use App\Models\PaperExam;
 use App\Models\PaperExamAttempt;
+use App\Models\Question;
+use App\Models\QuestionBank;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TeacherPaperExamController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $teacher = auth()->user()->teacher;
         abort_if(! $teacher, 403);
+
+        $selectedAssignmentId = (int) $request->query('assignment_id', 0);
+        $selectedSubjectId = (int) $request->query('subject_id', 0);
+        $selectedPartialId = (int) $request->query('cycle_partial_id', 0);
 
         $exams = PaperExam::query()
             ->with(['assignment.group', 'assignment.subject', 'partial', 'schoolCycle'])
             ->withCount('examQuestions')
             ->whereHas('assignment', fn ($q) => $q->where('teacher_id', $teacher->id))
+            ->when($selectedAssignmentId > 0, fn ($q) => $q->where('teaching_assignment_id', $selectedAssignmentId))
+            ->when($selectedSubjectId > 0, fn ($q) => $q->whereHas('assignment', fn ($sq) => $sq->where('subject_id', $selectedSubjectId)))
+            ->when($selectedPartialId > 0, fn ($q) => $q->where('cycle_partial_id', $selectedPartialId))
             ->orderByDesc('id')
             ->get();
 
-        return view('teacher.paper_exams.index', compact('exams'));
+        $selectedAssignment = $selectedAssignmentId > 0
+            ? $teacher->teachingAssignments()
+                ->with(['subject', 'group'])
+                ->whereKey($selectedAssignmentId)
+                ->first()
+            : null;
+
+        abort_if($selectedAssignmentId > 0 && ! $selectedAssignment, 403);
+
+        $selectedFilters = [
+            'subject_id' => $selectedSubjectId,
+            'cycle_partial_id' => $selectedPartialId,
+        ];
+
+        return view('teacher.paper_exams.index', compact('exams', 'selectedAssignment', 'selectedFilters'));
     }
 
     public function show(PaperExam $paperExam)
@@ -41,6 +64,105 @@ class TeacherPaperExamController extends Controller
         ]);
 
         return view('teacher.paper_exams.show', compact('paperExam'));
+    }
+
+    public function editQuestions(PaperExam $paperExam)
+    {
+        $this->authorizeTeacherExam($paperExam);
+
+        $teacher = auth()->user()->teacher;
+
+        $paperExam->load([
+            'assignment.group',
+            'assignment.subject',
+            'partial',
+            'schoolCycle',
+            'examQuestions.question.bank',
+        ]);
+
+        $banks = QuestionBank::query()
+            ->with([
+                'partial',
+                'questions' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderBy('sort_order'),
+            ])
+            ->where('teacher_id', $teacher->id)
+            ->where('subject_id', $paperExam->assignment->subject_id)
+            ->where('is_active', true)
+            ->whereHas('questions', fn ($query) => $query->where('is_active', true))
+            ->orderByDesc('id')
+            ->get();
+
+        $selectedQuestionIds = $paperExam->examQuestions
+            ->pluck('question_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $hasAttempts = $paperExam->attempts()->exists();
+
+        return view('teacher.paper_exams.questions', compact(
+            'paperExam',
+            'banks',
+            'selectedQuestionIds',
+            'hasAttempts'
+        ));
+    }
+
+    public function updateQuestions(Request $request, PaperExam $paperExam)
+    {
+        $this->authorizeTeacherExam($paperExam);
+
+        if ($paperExam->attempts()->exists()) {
+            throw ValidationException::withMessages([
+                'question_ids' => 'No se pueden modificar las preguntas porque ya existen intentos registrados.',
+            ]);
+        }
+
+        $data = $request->validate([
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['integer', 'exists:questions,id'],
+        ]);
+
+        $teacher = auth()->user()->teacher;
+        $paperExam->load('assignment');
+
+        $questionIds = collect($data['question_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $validQuestionIds = Question::query()
+            ->whereIn('id', $questionIds)
+            ->where('is_active', true)
+            ->whereHas('bank', function ($query) use ($teacher, $paperExam) {
+                $query->where('teacher_id', $teacher->id)
+                    ->where('subject_id', $paperExam->assignment->subject_id)
+                    ->where('is_active', true);
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($validQuestionIds->count() !== $questionIds->count()) {
+            throw ValidationException::withMessages([
+                'question_ids' => 'Solo puedes seleccionar preguntas activas de tus bancos para esta materia.',
+            ]);
+        }
+
+        DB::transaction(function () use ($paperExam, $questionIds) {
+            $paperExam->examQuestions()->delete();
+
+            $questionIds->each(function ($questionId, $index) use ($paperExam) {
+                $paperExam->examQuestions()->create([
+                    'question_id' => $questionId,
+                    'sort_order' => $index + 1,
+                ]);
+            });
+        });
+
+        return redirect()
+            ->route('teacher.paper-exams.show', $paperExam)
+            ->with('info', 'Preguntas del examen actualizadas correctamente.');
     }
 
     public function reviewAttempt(PaperExam $paperExam, PaperExamAttempt $attempt)

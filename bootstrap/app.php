@@ -12,6 +12,7 @@ use Stancl\Tenancy\Middleware\InitializeTenancyByRequestData;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use App\Providers\ViewServiceProvider;
 use App\Http\Middleware\EnsureCampusAccess;
+use App\Http\Middleware\EnsurePasswordIsNotTemporary;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ViewServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            EnsurePasswordIsNotTemporary::class,
+        ]);
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,

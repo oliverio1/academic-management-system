@@ -85,6 +85,8 @@ use App\Http\Controllers\Finance\FinanceDashboardController;
 use App\Http\Controllers\Finance\FinanceConceptController;
 use App\Http\Controllers\Finance\FinanceChargeController;
 use App\Http\Controllers\Finance\FinanceStudentStatementController;
+use App\Http\Controllers\Auth\TemporaryPasswordController;
+use App\Http\Controllers\InventoryController;
 
 require __DIR__.'/imports.php';
 
@@ -106,6 +108,13 @@ Route::get('/', function () {
 });
 
 Auth::routes();
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/password/temporary', [TemporaryPasswordController::class, 'edit'])
+        ->name('temporary-password.edit');
+    Route::put('/password/temporary', [TemporaryPasswordController::class, 'update'])
+        ->name('temporary-password.update');
+});
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
@@ -213,6 +222,8 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
         Route::get('paper-exams', [CoordinationPaperExamController::class, 'index'])->name('paper-exams.index');
         Route::get('paper-exams/create', [CoordinationPaperExamController::class, 'create'])->name('paper-exams.create');
         Route::post('paper-exams', [CoordinationPaperExamController::class, 'store'])->name('paper-exams.store');
+        Route::get('paper-exams/schedule', [CoordinationPaperExamController::class, 'schedule'])->name('paper-exams.schedule');
+        Route::put('paper-exams/schedule', [CoordinationPaperExamController::class, 'updateSchedule'])->name('paper-exams.schedule.update');
         Route::get('paper-exams/{paperExam}', [CoordinationPaperExamController::class, 'show'])->name('paper-exams.show');
         Route::get('paper-exams/{paperExam}/pdf', [CoordinationPaperExamController::class, 'pdf'])->name('paper-exams.pdf');
         Route::put('paper-exams/{paperExam}/online', [CoordinationPaperExamController::class, 'updateOnline'])->name('paper-exams.online.update');
@@ -222,6 +233,7 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
         Route::post('teacher-documents', [CoordinationTeacherDocumentRequestController::class, 'store'])->name('teacher-documents.store');
         Route::patch('teacher-documents/items/{item}/visibility', [CoordinationTeacherDocumentRequestController::class, 'updateItemVisibility'])->name('teacher-documents.items.visibility');
         Route::get('quality', [CoordinationQualityController::class, 'index'])->name('quality.index');
+        Route::post('quality/bootstrap-iso-base', [CoordinationQualityController::class, 'bootstrapIsoBase'])->name('quality.bootstrap-iso-base');
         Route::get('quality/processes/create', [CoordinationQualityController::class, 'createProcess'])->name('quality.processes.create');
         Route::post('quality/processes', [CoordinationQualityController::class, 'storeProcess'])->name('quality.processes.store');
         Route::get('quality/processes/{process}/edit', [CoordinationQualityController::class, 'editProcess'])->name('quality.processes.edit');
@@ -334,6 +346,17 @@ Route::middleware(['auth', 'role:coordinator|admin', 'campus.access'])->group(fu
         Route::get('statements/{student}', [FinanceStudentStatementController::class, 'show'])->name('statements.show');
         Route::post('statements/{student}/payments', [FinanceStudentStatementController::class, 'storePayment'])->name('statements.payments.store');
     });
+
+    Route::prefix('coordination/inventory')->name('coordination.inventory.')->group(function () {
+        Route::get('/', [InventoryController::class, 'index'])->name('index');
+        Route::get('/create', [InventoryController::class, 'create'])->name('create');
+        Route::post('/', [InventoryController::class, 'store'])->name('store');
+        Route::post('/locations', [InventoryController::class, 'storeLocation'])->name('locations.store');
+        Route::get('/{item}', [InventoryController::class, 'show'])->name('show');
+        Route::get('/{item}/edit', [InventoryController::class, 'edit'])->name('edit');
+        Route::put('/{item}', [InventoryController::class, 'update'])->name('update');
+        Route::post('/{item}/movements', [InventoryController::class, 'storeMovement'])->name('movements.store');
+    });
 });
 
 Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () {
@@ -341,6 +364,8 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('teacher/question-banks/create', [TeacherQuestionBankController::class, 'create'])->name('teacher.question-banks.create');
     Route::post('teacher/question-banks', [TeacherQuestionBankController::class, 'store'])->name('teacher.question-banks.store');
     Route::get('teacher/question-banks/template/download', [TeacherQuestionBankController::class, 'downloadTemplate'])->name('teacher.question-banks.template.download');
+    Route::get('teacher/question-banks/{questionBank}/configure-exam', [TeacherQuestionBankController::class, 'configureExam'])->name('teacher.question-banks.exam.configure');
+    Route::put('teacher/question-banks/{questionBank}/configure-exam', [TeacherQuestionBankController::class, 'updateExamConfiguration'])->name('teacher.question-banks.exam.update');
     Route::get('teacher/question-banks/{questionBank}', [TeacherQuestionBankController::class, 'show'])->name('teacher.question-banks.show');
     Route::post('teacher/question-banks/{questionBank}/import', [TeacherQuestionBankController::class, 'importQuestions'])->name('teacher.question-banks.import');
     Route::post('teacher/question-banks/{questionBank}/questions', [TeacherQuestionBankController::class, 'storeQuestion'])->name('teacher.question-banks.questions.store');
@@ -349,6 +374,8 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::put('teacher/question-banks/{questionBank}/questions/{question}', [TeacherQuestionBankController::class, 'updateQuestion'])->name('teacher.question-banks.questions.update');
     Route::delete('teacher/question-banks/{questionBank}/questions/{question}', [TeacherQuestionBankController::class, 'destroyQuestion'])->name('teacher.question-banks.questions.destroy');
     Route::get('teacher/paper-exams', [TeacherPaperExamController::class, 'index'])->name('teacher.paper-exams.index');
+    Route::get('teacher/paper-exams/{paperExam}/questions', [TeacherPaperExamController::class, 'editQuestions'])->name('teacher.paper-exams.questions.edit');
+    Route::put('teacher/paper-exams/{paperExam}/questions', [TeacherPaperExamController::class, 'updateQuestions'])->name('teacher.paper-exams.questions.update');
     Route::get('teacher/paper-exams/{paperExam}', [TeacherPaperExamController::class, 'show'])->name('teacher.paper-exams.show');
     Route::get('teacher/paper-exams/{paperExam}/attempts/{attempt}', [TeacherPaperExamController::class, 'reviewAttempt'])->name('teacher.paper-exams.attempts.review');
     Route::put('teacher/paper-exams/{paperExam}/attempts/{attempt}', [TeacherPaperExamController::class, 'gradeAttempt'])->name('teacher.paper-exams.attempts.grade');
@@ -435,6 +462,11 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('practices/{practice}/edit',[PracticeController::class, 'edit'])->name('practices.edit');
     Route::put('practices/{practice}',[PracticeController::class, 'update'])->name('practices.update');
     Route::delete('practices/{practice}',[PracticeController::class, 'destroy'])->name('practices.destroy');
+    Route::get('practices/{practice}/submissions',[PracticeController::class, 'submissions'])->name('practices.submissions');
+    Route::get('practice-submissions/{submission}',[PracticeController::class, 'submissionReport'])->name('practices.submissions.show');
+    Route::get('practice-submissions/{submission}/review',[PracticeController::class, 'review'])->name('practices.submissions.review');
+    Route::put('practice-submissions/{submission}/review',[PracticeController::class, 'storeReview'])->name('practices.submissions.review.store');
+    Route::get('practice-submissions/{submission}/pdf',[PracticeController::class, 'submissionPdf'])->name('practices.submissions.pdf');
 
     Route::get('activities/{activity}/grades',[GradeController::class, 'index'])->name('grades.index');
     Route::post('activities/{activity}/grades',[GradeController::class, 'store'])->name('grades.store');
@@ -475,6 +507,8 @@ Route::middleware(['auth','role:student', 'campus.access'])->group(function () {
     Route::get('student/practices', [StudentPracticeController::class, 'index'])->name('student.practices.index');
     Route::get('student/practices/{practice}', [StudentPracticeController::class, 'show'])->name('student.practices.show');
     Route::post('student/practices/{practice}', [StudentPracticeController::class, 'store'])->name('student.practices.store');
+    Route::get('student/practices/{practice}/report', [StudentPracticeController::class, 'report'])->name('student.practices.report');
+    Route::get('student/practices/{practice}/pdf', [StudentPracticeController::class, 'pdf'])->name('student.practices.pdf');
     Route::get('student/exams', [StudentOnlineExamController::class, 'index'])->name('student.exams.index');
     Route::get('student/exams/{paperExam}', [StudentOnlineExamController::class, 'show'])->name('student.exams.show');
     Route::post('student/exams/{paperExam}/start', [StudentOnlineExamController::class, 'start'])->name('student.exams.start');

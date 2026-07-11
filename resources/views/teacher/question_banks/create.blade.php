@@ -22,15 +22,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="form-group col-md-6">
-                        <label>Ciclo</label>
-                        <select name="school_cycle_id" class="form-control">
-                            <option value="">Sin ciclo</option>
-                            @foreach($cycles as $cycle)
-                                <option value="{{ $cycle->id }}">{{ $cycle->name }} ({{ $cycle->code }})</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <input type="hidden" name="school_cycle_id" value="{{ optional($cycles->first())->id }}">
                     <div class="form-group col-md-6">
                         <label>Parcial</label>
                         <select name="cycle_partial_id" class="form-control">

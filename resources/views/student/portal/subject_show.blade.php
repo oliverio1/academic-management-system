@@ -153,6 +153,71 @@
 
         <div class="card mb-3">
             <div class="card-header">
+                <strong>Entregables de la materia</strong>
+            </div>
+            <div class="card-body table-responsive p-3">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Título</th>
+                            <th>Entrega</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse(($practices ?? collect()) as $practice)
+                            @php
+                                $studentSubmission = $practice->submissions
+                                    ->filter(function ($submission) use ($student) {
+                                        return $submission->team
+                                            && $submission->team->students->contains('id', $student->id);
+                                    })
+                                    ->sortBy(function ($submission) {
+                                        return match ($submission->status) {
+                                            'reviewed' => 0,
+                                            'submitted' => 1,
+                                            'draft' => 2,
+                                            default => 3,
+                                        };
+                                    })
+                                    ->first();
+                                $isPastDue = $practice->due_date
+                                    ? $practice->due_date->copy()->endOfDay()->isPast()
+                                    : false;
+                                $canCapture = ! $isPastDue && $studentSubmission?->status !== 'reviewed';
+                            @endphp
+                            <tr>
+                                <td>{{ $practice->kind_label }}</td>
+                                <td>{{ $practice->title }}</td>
+                                <td>{{ optional($practice->due_date)->format('d/m/Y') ?? '-' }}</td>
+                                <td>
+                                    @if($canCapture)
+                                        <a href="{{ route('student.practices.show', $practice) }}" class="btn btn-sm btn-outline-primary">
+                                            Capturar
+                                        </a>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                            Captura cerrada
+                                        </button>
+                                    @endif
+                                    <a href="{{ route('student.practices.report', $practice) }}" class="btn btn-sm btn-outline-secondary">
+                                        Ver reporte
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No hay entregables registrados para esta materia.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
                 <strong>Documentos de la materia</strong>
             </div>
             <div class="card-body table-responsive p-3">

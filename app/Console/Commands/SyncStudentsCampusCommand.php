@@ -37,7 +37,10 @@ class SyncStudentsCampusCommand extends Command
         }
 
         $activeCycleId = SchoolCycle::query()
-            ->where('campus_id', $campusId)
+            ->where(function ($query) use ($campusId) {
+                $query->where('campus_id', $campusId)
+                    ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $campusId));
+            })
             ->where('is_active', true)
             ->orderByDesc('start_date')
             ->value('id');
@@ -93,16 +96,38 @@ class SyncStudentsCampusCommand extends Command
         }
 
         DB::transaction(function () use ($studentUserIds, $guardiansUserIds, $includeGuardians, $campusId) {
-            if ($studentUserIds->isNotEmpty()) {
-                User::query()
-                    ->whereIn('id', $studentUserIds->all())
-                    ->update(['default_campus_id' => $campusId]);
-            }
+            $userIds = $studentUserIds;
 
             if ($includeGuardians && $guardiansUserIds->isNotEmpty()) {
+                $userIds = $userIds->merge($guardiansUserIds)->unique()->values();
+            }
+
+            if ($userIds->isNotEmpty()) {
                 User::query()
-                    ->whereIn('id', $guardiansUserIds->all())
+                    ->whereIn('id', $userIds->all())
                     ->update(['default_campus_id' => $campusId]);
+
+                $existingUserIds = DB::table('campus_user')
+                    ->where('campus_id', $campusId)
+                    ->whereIn('user_id', $userIds->all())
+                    ->pluck('user_id')
+                    ->map(fn ($id) => (int) $id);
+
+                $now = now();
+                $rows = $userIds
+                    ->diff($existingUserIds)
+                    ->map(fn ($userId) => [
+                        'user_id' => (int) $userId,
+                        'campus_id' => $campusId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ])
+                    ->values()
+                    ->all();
+
+                if (! empty($rows)) {
+                    DB::table('campus_user')->insert($rows);
+                }
             }
         });
 
@@ -110,4 +135,3 @@ class SyncStudentsCampusCommand extends Command
         return self::SUCCESS;
     }
 }
-

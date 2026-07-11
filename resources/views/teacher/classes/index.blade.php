@@ -43,6 +43,16 @@
                                                     <i class="fas fa-sliders-h mr-1"></i>
                                                     Configurar rubros
                                                 </a>
+                                                <a href="{{ route('teacher.paper-exams.index', ['assignment_id' => $assignment->id]) }}"
+                                                   class="btn btn-outline-info btn-sm btn-block">
+                                                    <i class="fas fa-file-signature mr-1"></i>
+                                                    Exámenes
+                                                </a>
+                                                <a href="{{ route('practices.index', $assignment) }}"
+                                                   class="btn btn-outline-success btn-sm btn-block">
+                                                    <i class="fas fa-flask mr-1"></i>
+                                                    Entregables
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -57,7 +67,13 @@
                                 Horario semanal
                             </div>
                             @php
-                                $days = ['lunes','martes','miercoles','jueves','viernes'];
+                                $days = [
+                                    'lunes' => 'LUNES',
+                                    'martes' => 'MARTES',
+                                    'miercoles' => 'MIÉRCOLES',
+                                    'jueves' => 'JUEVES',
+                                    'viernes' => 'VIERNES',
+                                ];
 
                                 $timeSlots = [
                                     '07:00-07:50',
@@ -81,8 +97,8 @@
                                     <thead class="thead-light">
                                         <tr>
                                             <th></th>
-                                            @foreach($days as $day)
-                                                <th>{{ strtoupper($day) }}</th>
+                                            @foreach($days as $dayLabel)
+                                                <th>{{ $dayLabel }}</th>
                                             @endforeach
                                         </tr>
                                     </thead>
@@ -111,7 +127,7 @@
                                                     {{ $slot }}
                                                 </td>
 
-                                                @foreach($days as $day)
+                                                @foreach($days as $day => $dayLabel)
                                                     @php
                                                         $block = $scheduleBlocks->first(function ($entry) use ($day, $slot) {
                                                             return $entry['day'] === $day

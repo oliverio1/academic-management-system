@@ -37,6 +37,7 @@ class TeacherCampusAttendanceController extends Controller
         return view('teacher.attendance.index', [
             'todayRecord' => $todayRecord,
             'firstClassStart' => $firstClassStart,
+            'canClockAttendance' => (bool) $firstClassStart,
             'history' => $history,
         ]);
     }
@@ -57,6 +58,10 @@ class TeacherCampusAttendanceController extends Controller
         $now = now();
         $today = $now->toDateString();
         $firstClassStart = $this->firstClassStartTime($teacher->id, $activeCampusId, $now);
+
+        if (! $firstClassStart) {
+            return back()->with('warning', 'No tienes sesiones programadas hoy en este plantel.');
+        }
 
         $record = TeacherCampusAttendance::query()->firstOrCreate(
             [

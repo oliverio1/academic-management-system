@@ -7,10 +7,7 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Bancos de preguntas</h4>
-            <div>
-                <a href="{{ route('teacher.question-banks.template.download') }}" class="btn btn-outline-secondary btn-sm">Plantilla carga masiva</a>
-                <a href="{{ route('teacher.question-banks.create') }}" class="btn btn-primary btn-sm">+ Nuevo banco</a>
-            </div>
+            <a href="{{ route('teacher.question-banks.create') }}" class="btn btn-primary btn-sm">+ Nuevo banco</a>
         </div>
         <div class="card-body">
             <table class="table table-striped">
@@ -20,7 +17,7 @@
                         <th>Materia</th>
                         <th>Parcial</th>
                         <th>Preguntas</th>
-                        <th></th>
+                        <th class="text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -31,7 +28,12 @@
                             <td>{{ $bank->partial->name ?? 'Sin parcial' }}</td>
                             <td>{{ $bank->questions_count }}</td>
                             <td class="text-right">
-                                <a href="{{ route('teacher.question-banks.show', $bank) }}" class="btn btn-outline-primary btn-sm">Gestionar</a>
+                                <a href="{{ route('teacher.question-banks.show', $bank) }}" class="btn btn-outline-primary btn-sm">
+                                    Gestionar preguntas
+                                </a>
+                                <a href="{{ route('teacher.question-banks.exam.configure', $bank) }}" class="btn btn-outline-success btn-sm">
+                                    Configurar examen
+                                </a>
                             </td>
                         </tr>
                     @empty

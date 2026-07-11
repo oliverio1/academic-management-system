@@ -49,10 +49,6 @@
                         <label>Puntos</label>
                         <input type="number" step="0.01" min="0.1" max="100" name="points" class="form-control" value="1" required>
                     </div>
-                    <div class="form-group col-md-2">
-                        <label>Orden</label>
-                        <input type="number" min="1" name="sort_order" class="form-control" value="1">
-                    </div>
                     <div class="form-group col-md-12">
                         <label>Enunciado</label>
                         <textarea id="prompt_editor" name="prompt" rows="3" class="form-control" required></textarea>
@@ -124,19 +120,25 @@
         <div class="card-body">
             <table class="table table-sm table-striped">
                 <thead>
-                    <tr><th>#</th><th>Tipo</th><th>Enunciado</th><th>Puntos</th><th></th></tr>
+                    <tr>
+                        <th>#</th>
+                        <th>Tipo</th>
+                        <th>Enunciado</th>
+                        <th>Puntos</th>
+                        <th class="text-right" style="width: 290px;">Acciones</th>
+                    </tr>
                 </thead>
                 <tbody>
                     @forelse($questionBank->questions as $question)
                         <tr>
                             <td>{{ $question->sort_order }}</td>
-                            <td>{{ $question->type }}</td>
+                            <td>{{ $question->type_label }}</td>
                             <td>{{ $question->prompt }}</td>
                             <td>{{ number_format((float)$question->points, 2) }}</td>
-                            <td class="text-right">
+                            <td class="text-right text-nowrap" style="width: 290px;">
                                 <a href="{{ route('teacher.question-banks.questions.preview', [$questionBank, $question]) }}" class="btn btn-outline-info btn-sm mr-1">Vista alumno</a>
                                 <a href="{{ route('teacher.question-banks.questions.edit', [$questionBank, $question]) }}" class="btn btn-outline-primary btn-sm mr-1">Editar</a>
-                                <form method="POST" action="{{ route('teacher.question-banks.questions.destroy', [$questionBank, $question]) }}">
+                                <form method="POST" action="{{ route('teacher.question-banks.questions.destroy', [$questionBank, $question]) }}" class="d-inline-block">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-outline-danger btn-sm">Eliminar</button>

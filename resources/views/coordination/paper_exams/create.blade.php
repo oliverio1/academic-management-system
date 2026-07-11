@@ -75,7 +75,7 @@
                                     <tr class="question-row" data-subject-id="{{ $bank->subject_id }}">
                                         <td><input type="checkbox" name="question_ids[]" value="{{ $question->id }}"></td>
                                         <td>{{ $bank->name }} / {{ $bank->subject->name ?? 'N/D' }}</td>
-                                        <td>{{ $question->type }}</td>
+                                        <td>{{ $question->type_label }}</td>
                                         <td>{{ $question->prompt }}</td>
                                     </tr>
                                 @endforeach

@@ -5,9 +5,14 @@
 @section('content')
 <div class="content px-3 mt-3">
     <div class="card">
-        <div class="card-header">
-            <h4 class="mb-0">{{ $paperExam->title }}</h4>
-            <small class="text-muted">{{ $paperExam->assignment->subject->name ?? 'N/D' }} - Grupo {{ $paperExam->assignment->group->name ?? 'N/D' }}</small>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">{{ $paperExam->title }}</h4>
+                <small class="text-muted">{{ $paperExam->assignment->subject->name ?? 'N/D' }} - Grupo {{ $paperExam->assignment->group->name ?? 'N/D' }}</small>
+            </div>
+            <a href="{{ route('teacher.paper-exams.questions.edit', $paperExam) }}" class="btn btn-outline-success btn-sm">
+                Seleccionar preguntas
+            </a>
         </div>
         <div class="card-body">
             <div class="table-responsive mb-3">

@@ -60,7 +60,7 @@
             <div class="card mb-3">
                 <div class="card-header">
                     <strong>{{ $index + 1 }}.</strong> {{ $question->prompt }}
-                    <span class="badge badge-info ml-1">{{ $question->type }}</span>
+                    <span class="badge badge-info ml-1">{{ $question->type_label }}</span>
                 </div>
                 <div class="card-body">
                     @if($question->type === 'multiple_choice')

@@ -52,7 +52,7 @@
                         <div class="mb-4 p-3 border rounded exam-question" data-question-index="{{ $index }}" style="{{ $index === 0 ? '' : 'display:none;' }}">
                             <div class="mb-2">
                                 <strong>Pregunta {{ $index + 1 }} de {{ $orderedQuestions->count() }}:</strong> {{ $q->prompt }}
-                                <span class="badge badge-info">{{ $q->type }}</span>
+                                <span class="badge badge-info">{{ $q->type_label }}</span>
                             </div>
 
                             @if($q->type === 'multiple_choice')

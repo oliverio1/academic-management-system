@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Planeacion didactica</title>
+    <title>Planeación didáctica</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10px; line-height: 1.35; color: #111; }
         table { width: 100%; border-collapse: collapse; }

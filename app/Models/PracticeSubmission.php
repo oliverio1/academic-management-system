@@ -15,15 +15,25 @@ class PracticeSubmission extends Model
         'hypothesis',
         'development',
         'results',
+        'discussion',
         'conclusions',
         'references',
         'questionnaire_answers',
+        'custom_field_answers',
+        'score',
+        'teacher_corrections',
+        'teacher_comments',
+        'teacher_suggestions',
+        'reviewed_by',
+        'reviewed_at',
         'status',
         'submitted_at',
     ];
 
     protected $casts = [
         'questionnaire_answers' => 'array',
+        'custom_field_answers' => 'array',
+        'reviewed_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 
@@ -37,5 +47,9 @@ class PracticeSubmission extends Model
 
     public function submittedBy() {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewedBy() {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 }

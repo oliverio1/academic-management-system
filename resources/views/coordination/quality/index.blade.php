@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Control de calidad')
+@section('title', 'Sistema de Gestión de Calidad')
 
 @section('content')
 <div class="content px-3 mt-3">
@@ -12,10 +12,56 @@
 
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Sistema de control de calidad (ISO)</h4>
+            <div>
+                <h4 class="mb-0">Sistema de Gestión de Calidad Educativa</h4>
+                <small class="text-muted">Base documental alineada a ISO 9001 e ISO 21001.</small>
+            </div>
             <div class="btn-group" role="group">
+                <form method="POST" action="{{ route('coordination.quality.bootstrap-iso-base') }}" class="d-inline" onsubmit="return confirm('Esto cargará o actualizará la estructura base ISO 9001 / ISO 21001. ¿Continuar?')">
+                    @csrf
+                    <button class="btn btn-outline-success btn-sm">Cargar base ISO</button>
+                </form>
                 <a href="{{ route('coordination.quality.processes.create') }}" class="btn btn-outline-primary btn-sm">+ Nuevo proceso</a>
-                <a href="{{ route('coordination.quality.documents.create') }}" class="btn btn-primary btn-sm">+ Nuevo PNO</a>
+                <a href="{{ route('coordination.quality.documents.create') }}" class="btn btn-primary btn-sm">+ Nuevo documento</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3 mb-2">
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ $summary['processes'] }}</h3>
+                    <p>Procesos SGC</p>
+                </div>
+                <div class="icon"><i class="fas fa-project-diagram"></i></div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="small-box bg-primary">
+                <div class="inner">
+                    <h3>{{ $summary['documents'] }}</h3>
+                    <p>Documentos</p>
+                </div>
+                <div class="icon"><i class="fas fa-file-alt"></i></div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ $summary['approved'] }}</h3>
+                    <p>Aprobados</p>
+                </div>
+                <div class="icon"><i class="fas fa-check-circle"></i></div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ $summary['pending'] }}</h3>
+                    <p>Pendientes de aprobación</p>
+                </div>
+                <div class="icon"><i class="fas fa-clock"></i></div>
             </div>
         </div>
     </div>
@@ -24,7 +70,7 @@
         <div class="col-md-4 mb-3">
             <div class="card h-100">
                 <div class="card-header">
-                    <strong>Directorio de procesos</strong>
+                    <strong>Mapa de procesos</strong>
                 </div>
                 <div class="card-body p-2">
                     <ul class="list-group list-group-flush">
@@ -35,10 +81,21 @@
                         </li>
                         @forelse($processes as $process)
                             <li class="list-group-item px-2 py-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <a href="{{ route('coordination.quality.index', ['process_id' => $process->id]) }}" class="{{ $selectedProcessId === $process->id ? 'font-weight-bold text-primary' : 'text-dark' }}">
-                                        {{ $process->code ? $process->code.' - ' : '' }}{{ $process->name }}
-                                    </a>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <a href="{{ route('coordination.quality.index', ['process_id' => $process->id]) }}" class="{{ $selectedProcessId === $process->id ? 'font-weight-bold text-primary' : 'text-dark' }}">
+                                            {{ $process->code ? $process->code.' - ' : '' }}{{ $process->name }}
+                                        </a>
+                                        <div>
+                                            <span class="badge badge-light">{{ $processTypeLabels[$process->process_type] ?? $process->process_type }}</span>
+                                            @if($process->iso_9001_clauses)
+                                                <span class="badge badge-info">9001: {{ $process->iso_9001_clauses }}</span>
+                                            @endif
+                                            @if($process->iso_21001_clauses)
+                                                <span class="badge badge-primary">21001: {{ $process->iso_21001_clauses }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
                                     <span class="badge badge-secondary">{{ $process->documents_count }}</span>
                                 </div>
                                 <div class="mt-2">
@@ -46,7 +103,7 @@
                                     <form action="{{ route('coordination.quality.processes.destroy', $process) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar proceso y sus PNOs?')">Eliminar</button>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar proceso y sus documentos?')">Eliminar</button>
                                     </form>
                                 </div>
                             </li>
@@ -61,7 +118,7 @@
         <div class="col-md-8 mb-3">
             <div class="card h-100">
                 <div class="card-header">
-                    <strong>PNOs</strong>
+                    <strong>Información documentada</strong>
                 </div>
                 <div class="card-body table-responsive">
                     <table class="table table-sm table-striped table-hover mb-0">
@@ -69,6 +126,7 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Título</th>
+                                <th>Tipo</th>
                                 <th>Proceso</th>
                                 <th>Versión</th>
                                 <th>Estatus</th>
@@ -80,7 +138,14 @@
                             @forelse($documents as $doc)
                                 <tr>
                                     <td>{{ $doc->code ?? '-' }}</td>
-                                    <td>{{ $doc->title }}</td>
+                                    <td>
+                                        {{ $doc->title }}
+                                        <div class="small text-muted">
+                                            @if($doc->iso_9001_clauses) ISO 9001: {{ $doc->iso_9001_clauses }} @endif
+                                            @if($doc->iso_21001_clauses) | ISO 21001: {{ $doc->iso_21001_clauses }} @endif
+                                        </div>
+                                    </td>
+                                    <td>{{ $documentTypeLabels[$doc->document_type] ?? $doc->document_type }}</td>
                                     <td>{{ $doc->process->name ?? '-' }}</td>
                                     <td>{{ $doc->version ?? '-' }}</td>
                                     <td>
@@ -107,13 +172,13 @@
                                         <form action="{{ route('coordination.quality.documents.destroy', $doc) }}" method="POST" class="d-inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar PNO?')">Eliminar</button>
+                                            <button class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar documento?')">Eliminar</button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">Sin PNOs registrados.</td>
+                                    <td colspan="8" class="text-center text-muted">Sin documentos registrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

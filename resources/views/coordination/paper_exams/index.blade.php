@@ -7,7 +7,10 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Exámenes imprimibles</h4>
-            <a href="{{ route('coordination.paper-exams.create') }}" class="btn btn-primary btn-sm">+ Nuevo examen</a>
+            <div>
+                <a href="{{ route('coordination.paper-exams.schedule') }}" class="btn btn-outline-secondary btn-sm">Horarios</a>
+                <a href="{{ route('coordination.paper-exams.create') }}" class="btn btn-primary btn-sm">+ Nuevo examen</a>
+            </div>
         </div>
         <div class="card-body">
             <table class="table table-striped">
@@ -33,4 +36,3 @@
     </div>
 </div>
 @endsection
-

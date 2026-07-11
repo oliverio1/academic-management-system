@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $isEdit ? 'Editar planeacion' : 'Nueva planeacion')
+@section('title', $isEdit ? 'Editar planeación' : 'Nueva planeación')
 
 @section('content')
 @php
@@ -112,7 +112,7 @@
             <div class="card">
                 <div class="card-header">
                     <h4 class="mb-0">
-                        {{ $isEdit ? 'Editar planeacion didactica' : 'Nueva planeacion didactica' }}
+                        {{ $isEdit ? 'Editar planeación didáctica' : 'Nueva planeación didáctica' }}
                     </h4>
                     <small class="text-muted">{{ $assignment->subject->name }} - Grupo {{ $assignment->group->name }}</small>
                 </div>
@@ -126,7 +126,7 @@
                     <div class="card-body">
                         @if($errors->any())
                             <div class="alert alert-danger">
-                                <strong>Revisa la informacion antes de guardar.</strong>
+                                <strong>Revisa la información antes de guardar.</strong>
                                 <ul class="mb-0 mt-2 pl-3">
                                     @foreach($errors->all() as $error)
                                         <li>{{ $error }}</li>
@@ -138,32 +138,19 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Titulo</label>
+                                    <label>Título</label>
                                     <input type="text" name="title" class="form-control"
-                                           value="{{ old('title', $plan->title ?: 'Planeacion ' . $assignment->subject->name . ' - ' . $assignment->group->name) }}"
+                                           value="{{ old('title', $plan->title ?: 'Planeación ' . $assignment->subject->name . ' - ' . $assignment->group->name) }}"
                                            required>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Ciclo</label>
-                                    <select name="school_cycle_id" id="school_cycle_id" class="form-control" required>
-                                        <option value="">Seleccionar</option>
-                                        @foreach($cycles as $cycle)
-                                            <option value="{{ $cycle->id }}"
-                                                {{ (string) $selectedCycleId === (string) $cycle->id ? 'selected' : '' }}>
-                                                {{ $cycle->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
+                            <input type="hidden" name="school_cycle_id" id="school_cycle_id" value="{{ $selectedCycleId }}">
                         </div>
 
                         <div class="alert alert-light border" id="cycle-range-box">
                             <div>
-                                <strong>Rango de planeacion del ciclo:</strong>
-                                <span id="cycle-range-text" class="text-muted">Selecciona un ciclo para ver el rango permitido.</span>
+                                <strong>Rango de planeación del ciclo actual:</strong>
+                                <span id="cycle-range-text" class="text-muted">No hay ciclo activo configurado.</span>
                             </div>
                             <div class="mt-1 small text-muted" id="cycle-weeks-box" style="display:none;">
                                 <span class="font-weight-bold">Semanas:</span>
@@ -185,14 +172,14 @@
                             </div>
                             <div class="col-md-7">
                                 <div class="form-group">
-                                    <label>Objetivo / progresion</label>
+                                    <label>Objetivo / progresión</label>
                                     <textarea id="unit_objective" name="current_unit_objective" class="form-control" rows="2"></textarea>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label>Renglones de planeacion (tema y actividades)</label>
+                            <label>Renglones de planeación (tema y actividades)</label>
                             <small class="d-block text-muted mb-2">En Recursos y Evaluación puedes seleccionar varias opciones con Ctrl (Windows) o Cmd (Mac).</small>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-sm" id="items-table">
@@ -206,7 +193,7 @@
                                             <th style="min-width: 180px;">Recursos</th>
                                             <th style="min-width: 180px;">Evaluacion</th>
                                             <th style="min-width: 130px;">Inicio</th>
-                                            <th style="min-width: 130px;">Termino</th>
+                                            <th style="min-width: 130px;">Término</th>
                                             <th style="width: 50px;"></th>
                                         </tr>
                                     </thead>
@@ -282,7 +269,7 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-row-btn">+ Agregar renglon</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-row-btn">+ Agregar renglón</button>
                             <button type="button" class="btn btn-info btn-sm" id="save-unit-btn">+ Guardar unidad en tabla temporal</button>
                             <span class="ml-2 badge badge-light" id="units-temp-counter">0 unidades en temporal</span>
                         </div>
@@ -294,7 +281,7 @@
                                     <thead class="thead-light">
                                         <tr>
                                             <th>Unidad</th>
-                                            <th>Objetivo / progresion</th>
+                                            <th>Objetivo / progresión</th>
                                             <th>Renglones</th>
                                             <th style="width: 180px;">Acciones</th>
                                         </tr>
@@ -330,7 +317,7 @@
                     </div>
                     <div class="card-footer d-flex justify-content-between">
                         <a href="{{ route('teacher.didactic-plans.plans', $assignment) }}" class="btn btn-secondary">Cancelar</a>
-                        <button class="btn btn-primary">Guardar planeacion</button>
+                        <button class="btn btn-primary">Guardar planeación</button>
                     </div>
                 </form>
             </div>
@@ -684,13 +671,13 @@
         }
 
         if (!items.length) {
-            if (showAlerts) alert('Agrega al menos un renglon antes de guardar la unidad.');
+            if (showAlerts) alert('Agrega al menos un renglón antes de guardar la unidad.');
             return false;
         }
 
         const invalid = items.find((item) => !item.temario_point_id || !item.start_date || !item.end_date);
         if (invalid) {
-            if (showAlerts) alert('Cada renglon debe tener tema, fecha de inicio y fecha de termino.');
+            if (showAlerts) alert('Cada renglón debe tener tema, fecha de inicio y fecha de término.');
             return false;
         }
 
@@ -847,7 +834,7 @@
         const cycle = selectedCycle();
 
         if (!cycle || !cycle.start_date || !cycle.end_date) {
-            rangeText.textContent = 'Selecciona un ciclo para ver el rango permitido.';
+            rangeText.textContent = 'No hay ciclo activo configurado.';
             weeksBox.style.display = 'none';
             weeksRanges.innerHTML = '';
             tableBody.querySelectorAll('tr').forEach(applyCycleLimitsToRow);
@@ -876,7 +863,7 @@
             const rows = collectCurrentRows();
 
             if (rows.length && currentValue !== previousFieldTrainingValue) {
-                const shouldClear = confirm('Detecte renglones capturados. ¿Quieres limpiarlos al cambiar la unidad?');
+                const shouldClear = confirm('Detecté renglones capturados. ¿Quieres limpiarlos al cambiar la unidad?');
                 if (shouldClear) {
                     clearCurrentRows();
                 }
@@ -959,7 +946,7 @@
                 const saved = saveCurrentUnitToTemp(false);
                 if (!saved) {
                     event.preventDefault();
-                    alert('Falta seleccionar campo formativo o completar renglones antes de guardar la planeacion.');
+                    alert('Falta seleccionar campo formativo o completar renglones antes de guardar la planeación.');
                     return;
                 }
             }

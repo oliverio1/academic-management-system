@@ -123,6 +123,12 @@ class StudentPortalController extends Controller
             ->orderBy('title')
             ->get();
 
+        $practices = $assignment->practices()
+            ->with('submissions.team.students')
+            ->orderBy('due_date')
+            ->orderBy('number')
+            ->get();
+
         $grades = Grade::query()
             ->where('student_id', $student->id)
             ->whereIn('activity_id', $activities->pluck('id'))
@@ -160,6 +166,7 @@ class StudentPortalController extends Controller
             'sessions' => $sessions,
             'attendancePercentage' => $attendancePercentage,
             'activities' => $activities,
+            'practices' => $practices,
             'grades' => $grades,
             'gradeBreakdownRows' => $breakdown['rows'] ?? [],
             'finalGrade' => $breakdown['final'] ?? null,

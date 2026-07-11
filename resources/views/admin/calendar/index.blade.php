@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Calendario escolar')
+@section('title', 'Días feriados y vacaciones')
 
 @section('content')
 @if(session('success'))
@@ -23,11 +23,11 @@
                 <div class="card-header">
                     <div class="row">
                         <div class="col-sm-6">
-                            <h4>Calendario escolar</h4>
+                            <h4>Días feriados y vacaciones</h4>
                         </div>
                         <div class="col-sm-6 text-right">
                             <a href="{{ route('academic-calendar-days.create') }}" class="btn btn-primary">
-                                Nuevo día
+                                Nuevo día feriado
                             </a>
                         </div>
                     </div>

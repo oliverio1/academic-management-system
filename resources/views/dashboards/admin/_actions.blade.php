@@ -27,7 +27,7 @@
     <div class="col-md-3 mb-3">
         <a href="{{ route('academic-calendar-days.index') }}"
            class="btn btn-outline-info btn-block">
-            Calendarios
+            Feriados y vacaciones
         </a>
     </div>
 </div>

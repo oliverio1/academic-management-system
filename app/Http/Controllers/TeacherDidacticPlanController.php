@@ -305,7 +305,7 @@ class TeacherDidacticPlanController extends Controller
 
         return redirect()
             ->route('teacher.didactic-plans.plans', $assignment)
-            ->with('success', 'Planeacion didactica creada correctamente.');
+            ->with('success', 'Planeación didáctica creada correctamente.');
     }
 
     public function edit(DidacticPlan $plan)
@@ -355,7 +355,7 @@ class TeacherDidacticPlanController extends Controller
 
         return redirect()
             ->route('teacher.didactic-plans.plans', $assignment)
-            ->with('success', 'Planeacion didactica actualizada correctamente.');
+            ->with('success', 'Planeación didáctica actualizada correctamente.');
     }
 
     public function destroy(DidacticPlan $plan)
@@ -366,7 +366,7 @@ class TeacherDidacticPlanController extends Controller
 
         $plan->delete();
 
-        return back()->with('success', 'Planeacion eliminada.');
+        return back()->with('success', 'Planeación eliminada.');
     }
 
     public function pdf(DidacticPlan $plan)
@@ -629,7 +629,7 @@ class TeacherDidacticPlanController extends Controller
         foreach ($items as $idx => $item) {
             if (!empty($item['start_date']) && !empty($item['end_date']) && $item['end_date'] < $item['start_date']) {
                 throw ValidationException::withMessages([
-                    "items.$idx.end_date" => 'La fecha termino de cada tema debe ser mayor o igual a la fecha inicio.',
+                    "items.$idx.end_date" => 'La fecha término de cada tema debe ser mayor o igual a la fecha inicio.',
                 ]);
             }
 
@@ -642,7 +642,7 @@ class TeacherDidacticPlanController extends Controller
 
                 if (!empty($item['end_date']) && ($item['end_date'] < $cycleStart || $item['end_date'] > $cycleEnd)) {
                     throw ValidationException::withMessages([
-                        "items.$idx.end_date" => 'La fecha termino debe estar dentro del ciclo escolar seleccionado.',
+                        "items.$idx.end_date" => 'La fecha término debe estar dentro del ciclo escolar seleccionado.',
                     ]);
                 }
             }
@@ -790,7 +790,7 @@ class TeacherDidacticPlanController extends Controller
             return ['name' => '', 'objective' => null];
         }
 
-        if (preg_match('/^(.*?)\s*\|\s*Objetivo\s+especifico:\s*(.+)$/ui', $raw, $matches) === 1) {
+        if (preg_match('/^(.*?)\s*\|\s*Objetivo(?:\s+espec[íi]fico)?\s*:\s*(.+)$/ui', $raw, $matches) === 1) {
             $name = trim((string) ($matches[1] ?? ''));
             $objective = trim((string) ($matches[2] ?? ''));
 

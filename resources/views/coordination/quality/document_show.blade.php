@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detalle PNO')
+@section('title', 'Detalle documento SGC')
 
 @section('content')
 <div class="content px-3 mt-3">
@@ -10,11 +10,24 @@
                 <h4 class="mb-0">{{ $document->title }}</h4>
                 <small class="text-muted">{{ $document->code ?: 'Sin código' }} | Versión {{ $document->version ?: 'N/D' }}</small>
             </div>
-            <a href="{{ route('coordination.quality.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+            <div>
+                <a href="{{ route('coordination.quality.documents.edit', $document) }}" class="btn btn-outline-warning btn-sm">Editar</a>
+                <a href="{{ route('coordination.quality.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+            </div>
         </div>
         <div class="card-body">
-            <p><strong>Proceso:</strong> {{ $document->process->name ?? '-' }}</p>
-            <p><strong>Estatus:</strong> {{ $document->status }} | <strong>Aprobación:</strong> {{ $document->approval_status }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Proceso:</strong> {{ $document->process->name ?? '-' }}</p>
+                    <p><strong>Tipo:</strong> {{ \App\Models\QualityDocument::DOCUMENT_TYPE_LABELS[$document->document_type] ?? $document->document_type }}</p>
+                    <p><strong>Responsable:</strong> {{ $document->owner ?: '-' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Estatus:</strong> {{ $document->status }} | <strong>Aprobación:</strong> {{ $document->approval_status }}</p>
+                    <p><strong>ISO 9001:</strong> {{ $document->iso_9001_clauses ?: '-' }}</p>
+                    <p><strong>ISO 21001:</strong> {{ $document->iso_21001_clauses ?: '-' }}</p>
+                </div>
+            </div>
             <p><strong>Contenido:</strong></p>
             <div class="border rounded p-3" style="white-space: pre-wrap;">{{ $document->content ?: 'Sin contenido.' }}</div>
         </div>
@@ -56,13 +69,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($document->versions as $v)
+                    @forelse($document->versions as $version)
                         <tr>
-                            <td>{{ $v->version }}</td>
-                            <td>{{ $v->approval_status }}</td>
-                            <td>{{ $v->change_summary ?: '-' }}</td>
-                            <td>{{ optional($v->submittedBy)->name ?: '-' }}</td>
-                            <td>{{ optional($v->approvedBy)->name ?: '-' }}</td>
+                            <td>{{ $version->version }}</td>
+                            <td>{{ $version->approval_status }}</td>
+                            <td>{{ $version->change_summary ?: '-' }}</td>
+                            <td>{{ optional($version->submittedBy)->name ?: '-' }}</td>
+                            <td>{{ optional($version->approvedBy)->name ?: '-' }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="text-center text-muted">Sin versiones.</td></tr>
@@ -96,4 +109,3 @@
     </div>
 </div>
 @endsection
-

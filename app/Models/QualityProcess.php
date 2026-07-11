@@ -6,11 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class QualityProcess extends Model
 {
+    public const PROCESS_TYPE_LABELS = [
+        'strategic' => 'Estratégico',
+        'core' => 'Operativo / educativo',
+        'support' => 'Soporte',
+        'evaluation' => 'Evaluación y mejora',
+    ];
+
     protected $fillable = [
         'parent_id',
         'code',
         'name',
         'description',
+        'process_type',
+        'iso_9001_clauses',
+        'iso_21001_clauses',
         'sort_order',
         'is_active',
     ];
@@ -30,4 +40,3 @@ class QualityProcess extends Model
         return $this->hasMany(QualityDocument::class)->orderBy('title');
     }
 }
-

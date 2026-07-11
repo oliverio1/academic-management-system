@@ -1,6 +1,6 @@
 ﻿@extends('layouts.app')
 
-@section('title', 'Planeacion didactica')
+@section('title', 'Planeación didáctica')
 
 @section('content')
 <div class="content px-3">
@@ -8,7 +8,7 @@
         <div class="col-md-12 mt-3">
             <div class="card">
                 <div class="card-header">
-                    <h4 class="mb-0">PlaneaciÃ³n didÃ¡ctica por materia</h4>
+                    <h4 class="mb-0">Planeación didáctica por materia</h4>
                 </div>
                 <div class="card-body">
                     @if($assignments->isEmpty())
@@ -22,8 +22,8 @@
                                     <tr>
                                         <th>Materia</th>
                                         <th>Grupo</th>
-                                        <th>Estatus planeaciÃ³n</th>
-                                        <th class="text-right">AcciÃ³n</th>
+                                        <th>Estatus planeación</th>
+                                        <th class="text-right">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
