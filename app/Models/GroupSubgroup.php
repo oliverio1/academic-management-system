@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GroupSubgroup extends Model
 {
@@ -28,6 +30,21 @@ class GroupSubgroup extends Model
     public function division(): BelongsTo
     {
         return $this->belongsTo(GroupDivision::class, 'group_division_id');
+    }
+
+    public function classOfferingAssignments(): HasMany
+    {
+        return $this->hasMany(ClassOfferingSubgroup::class, 'group_subgroup_id');
+    }
+
+    public function classOfferings(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ClassOffering::class,
+            'class_offering_subgroups'
+        )
+            ->withPivot(['weekly_periods', 'is_active'])
+            ->withTimestamps();
     }
 
     public function scopeActive($query)
