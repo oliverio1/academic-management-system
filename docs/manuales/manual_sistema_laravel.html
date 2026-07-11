@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual básico del Sistema Laravel</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 15mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2937;
+    line-height: 1.45;
+    font-size: 12px;
+    background: #ffffff;
+  }
+  h1, h2, h3 { margin: 0; }
+  h1 { font-size: 28px; letter-spacing: -0.3px; }
+  h2 {
+    font-size: 18px;
+    margin: 22px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #dbeafe;
+    color: #1d4ed8;
+  }
+  h3 { font-size: 14px; margin: 14px 0 8px; color: #111827; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 7px 0 0 18px; padding: 0; }
+  li { margin: 4px 0; }
+  .cover {
+    min-height: 94vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 18% 18%, #dbeafe 0, #dbeafe 23%, transparent 24%),
+      radial-gradient(circle at 86% 82%, #dcfce7 0, #dcfce7 19%, transparent 20%),
+      linear-gradient(135deg, #eff6ff 0%, #ffffff 56%, #f0fdf4 100%);
+  }
+  .coverbox {
+    width: 88%;
+    border: 2px solid #2563eb;
+    border-radius: 18px;
+    padding: 34px 32px;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 20px 44px rgba(37,99,235,0.12);
+  }
+  .cover-title { color: #1e3a8a; }
+  .cover-subtitle { color: #2563eb; margin-top: 8px; }
+  .muted { color: #6b7280; }
+  .badge {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: 11px;
+    margin: 10px 4px 0 0;
+  }
+  .page-break { page-break-before: always; }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 9px;
+  }
+  .card {
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px;
+  }
+  .card.blue { border-color: #bfdbfe; background: #eff6ff; }
+  .card.green { border-color: #bbf7d0; background: #f0fdf4; }
+  .card.yellow { border-color: #fde68a; background: #fffbeb; }
+  .card.red { border-color: #fecaca; background: #fef2f2; }
+  .tag {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 10px;
+    font-weight: 700;
+    margin: 2px 2px 2px 0;
+  }
+  .diagram {
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f8fafc;
+    margin: 12px 0;
+  }
+  .topbar {
+    height: 42px;
+    background: #1e40af;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    font-weight: 700;
+  }
+  .select-pill, .icon-pill {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+  .spacer { flex: 1; }
+  .layout {
+    display: grid;
+    grid-template-columns: 154px 1fr;
+    min-height: 238px;
+  }
+  .sidebar {
+    background: #111827;
+    color: #e5e7eb;
+    padding: 10px;
+  }
+  .menu-title {
+    color: #93c5fd;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin: 7px 0 5px;
+  }
+  .menu-item {
+    border-radius: 8px;
+    padding: 6px 7px;
+    background: rgba(255,255,255,0.06);
+    margin-bottom: 5px;
+    font-size: 10.5px;
+  }
+  .content {
+    padding: 12px;
+  }
+  .content-title {
+    height: 28px;
+    width: 58%;
+    background: #dbeafe;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+  .mini-card {
+    height: 58px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    padding: 8px;
+  }
+  .line {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 8px;
+    margin: 6px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  th, td {
+    border: 1px solid #e5e7eb;
+    padding: 7px 8px;
+    vertical-align: top;
+  }
+  th {
+    background: #eff6ff;
+    color: #1e40af;
+    text-align: left;
+  }
+  .ok { color: #047857; font-weight: 700; }
+  .warn { color: #b45309; font-weight: 700; }
+  .danger { color: #b91c1c; font-weight: 700; }
+  .step {
+    display: flex;
+    gap: 9px;
+    margin: 8px 0;
+  }
+  .num {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+  }
+  .footer-note {
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-left: 4px solid #2563eb;
+    background: #eff6ff;
+    border-radius: 8px;
+  }
+</style>
+</head>
+<body>
+<section class="cover">
+  <div class="coverbox">
+    <p class="badge">SGE Laravel</p>
+    <p class="badge">Guía básica</p>
+    <h1 class="cover-title">Manual de uso del sistema</h1>
+    <h1 class="cover-subtitle">Laravel · Coordinación, docentes, prefectura, alumnos y tutores</h1>
+    <p class="muted" style="margin-top:14px;">Guía visual para saber qué módulo usar, qué modificar y qué evitar dentro del sistema.</p>
+    <p><strong>Fecha:</strong> 03/06/2026</p>
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>1. Estructura general</h2>
+  <p>El sistema se organiza por rol. Cada usuario ve solamente las opciones relacionadas con sus permisos.</p>
+  <div class="diagram">
+    <div class="topbar">
+      <span>SGE</span>
+      <span class="select-pill">Campus activo</span>
+      <span class="spacer"></span>
+      <span class="icon-pill">Notificaciones</span>
+      <span class="icon-pill">Usuario</span>
+    </div>
+    <div class="layout">
+      <div class="sidebar">
+        <div class="menu-title">Menú lateral</div>
+        <div class="menu-item">Inicio</div>
+        <div class="menu-item">Día a día</div>
+        <div class="menu-item">Reportes</div>
+        <div class="menu-item">Configuración</div>
+        <div class="menu-item">Usuario</div>
+      </div>
+      <div class="content">
+        <div class="content-title"></div>
+        <div class="grid-3">
+          <div class="mini-card"><strong>Módulo</strong><div class="line"></div><div class="line" style="width:70%;"></div></div>
+          <div class="mini-card"><strong>Filtros</strong><div class="line"></div><div class="line" style="width:60%;"></div></div>
+          <div class="mini-card"><strong>Acciones</strong><div class="line"></div><div class="line" style="width:75%;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card green">
+      <h3>Elementos principales</h3>
+      <ul>
+        <li><strong>Campus activo:</strong> confirma que trabajas en la escuela correcta antes de capturar o revisar información.</li>
+        <li><strong>Menú lateral:</strong> muestra los módulos disponibles según tu rol.</li>
+        <li><strong>Notificaciones:</strong> concentra avisos y eventos pendientes.</li>
+        <li><strong>Usuario:</strong> permite cerrar sesión de forma segura.</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Antes de capturar</h3>
+      <ul>
+        <li>Verifica campus, grupo, ciclo y parcial.</li>
+        <li>Usa filtros antes de guardar cambios masivos.</li>
+        <li>Lee los mensajes de confirmación del sistema.</li>
+        <li>No cierres la pantalla mientras se procesa una operación.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>2. Roles y módulos</h2>
+  <p>El menú cambia de acuerdo con el tipo de usuario. Esta tabla resume qué puede consultar o administrar cada rol.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Rol</th>
+        <th>Uso principal</th>
+        <th>Módulos visibles</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Coordinación</strong></td>
+        <td>Operación académica, seguimiento, reportes y comunicación.</td>
+        <td>Justificantes, expediente docente, revisión de reportes, seguimientos, suspensiones, avisos, cambio de grupos y calendario.</td>
+      </tr>
+      <tr>
+        <td><strong>Administración</strong></td>
+        <td>Configuración completa del sistema y control escolar.</td>
+        <td>Día a día, actas, asistencia docente, cartera vencida, historial del alumno, ciclos, grupos, materias, profesores, horarios, importaciones y exámenes.</td>
+      </tr>
+      <tr>
+        <td><strong>Docente</strong></td>
+        <td>Trabajo diario con clases, reportes y exámenes.</td>
+        <td>Mis clases, bancos de preguntas, exámenes, reportes, avisos, justificantes y documentos solicitados.</td>
+      </tr>
+      <tr>
+        <td><strong>Prefectura</strong></td>
+        <td>Registro operativo por grupo y reportes de prefectura.</td>
+        <td>Grupos y reportes.</td>
+      </tr>
+      <tr>
+        <td><strong>Alumno</strong></td>
+        <td>Consulta personal y comunicación de situaciones escolares.</td>
+        <td>Inicio, mis reportes, reportar situación, seguimientos y exámenes en línea.</td>
+      </tr>
+      <tr>
+        <td><strong>Tutor</strong></td>
+        <td>Consulta del avance del alumno.</td>
+        <td>Aprovechamiento, asistencia, estado de cuenta y seguimientos.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="page-break">
+  <h2>3. Coordinación y administración</h2>
+  <p>Estos módulos son los más sensibles porque afectan información académica, usuarios, grupos y ciclos.</p>
+  <div class="grid-2">
+    <div class="card blue">
+      <h3>Día a día</h3>
+      <span class="tag">Faltas consecutivas</span>
+      <span class="tag">Sesiones saltadas</span>
+      <span class="tag">Justificantes</span>
+      <span class="tag">Revisión académica</span>
+      <p>Sirve para detectar incidencias recientes y dar seguimiento operativo.</p>
+    </div>
+    <div class="card blue">
+      <h3>Reportes y seguimiento</h3>
+      <span class="tag">Docentes</span>
+      <span class="tag">Alumnos</span>
+      <span class="tag">Prefectura</span>
+      <span class="tag">Suspensiones</span>
+      <p>Úsalo para revisar reportes, documentar acuerdos y consultar antecedentes.</p>
+    </div>
+    <div class="card green">
+      <h3>Historial del alumno</h3>
+      <span class="tag">Expediente</span>
+      <span class="tag">Alta</span>
+      <span class="tag">Cambio de grupo</span>
+      <p>Permite administrar información del alumno y conservar trazabilidad escolar.</p>
+    </div>
+    <div class="card yellow">
+      <h3>Configuración académica</h3>
+      <span class="tag">Campus</span>
+      <span class="tag">Materias</span>
+      <span class="tag">Profesores</span>
+      <span class="tag">Ciclos</span>
+      <span class="tag">Horarios</span>
+      <p>Modifica estos catálogos solo cuando tengas certeza del ciclo y campus correctos.</p>
+    </div>
+  </div>
+  <div class="footer-note">
+    <strong>Regla práctica:</strong> si el cambio afecta ciclos, grupos, horarios, profesores o importaciones, conviene hacer respaldo o validar con dirección antes de guardar.
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>4. Qué mover y qué no mover</h2>
+  <div class="grid-2">
+    <div class="card green">
+      <h3 class="ok">Sí mover / capturar</h3>
+      <ul>
+        <li>Filtros de campus, grupo, ciclo y parcial.</li>
+        <li>Reportes, seguimientos, avisos y justificantes.</li>
+        <li>Datos de contacto cuando sean corregidos oficialmente.</li>
+        <li>Altas o cambios de grupo siguiendo el flujo del sistema.</li>
+        <li>Horarios y materias cuando estén confirmados para el ciclo.</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h3 class="danger">No mover sin validar</h3>
+      <ul>
+        <li>No borrar alumnos, profesores, materias o grupos con historial.</li>
+        <li>No cambiar ciclos activos si hay capturas en curso.</li>
+        <li>No duplicar matrículas, correos o claves de usuario.</li>
+        <li>No ejecutar importaciones sin revisar archivo fuente.</li>
+        <li>No modificar campus equivocado: primero revisa el selector superior.</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Flujo recomendado para cambios sensibles</h3>
+  <div class="step"><span class="num">1</span><div><strong>Revisa contexto:</strong> campus, ciclo, parcial, grupo y alumno/profesor afectado.</div></div>
+  <div class="step"><span class="num">2</span><div><strong>Confirma fuente:</strong> usa listas oficiales, horario vigente o autorización correspondiente.</div></div>
+  <div class="step"><span class="num">3</span><div><strong>Guarda con cuidado:</strong> espera la confirmación del sistema antes de cambiar de pantalla.</div></div>
+  <div class="step"><span class="num">4</span><div><strong>Verifica resultado:</strong> vuelve a consultar el registro para confirmar que el cambio quedó aplicado.</div></div>
+</section>
+
+<section class="page-break">
+  <h2>5. Docentes</h2>
+  <p>El docente trabaja principalmente desde sus clases y desde los módulos de evaluación, reportes y exámenes.</p>
+  <div class="diagram">
+    <div class="topbar"><span>Vista docente</span><span class="spacer"></span><span class="icon-pill">Mis clases</span></div>
+    <div class="layout">
+      <div class="sidebar">
+        <div class="menu-title">Docente</div>
+        <div class="menu-item">Inicio</div>
+        <div class="menu-item">Mis clases</div>
+        <div class="menu-item">Exámenes</div>
+        <div class="menu-item">Reportes</div>
+        <div class="menu-item">Avisos</div>
+      </div>
+      <div class="content">
+        <div class="grid-2">
+          <div class="mini-card"><strong>Clase / grupo</strong><div class="line"></div><div class="line" style="width:60%;"></div></div>
+          <div class="mini-card"><strong>Acciones</strong><div class="line"></div><div class="line" style="width:75%;"></div></div>
+          <div class="mini-card"><strong>Banco de preguntas</strong><div class="line"></div><div class="line" style="width:65%;"></div></div>
+          <div class="mini-card"><strong>Reportes</strong><div class="line"></div><div class="line" style="width:80%;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card green">
+      <h3>Puede usar</h3>
+      <ul>
+        <li><strong>Mis clases:</strong> consulta de grupos y accesos de trabajo.</li>
+        <li><strong>Exámenes:</strong> bancos, plantillas e intentos.</li>
+        <li><strong>Reportes:</strong> registro y seguimiento de situaciones académicas.</li>
+        <li><strong>Avisos:</strong> documentos solicitados, justificantes y comunicación.</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Cuidado docente</h3>
+      <ul>
+        <li>Revisar grupo y materia antes de capturar.</li>
+        <li>No duplicar bancos o exámenes sin motivo.</li>
+        <li>Guardar cambios y esperar confirmación.</li>
+        <li>Reportar errores de grupo o alumno a coordinación.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>6. Prefectura, alumnos y tutores</h2>
+  <div class="grid-3">
+    <div class="card blue">
+      <h3>Prefectura</h3>
+      <ul>
+        <li>Entrar a <strong>Grupos</strong> para trabajo operativo.</li>
+        <li>Registrar incidencias con el grupo correcto.</li>
+        <li>Consultar <strong>Reportes</strong> para seguimiento.</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Alumnos</h3>
+      <ul>
+        <li>Consultar inicio y reportes personales.</li>
+        <li>Reportar situaciones escolares.</li>
+        <li>Revisar seguimientos y exámenes en línea.</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Tutores</h3>
+      <ul>
+        <li>Consultar aprovechamiento académico.</li>
+        <li>Revisar asistencia.</li>
+        <li>Consultar estado de cuenta y seguimientos.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-note">
+    <strong>Importante:</strong> alumno y tutor son roles de consulta y comunicación. Si detectan información incorrecta, deben reportarla; no deben intentar resolverla cambiando datos administrativos.
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>7. Checklist rápido</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Antes de hacer cambios</th>
+        <th>Por qué importa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Confirmar campus activo.</td>
+        <td>Evita modificar información de otra escuela.</td>
+      </tr>
+      <tr>
+        <td>Confirmar ciclo, parcial y grupo.</td>
+        <td>Evita capturas o reportes en periodo equivocado.</td>
+      </tr>
+      <tr>
+        <td>Buscar antes de crear.</td>
+        <td>Evita duplicar alumnos, profesores, tutores o materias.</td>
+      </tr>
+      <tr>
+        <td>Preferir desactivar o conservar historial antes que borrar.</td>
+        <td>Protege reportes, calificaciones, asistencias y trazabilidad.</td>
+      </tr>
+      <tr>
+        <td>Validar importaciones con archivo fuente.</td>
+        <td>Reduce errores masivos difíciles de corregir.</td>
+      </tr>
+      <tr>
+        <td>Esperar mensajes de éxito o error.</td>
+        <td>Confirma si el sistema terminó la operación.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="footer-note">
+    <strong>Resumen:</strong> el sistema está pensado para operar por campus, rol y ciclo. Si esos tres datos están correctos, la mayoría de errores se evitan desde el inicio.
+  </div>
+</section>
+</body>
+</html>
