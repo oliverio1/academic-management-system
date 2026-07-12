@@ -64,6 +64,8 @@ class DashboardController extends Controller
         return view('dashboards.admin', [
             'alerts' => $data['alerts'],
             'metrics' => $data['metrics'],
+            'activeCycle' => $this->activeCycle(),
+            'generatedAt' => now(),
         ]);
     }
 

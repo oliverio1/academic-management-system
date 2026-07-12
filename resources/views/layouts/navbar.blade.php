@@ -90,7 +90,7 @@
         <li class="nav-item dropdown user-menu">
             <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
                 <span class="d-none d-md-inline">
-                    {{ Auth::user()->name }}
+                    {{ $currentUser?->name ?? 'Invitado' }}
                 </span>
             </a>
 
@@ -98,9 +98,9 @@
 
                 <li class="user-header bg-secondary">
                     <p>
-                        {{ Auth::user()->name }} <br>
+                        {{ $currentUser?->name ?? 'Invitado' }} <br>
                         <small>
-                            {{ auth()->user()->role_label }}
+                            {{ $currentUser?->role_label ?? 'Sin sesion' }}
                         </small>
                     </p>
                 </li>
