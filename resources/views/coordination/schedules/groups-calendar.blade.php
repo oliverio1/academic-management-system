@@ -71,7 +71,7 @@
                                 <select name="school_cycle_id" id="school_cycle_id" class="form-control">
                                     @foreach(($cycles ?? collect()) as $cycle)
                                         <option value="{{ $cycle->id }}" {{ (string) ($selectedCycleId ?? '') === (string) $cycle->id ? 'selected' : '' }}>
-                                            {{ $cycle->name }} ({{ $cycle->code }})
+                                            {{ $cycle->name }} ({{ $cycle->code }}) @if($cycle->campus) - {{ $cycle->campus->code }} @endif
                                         </option>
                                     @endforeach
                                 </select>
@@ -89,12 +89,20 @@
                     @else
                         <div class="alert alert-info">
                             <strong>Ciclo seleccionado:</strong> {{ $activeCycle->name }} ({{ $activeCycle->code }})
+                            <span class="ml-2">
+                                <strong>Campus activo:</strong> {{ $activeCampus?->code ?? 'Sin filtro' }}
+                            </span>
                         </div>
                     @endif
 
                     @if($groupCalendars->isEmpty())
                         <div class="alert alert-secondary">
-                            No hay grupos activos en el ciclo seleccionado.
+                            No hay grupos activos para el ciclo seleccionado
+                            @if($activeCampus)
+                                en el campus {{ $activeCampus->code }}.
+                            @else
+                                con el filtro actual.
+                            @endif
                         </div>
                     @endif
 

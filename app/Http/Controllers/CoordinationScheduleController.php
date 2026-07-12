@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Group;
+use App\Models\Campus;
 use App\Models\Schedule;
 use App\Models\Subject;
 use App\Models\Teacher;
@@ -130,8 +131,10 @@ class CoordinationScheduleController extends Controller
     public function groupsCalendar(Request $request)
     {
         $activeCampusId = $this->activeCampusId();
+        $activeCampus = $activeCampusId > 0 ? Campus::query()->find($activeCampusId) : null;
 
         $cycles = SchoolCycle::query()
+            ->with('campus')
             ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
                 $q->where(function ($qq) use ($activeCampusId) {
                     $qq->where('campus_id', $activeCampusId)
@@ -155,6 +158,7 @@ class CoordinationScheduleController extends Controller
                 'activeCycle' => null,
                 'cycles' => $cycles,
                 'selectedCycleId' => null,
+                'activeCampus' => $activeCampus,
                 'dayOptions' => self::DAY_OPTIONS,
                 'groupCalendars' => collect(),
             ]);
@@ -226,6 +230,7 @@ class CoordinationScheduleController extends Controller
             'activeCycle' => $activeCycle,
             'cycles' => $cycles,
             'selectedCycleId' => (int) $activeCycle->id,
+            'activeCampus' => $activeCampus,
             'dayOptions' => self::DAY_OPTIONS,
             'groupCalendars' => $groupCalendars,
         ]);
