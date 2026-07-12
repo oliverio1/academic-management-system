@@ -144,7 +144,12 @@ class ImportMasterScheduleCommand extends Command
     {
         $tenantId = trim((string) $this->option('tenant'));
         if ($tenantId === '') {
-            return true;
+            if ((string) tenant('id') !== '') {
+                return true;
+            }
+
+            $this->error('Indica --tenant=ID para evitar importar datos fuera del tenant.');
+            return false;
         }
 
         $tenant = Tenant::query()->find($tenantId);

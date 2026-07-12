@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Imports\AttendanceImportController;
 use App\Http\Controllers\Imports\GradesImportController;
+use App\Http\Controllers\Imports\MasterScheduleImportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,10 +14,18 @@ use App\Http\Controllers\Imports\GradesImportController;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:coordinator|admin'])
+Route::middleware(['auth', 'role:coordinator|admin', 'campus.access'])
     ->prefix('imports')
     ->as('imports.')
     ->group(function () {
+        Route::get('master-schedule', [MasterScheduleImportController::class, 'create'])
+            ->name('master-schedule.create');
+
+        Route::post('master-schedule/preview', [MasterScheduleImportController::class, 'preview'])
+            ->name('master-schedule.preview');
+
+        Route::post('master-schedule/import', [MasterScheduleImportController::class, 'import'])
+            ->name('master-schedule.import');
 
         /*
         |--------------------------------------------------------------------------

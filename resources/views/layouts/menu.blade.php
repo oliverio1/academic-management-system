@@ -471,6 +471,13 @@
             </a>
         </li>
         <li class="nav-item">
+            <a href="{{ route('imports.master-schedule.create') }}"
+               class="nav-link {{ isActive('imports.master-schedule.*') }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Importar horario maestro</p>
+            </a>
+        </li>
+        <li class="nav-item">
             <a href="{{ route('imports.grades.create') }}"
                class="nav-link {{ isActive('imports.grades.*') }}">
                 <i class="far fa-circle nav-icon"></i>
