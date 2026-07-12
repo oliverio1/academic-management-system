@@ -131,20 +131,30 @@ class CoordinationScheduleController extends Controller
     {
         $activeCampusId = $this->activeCampusId();
 
-        $activeCycle = SchoolCycle::query()
+        $cycles = SchoolCycle::query()
             ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
                 $q->where(function ($qq) use ($activeCampusId) {
                     $qq->where('campus_id', $activeCampusId)
                         ->orWhereHas('campuses', fn ($cq) => $cq->where('campuses.id', $activeCampusId));
                 });
             })
-            ->where('is_active', true)
             ->orderByDesc('start_date')
-            ->first();
+            ->get();
+
+        $selectedCycleId = (int) $request->query('school_cycle_id', 0);
+        $activeCycle = $selectedCycleId > 0
+            ? $cycles->firstWhere('id', $selectedCycleId)
+            : $this->resolveDefaultCycle($cycles);
+
+        if ($selectedCycleId > 0 && ! $activeCycle) {
+            abort(404);
+        }
 
         if (! $activeCycle) {
             return view('coordination.schedules.groups-calendar', [
                 'activeCycle' => null,
+                'cycles' => $cycles,
+                'selectedCycleId' => null,
                 'dayOptions' => self::DAY_OPTIONS,
                 'groupCalendars' => collect(),
             ]);
@@ -214,6 +224,8 @@ class CoordinationScheduleController extends Controller
 
         return view('coordination.schedules.groups-calendar', [
             'activeCycle' => $activeCycle,
+            'cycles' => $cycles,
+            'selectedCycleId' => (int) $activeCycle->id,
             'dayOptions' => self::DAY_OPTIONS,
             'groupCalendars' => $groupCalendars,
         ]);

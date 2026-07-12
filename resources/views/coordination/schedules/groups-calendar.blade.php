@@ -64,13 +64,31 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <form method="GET" action="{{ route('coordination.schedules.groups-calendar') }}" class="mb-3">
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <label for="school_cycle_id" class="form-label">Ciclo escolar</label>
+                                <select name="school_cycle_id" id="school_cycle_id" class="form-control">
+                                    @foreach(($cycles ?? collect()) as $cycle)
+                                        <option value="{{ $cycle->id }}" {{ (string) ($selectedCycleId ?? '') === (string) $cycle->id ? 'selected' : '' }}>
+                                            {{ $cycle->name }} ({{ $cycle->code }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2 mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-primary btn-block">Ver ciclo</button>
+                            </div>
+                        </div>
+                    </form>
+
                     @if(!$activeCycle)
                         <div class="alert alert-warning">
-                            No hay ciclo activo configurado.
+                            No hay ciclos configurados para el campus seleccionado.
                         </div>
                     @else
                         <div class="alert alert-info">
-                            <strong>Ciclo activo:</strong> {{ $activeCycle->name }} ({{ $activeCycle->code }})
+                            <strong>Ciclo seleccionado:</strong> {{ $activeCycle->name }} ({{ $activeCycle->code }})
                         </div>
                     @endif
 
@@ -178,6 +196,21 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('page_scripts')
+<script>
+    (function () {
+        const cycleSelect = document.getElementById('school_cycle_id');
+        if (!cycleSelect) {
+            return;
+        }
+
+        cycleSelect.addEventListener('change', function () {
+            this.form.submit();
+        });
+    })();
+</script>
 @endsection
 
 @section('page_css')
