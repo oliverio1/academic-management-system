@@ -14,7 +14,7 @@ use App\Http\Controllers\Imports\MasterScheduleImportController;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:coordinator|admin', 'campus.access'])
+Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.prevent-central', 'campus.access'])
     ->prefix('imports')
     ->as('imports.')
     ->group(function () {
