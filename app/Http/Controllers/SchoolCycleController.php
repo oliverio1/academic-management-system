@@ -6,6 +6,7 @@ use App\Models\Modality;
 use App\Models\Campus;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
+use App\Models\Schedule;
 use App\Models\CyclePartial;
 use App\Models\Group;
 use App\Services\CyclePartialDefaultsService;
@@ -26,6 +27,29 @@ class SchoolCycleController extends Controller
         $campuses = Campus::query()->where('is_active', true)->orderBy('name')->get();
         $cycles = SchoolCycle::with(['campus', 'campuses', 'modality', 'modalities'])->orderByDesc('start_date')->get();
         return view('school_cycles.create', compact('modalities', 'campuses', 'cycles'));
+    }
+
+    public function show(SchoolCycle $schoolCycle)
+    {
+        $schoolCycle->load(['campus', 'campuses', 'modality', 'modalities', 'partials']);
+
+        $stats = [
+            'groups' => SchoolCycleGroup::query()
+                ->where('school_cycle_id', $schoolCycle->id)
+                ->where('is_active', true)
+                ->count(),
+            'partials' => $schoolCycle->partials->count(),
+            'schedules' => Schedule::query()
+                ->where('school_cycle_id', $schoolCycle->id)
+                ->where('is_active', true)
+                ->count(),
+            'sessions' => DB::table('academic_sessions')
+                ->join('schedules', 'schedules.id', '=', 'academic_sessions.schedule_id')
+                ->where('schedules.school_cycle_id', $schoolCycle->id)
+                ->count(),
+        ];
+
+        return view('school_cycles.show', compact('schoolCycle', 'stats'));
     }
 
     public function store(Request $request, CyclePartialDefaultsService $partialDefaults)

@@ -15,7 +15,9 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Ciclos escolares</h4>
-                    <a class="btn btn-primary" href="{{ route('school-cycles.create') }}">Nuevo ciclo</a>
+                    <a class="btn btn-primary" href="{{ route('school-cycles.create') }}">
+                        <i class="fas fa-plus mr-1"></i> Nuevo ciclo
+                    </a>
                 </div>
                 <div class="card-body">
                     <table data-datatable="true" class="table table-hover table-striped">
@@ -42,18 +44,13 @@
                                     <td>{{ $cycle->end_date?->format('d/m/Y') }}</td>
                                     <td>{{ $cycle->is_active ? 'Si' : 'No' }}</td>
                                     <td>
-                                        <a href="{{ route('school-cycles.partials.index', $cycle) }}" class="btn btn-info btn-sm">Parciales</a>
+                                        <a href="{{ route('school-cycles.show', $cycle) }}" class="btn btn-info btn-sm">Ver</a>
                                         <a href="{{ route('school-cycles.edit', $cycle) }}" class="btn btn-warning btn-sm">Editar</a>
-                                        <form action="{{ route('school-cycles.destroy', $cycle) }}" method="POST" style="display:inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="btn btn-danger btn-sm" onclick="return confirm('Eliminar ciclo y sus parciales?')">Eliminar</button>
-                                        </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">No hay ciclos registrados.</td>
+                                    <td colspan="8" class="text-center text-muted">No hay ciclos registrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

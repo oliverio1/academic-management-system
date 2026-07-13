@@ -130,18 +130,18 @@
     </a>
 </li>
 
-<li class="nav-item {{ isOpen(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
+<li class="nav-item {{ isOpen(['school-cycles.*', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
     <a href="#"
-       class="nav-link {{ isActive(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
+       class="nav-link {{ isActive(['school-cycles.*', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
         <i class="nav-icon fas fa-plus-square"></i>
-        <p>Nuevo ciclo <i class="right fas fa-angle-left"></i></p>
+        <p>Ciclos <i class="right fas fa-angle-left"></i></p>
     </a>
     <ul class="nav nav-treeview">
         <li class="nav-item">
-            <a href="{{ route('school-cycles.create') }}"
-               class="nav-link {{ isActive('school-cycles.create') }}">
+            <a href="{{ route('school-cycles.index') }}"
+               class="nav-link {{ isActive(['school-cycles.index', 'school-cycles.show', 'school-cycles.create', 'school-cycles.edit', 'school-cycles.partials.*']) }}">
                 <i class="far fa-circle nav-icon"></i>
-                <p>Configurar ciclo</p>
+                <p>Configurar ciclos</p>
             </a>
         </li>
         <li class="nav-item">
@@ -473,18 +473,18 @@
                 <p>Ciclos y parciales</p>
             </a>
         </li>
-        <li class="nav-item {{ isOpen(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
+        <li class="nav-item {{ isOpen(['school-cycles.*', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
             <a href="#"
-               class="nav-link {{ isActive(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
+               class="nav-link {{ isActive(['school-cycles.*', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
                 <i class="far fa-plus-square nav-icon"></i>
-                <p>Nuevo ciclo <i class="right fas fa-angle-left"></i></p>
+                <p>Ciclos <i class="right fas fa-angle-left"></i></p>
             </a>
             <ul class="nav nav-treeview">
                 <li class="nav-item">
-                    <a href="{{ route('school-cycles.create') }}"
-                       class="nav-link {{ isActive('school-cycles.create') }}">
+                    <a href="{{ route('school-cycles.index') }}"
+                       class="nav-link {{ isActive(['school-cycles.index', 'school-cycles.show', 'school-cycles.create', 'school-cycles.edit', 'school-cycles.partials.*']) }}">
                         <i class="far fa-circle nav-icon"></i>
-                        <p>Configurar ciclo</p>
+                        <p>Configurar ciclos</p>
                     </a>
                 </li>
                 <li class="nav-item">

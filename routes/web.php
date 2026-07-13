@@ -266,7 +266,7 @@ Route::middleware(['auth', 'role:coordinator|admin', 'campus.access'])->group(fu
     Route::post('coordination/tutor-assignments/bulk', [TutorAssignmentController::class, 'bulkAssign'])->name('coordination.tutor-assignments.bulk');
     Route::patch('coordination/tutor-assignments/{student}', [TutorAssignmentController::class, 'update'])->name('coordination.tutor-assignments.update');
     Route::resource('academic-calendar-days', AcademicCalendarDayController::class);
-    Route::resource('school-cycles', SchoolCycleController::class)->except(['show']);
+    Route::resource('school-cycles', SchoolCycleController::class);
     Route::get('school-cycles/{schoolCycle}/partials', [CyclePartialController::class, 'index'])->name('school-cycles.partials.index');
     Route::get('school-cycles/{schoolCycle}/partials/create', [CyclePartialController::class, 'create'])->name('school-cycles.partials.create');
     Route::post('school-cycles/{schoolCycle}/partials', [CyclePartialController::class, 'store'])->name('school-cycles.partials.store');
