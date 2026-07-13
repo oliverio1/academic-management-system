@@ -130,12 +130,35 @@
     </a>
 </li>
 
-<li class="nav-item">
-    <a href="{{ route('school-cycles.create') }}"
-       class="nav-link {{ isActive('school-cycles.create') }}">
+<li class="nav-item {{ isOpen(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
+    <a href="#"
+       class="nav-link {{ isActive(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
         <i class="nav-icon fas fa-plus-square"></i>
-        <p>Nuevo ciclo</p>
+        <p>Nuevo ciclo <i class="right fas fa-angle-left"></i></p>
     </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a href="{{ route('school-cycles.create') }}"
+               class="nav-link {{ isActive('school-cycles.create') }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Configurar ciclo</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('imports.master-schedule.create') }}"
+               class="nav-link {{ isActive('imports.master-schedule.*') }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Cargar horarios</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('imports.cycle-students.create') }}"
+               class="nav-link {{ isActive('imports.cycle-students.*') }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Cargar alumnos</p>
+            </a>
+        </li>
+    </ul>
 </li>
 
 <li class="nav-item">
@@ -450,12 +473,35 @@
                 <p>Ciclos y parciales</p>
             </a>
         </li>
-        <li class="nav-item">
-            <a href="{{ route('school-cycles.create') }}"
-               class="nav-link {{ isActive('school-cycles.create') }}">
+        <li class="nav-item {{ isOpen(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
+            <a href="#"
+               class="nav-link {{ isActive(['school-cycles.create', 'imports.master-schedule.*', 'imports.cycle-students.*']) }}">
                 <i class="far fa-plus-square nav-icon"></i>
-                <p>Nuevo ciclo</p>
+                <p>Nuevo ciclo <i class="right fas fa-angle-left"></i></p>
             </a>
+            <ul class="nav nav-treeview">
+                <li class="nav-item">
+                    <a href="{{ route('school-cycles.create') }}"
+                       class="nav-link {{ isActive('school-cycles.create') }}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>Configurar ciclo</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('imports.master-schedule.create') }}"
+                       class="nav-link {{ isActive('imports.master-schedule.*') }}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>Cargar horarios</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('imports.cycle-students.create') }}"
+                       class="nav-link {{ isActive('imports.cycle-students.*') }}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>Cargar alumnos</p>
+                    </a>
+                </li>
+            </ul>
         </li>
         <li class="nav-item">
             <a href="{{ route('coordination.cycle-planning.index') }}"
@@ -483,20 +529,6 @@
                class="nav-link {{ isActive('imports.attendances.*') }}">
                 <i class="far fa-circle nav-icon"></i>
                 <p>Importar asistencias</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('imports.master-schedule.create') }}"
-               class="nav-link {{ isActive('imports.master-schedule.*') }}">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Importar horario maestro</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="{{ route('imports.cycle-students.create') }}"
-               class="nav-link {{ isActive('imports.cycle-students.*') }}">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Cargar alumnos a ciclo</p>
             </a>
         </li>
         <li class="nav-item">
