@@ -34,6 +34,12 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
         Route::get('cycle-students/template', [CycleStudentsTemplateController::class, 'template'])
             ->name('cycle-students.template');
 
+        Route::post('cycle-students/preview', [CycleStudentsTemplateController::class, 'preview'])
+            ->name('cycle-students.preview');
+
+        Route::post('cycle-students/import', [CycleStudentsTemplateController::class, 'import'])
+            ->name('cycle-students.import');
+
         /*
         |--------------------------------------------------------------------------
         | Asistencias

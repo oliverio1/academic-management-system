@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid">
     <div class="row">
-        <div class="col-lg-9">
+        <div class="col-lg-10">
             <div class="card card-primary">
                 <div class="card-header">
                     <h3 class="card-title">Cargar alumnos a ciclo</h3>
@@ -14,7 +14,7 @@
                 <form method="GET" action="{{ route('imports.cycle-students.template') }}">
                     <div class="card-body">
                         <div class="alert alert-info">
-                            Selecciona campus y ciclo para descargar un archivo maestro con los grupos activos ya precargados.
+                            Selecciona campus y ciclo para descargar el archivo maestro. Cuando coordinacion lo complete, subelo en el bloque inferior para validar e importar.
                         </div>
 
                         @if ($errors->any())
@@ -28,8 +28,8 @@
                         @endif
 
                         <div class="form-group">
-                            <label for="campus_id">Campus</label>
-                            <select id="campus_id" name="campus_id" class="form-control" required>
+                            <label for="template_campus_id">Campus</label>
+                            <select id="template_campus_id" name="campus_id" class="form-control js-campus-select" required>
                                 <option value="">Seleccione...</option>
                                 @foreach($campuses as $campus)
                                     <option value="{{ $campus->id }}" {{ (int) old('campus_id', $activeCampusId) === (int) $campus->id ? 'selected' : '' }}>
@@ -40,8 +40,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="school_cycle_id">Ciclo escolar</label>
-                            <select id="school_cycle_id" name="school_cycle_id" class="form-control" required>
+                            <label for="template_school_cycle_id">Ciclo escolar</label>
+                            <select id="template_school_cycle_id" name="school_cycle_id" class="form-control js-cycle-select" required>
                                 <option value="">Seleccione...</option>
                                 @foreach($cycles as $cycle)
                                     <option value="{{ $cycle->id }}" data-campus-id="{{ $cycle->campus_id }}" {{ (string) old('school_cycle_id') === (string) $cycle->id ? 'selected' : '' }}>
@@ -71,6 +71,59 @@
                     </div>
                 </form>
             </div>
+
+            <div class="card card-success">
+                <div class="card-header">
+                    <h3 class="card-title">Importar archivo completado</h3>
+                </div>
+
+                <form method="POST" action="{{ route('imports.cycle-students.preview') }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="import_campus_id">Campus</label>
+                            <select id="import_campus_id" name="campus_id" class="form-control js-campus-select" required>
+                                <option value="">Seleccione...</option>
+                                @foreach($campuses as $campus)
+                                    <option value="{{ $campus->id }}" {{ (int) old('campus_id', $activeCampusId) === (int) $campus->id ? 'selected' : '' }}>
+                                        {{ $campus->name }} ({{ $campus->code }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="import_school_cycle_id">Ciclo escolar</label>
+                            <select id="import_school_cycle_id" name="school_cycle_id" class="form-control js-cycle-select" required>
+                                <option value="">Seleccione...</option>
+                                @foreach($cycles as $cycle)
+                                    <option value="{{ $cycle->id }}" data-campus-id="{{ $cycle->campus_id }}" {{ (string) old('school_cycle_id') === (string) $cycle->id ? 'selected' : '' }}>
+                                        {{ $cycle->name }} ({{ $cycle->code }}) - {{ $cycle->active_groups_count }} grupos
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="file">Archivo de alumnos</label>
+                            <input id="file" type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                        </div>
+
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" id="deactivate_missing" name="deactivate_missing" value="1" class="custom-control-input">
+                            <label for="deactivate_missing" class="custom-control-label">
+                                Inactivar alumnos del ciclo/campus que no aparezcan en el archivo
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check mr-1"></i> Validar archivo
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -79,10 +132,7 @@
 @section('page_scripts')
 <script>
     (function () {
-        const campusSelect = document.getElementById('campus_id');
-        const cycleSelect = document.getElementById('school_cycle_id');
-
-        function refreshCycles() {
+        function refreshCycles(campusSelect, cycleSelect) {
             const campusId = campusSelect.value;
             let firstVisible = null;
 
@@ -100,8 +150,14 @@
             }
         }
 
-        campusSelect.addEventListener('change', refreshCycles);
-        refreshCycles();
+        document.querySelectorAll('.js-campus-select').forEach((campusSelect) => {
+            const wrapper = campusSelect.closest('form');
+            const cycleSelect = wrapper ? wrapper.querySelector('.js-cycle-select') : null;
+            if (!cycleSelect) return;
+
+            campusSelect.addEventListener('change', () => refreshCycles(campusSelect, cycleSelect));
+            refreshCycles(campusSelect, cycleSelect);
+        });
     })();
 </script>
 @endsection
