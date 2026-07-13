@@ -69,6 +69,7 @@ class MasterScheduleImportController extends Controller
             'cycle' => $cycle,
             'campus' => $campus,
             'output' => $output,
+            'summary' => $this->parseImportOutput($output),
             'exitCode' => $exitCode,
         ]);
     }
@@ -103,6 +104,7 @@ class MasterScheduleImportController extends Controller
             'cycle' => $cycle,
             'campus' => $campus,
             'output' => $output,
+            'summary' => $this->parseImportOutput($output),
             'exitCode' => $exitCode,
         ]);
     }
@@ -215,5 +217,31 @@ class MasterScheduleImportController extends Controller
         abort_if($tenantId === '', 403, 'Tenant no identificado. Usa el dominio del colegio antes de importar.');
 
         return $tenantId;
+    }
+
+    private function parseImportOutput(string $output): array
+    {
+        $metrics = [];
+        $warnings = [];
+
+        foreach (preg_split('/\R/', $output) ?: [] as $line) {
+            if (preg_match('/^\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|$/', $line, $matches)) {
+                $label = trim($matches[1]);
+                if ($label !== 'Metrica') {
+                    $metrics[$label] = (int) $matches[2];
+                }
+                continue;
+            }
+
+            if (str_starts_with(trim($line), 'Fila ')) {
+                $warnings[] = trim($line);
+            }
+        }
+
+        return [
+            'metrics' => $metrics,
+            'warnings' => $warnings,
+            'has_warnings' => ! empty($warnings) || (int) ($metrics['Filas omitidas'] ?? 0) > 0,
+        ];
     }
 }

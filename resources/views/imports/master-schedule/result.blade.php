@@ -16,7 +16,13 @@
                         <span class="ml-3"><strong>Ciclo:</strong> {{ $cycle->name }} ({{ $cycle->code }})</span>
                     </div>
 
-                    <pre class="bg-dark text-white p-3 rounded" style="white-space: pre-wrap;">{{ $output }}</pre>
+                    @if($exitCode === 0)
+                        <div class="alert alert-success">
+                            Importacion guardada correctamente.
+                        </div>
+                    @endif
+
+                    @include('imports.master-schedule._summary', ['summary' => $summary, 'output' => $output])
                 </div>
                 <div class="card-footer">
                     <a href="{{ route('coordination.schedules.groups-calendar', ['school_cycle_id' => $cycle->id]) }}" class="btn btn-primary">

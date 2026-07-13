@@ -16,7 +16,13 @@
                         <span class="ml-3"><strong>Ciclo:</strong> {{ $cycle->name }} ({{ $cycle->code }})</span>
                     </div>
 
-                    <pre class="bg-dark text-white p-3 rounded" style="white-space: pre-wrap;">{{ $output }}</pre>
+                    @if($exitCode === 0)
+                        <div class="alert {{ $summary['has_warnings'] ? 'alert-warning' : 'alert-success' }}">
+                            Esta validacion no guardo cambios. Revisa el resumen antes de confirmar la importacion.
+                        </div>
+                    @endif
+
+                    @include('imports.master-schedule._summary', ['summary' => $summary, 'output' => $output])
                 </div>
                 <div class="card-footer d-flex justify-content-between">
                     <a href="{{ route('imports.master-schedule.create') }}" class="btn btn-secondary">Volver</a>
