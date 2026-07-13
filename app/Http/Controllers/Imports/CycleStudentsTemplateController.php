@@ -154,7 +154,7 @@ class CycleStudentsTemplateController extends Controller
             for ($index = 0; $index < self::STUDENT_ROWS_PER_GROUP; $index++) {
                 $sheet->fromArray([
                     $campus->code,
-                    $cycle->code,
+                    $cycle->name,
                     $level,
                     $group?->name,
                     $sectionCount > 1 ? '' : '1',
@@ -229,6 +229,7 @@ class CycleStudentsTemplateController extends Controller
             ['SECCION se usa cuando el grupo divide materias por seccion; si no aplica, dejala en 1.'],
             ['Los datos del tutor quedan listos para una importacion posterior y asignacion familiar.'],
             ['No elimines hojas ni columnas. Puedes agregar filas copiando una fila del mismo grupo.'],
+            ['Ejemplo de fila ALUMNOS: FLORIDA | PREPARATORIA 25-26 FLORIDA | Cuarto | 4001 | 1 | U99826677 | OLIVER | MARTINEZ | ANAYA | oliverio.oo@gmail.com | 5569177811 | ACTIVO | DIONICIO MARTINEZ PINEDA | PADRE | marpindi@gmail.com | 5568177811 | Av. Mexico 410 E-102 |'],
         ];
 
         $sheet->fromArray($rows, null, 'A1');
