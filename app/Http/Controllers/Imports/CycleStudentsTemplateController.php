@@ -36,9 +36,8 @@ class CycleStudentsTemplateController extends Controller
         'CICLO',
         'GRADO',
         'GRUPO',
-        'INGLES',
-        'LAB_TALLER',
-        'SECCION',
+        'SECCION_INGLES',
+        'SECCION_LAB',
         'MATRICULA',
         'NOMBRE',
         'APELLIDO_PATERNO',
@@ -211,8 +210,8 @@ class CycleStudentsTemplateController extends Controller
 
     private function buildStudentsSheet(Worksheet $sheet, Campus $campus, SchoolCycle $cycle, $cycleGroups): void
     {
-        $sheet->fromArray(self::HEADERS, null, 'A1');
-        $this->styleHeader($sheet, 'A1:T1');
+        $sheet->fromArray($this->templateHeaders(), null, 'A1');
+        $this->styleHeader($sheet, 'A1:S1');
 
         $row = 2;
         foreach ($cycleGroups as $cycleGroup) {
@@ -225,7 +224,6 @@ class CycleStudentsTemplateController extends Controller
                     $cycle->name,
                     $level,
                     $group?->name,
-                    '',
                     '',
                     '',
                     '',
@@ -248,29 +246,28 @@ class CycleStudentsTemplateController extends Controller
 
         $lastRow = max(2, $row - 1);
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter("A1:T{$lastRow}");
-        $sheet->getStyle("A1:T{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_HAIR);
-        $sheet->getStyle("A2:T{$lastRow}")->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+        $sheet->setAutoFilter("A1:S{$lastRow}");
+        $sheet->getStyle("A1:S{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_HAIR);
+        $sheet->getStyle("A2:S{$lastRow}")->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
 
-        foreach (range('A', 'T') as $column) {
+        foreach (range('A', 'S') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
-        $this->applyListValidation($sheet, "E2:E{$lastRow}", 'CATALOGOS!$G$2:$G$3');
-        $this->applyListValidation($sheet, "F2:F{$lastRow}", 'CATALOGOS!$H$2:$H$4');
-        $this->applyListValidation($sheet, "G2:G{$lastRow}", 'CATALOGOS!$F$2:$F$4');
-        $this->applyListValidation($sheet, "N2:N{$lastRow}", 'CATALOGOS!$D$2:$D$3');
+        $this->applyListValidation($sheet, "E2:E{$lastRow}", 'CATALOGOS!$F$2:$F$3');
+        $this->applyListValidation($sheet, "F2:F{$lastRow}", 'CATALOGOS!$G$2:$G$4');
+        $this->applyListValidation($sheet, "M2:M{$lastRow}", 'CATALOGOS!$D$2:$D$3');
     }
 
     private function buildCatalogSheet(Worksheet $sheet, Campus $campus, SchoolCycle $cycle, $cycleGroups): void
     {
         $sheet->fromArray([
-            ['CAMPUS', 'CICLO', 'GRUPOS_DEL_CICLO', 'ESTATUS', 'PARENTESCOS', 'SECCIONES', 'INGLES', 'LAB_TALLER'],
-            [$campus->code . ' - ' . $campus->name, $cycle->code . ' - ' . $cycle->name, '', 'ACTIVO', 'MADRE', '1', 'BASICO', 'A'],
-            ['', '', '', 'INACTIVO', 'PADRE', '2', 'AVANZADO', 'B'],
-            ['', '', '', '', 'TUTOR', '3', '', 'C'],
-            ['', '', '', '', 'ABUELA/O', '', '', ''],
-            ['', '', '', '', 'OTRO', '', '', ''],
+            ['CAMPUS', 'CICLO', 'GRUPOS DEL CICLO', 'ESTATUS', 'PARENTESCOS', 'SECCION INGLES', 'SECCION LAB'],
+            [$campus->code . ' - ' . $campus->name, $cycle->code . ' - ' . $cycle->name, '', 'ACTIVO', 'MADRE', 'BASICO', 'A'],
+            ['', '', '', 'INACTIVO', 'PADRE', 'AVANZADO', 'B'],
+            ['', '', '', '', 'TUTOR', '', 'C'],
+            ['', '', '', '', 'ABUELA/O', '', ''],
+            ['', '', '', '', 'OTRO', '', ''],
         ], null, 'A1');
 
         $row = 2;
@@ -282,10 +279,10 @@ class CycleStudentsTemplateController extends Controller
         }
 
         $lastRow = max(6, $row - 1);
-        $this->styleHeader($sheet, 'A1:H1');
-        $sheet->getStyle("A1:H{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_HAIR);
+        $this->styleHeader($sheet, 'A1:G1');
+        $sheet->getStyle("A1:G{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_HAIR);
 
-        foreach (range('A', 'H') as $column) {
+        foreach (range('A', 'G') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
@@ -298,11 +295,11 @@ class CycleStudentsTemplateController extends Controller
             ['Las columnas CAMPUS, CICLO, GRADO y GRUPO ya vienen precargadas desde el ciclo seleccionado.'],
             ['MATRICULA, NOMBRE y al menos un apellido seran necesarios para importar.'],
             ['ESTATUS acepta ACTIVO o INACTIVO. Si se deja vacio, se tomara como ACTIVO.'],
-            ['INGLES acepta BASICO o AVANZADO. LAB_TALLER acepta A, B o C. Puedes dejar ambos vacios si no aplican.'],
-            ['SECCION queda como compatibilidad con archivos anteriores; en nuevos archivos usa INGLES y LAB_TALLER.'],
+            ['SECCION INGLES acepta BASICO o AVANZADO. Puedes dejarla vacia si no aplica.'],
+            ['SECCION LAB acepta A, B o C para materias divididas, laboratorios o talleres. Puedes dejarla vacia si no aplica.'],
             ['Los datos del tutor quedan listos para una importacion posterior y asignacion familiar.'],
             ['No elimines hojas ni columnas. Puedes agregar filas copiando una fila del mismo grupo.'],
-            ['Ejemplo de fila ALUMNOS: FLORIDA | PREPARATORIA 25-26 FLORIDA | Cuarto | 4001 | BASICO | A | | U99826677 | OLIVER | MARTINEZ | ANAYA | oliverio.oo@gmail.com | 5569177811 | ACTIVO | DIONICIO MARTINEZ PINEDA | PADRE | marpindi@gmail.com | 5568177811 | Av. Mexico 410 E-102 |'],
+            ['Ejemplo de fila ALUMNOS: FLORIDA | PREPARATORIA 25-26 FLORIDA | Cuarto | 4001 | BASICO | A | U99826677 | OLIVER | MARTINEZ | ANAYA | oliverio.oo@gmail.com | 5569177811 | ACTIVO | DIONICIO MARTINEZ PINEDA | PADRE | marpindi@gmail.com | 5568177811 | Av. Mexico 410 E-102 |'],
         ];
 
         $sheet->fromArray($rows, null, 'A1');
@@ -342,6 +339,11 @@ class CycleStudentsTemplateController extends Controller
                 $validation->setFormula1($formula);
             }
         }
+    }
+
+    private function templateHeaders(): array
+    {
+        return array_map(fn (string $header) => str_replace('_', ' ', $header), self::HEADERS);
     }
 
     private function cycleBelongsToCampus(SchoolCycle $cycle, int $campusId): bool
@@ -526,12 +528,16 @@ class CycleStudentsTemplateController extends Controller
             $normalized[$header] = trim((string) $value);
         }
 
+        $legacyEnglish = trim((string) ($row['INGLES'] ?? ''));
+        $legacyLab = trim((string) ($row['LAB_TALLER'] ?? ''));
+        $legacySection = trim((string) ($row['SECCION'] ?? ''));
+
         $normalized['CAMPUS'] = mb_strtoupper($normalized['CAMPUS']);
         $normalized['MATRICULA'] = mb_strtoupper($normalized['MATRICULA']);
         $normalized['ESTATUS'] = $this->normalizeStatus($normalized['ESTATUS']);
-        $normalized['INGLES'] = $this->normalizeEnglishSection($normalized['INGLES']);
-        $normalized['LAB_TALLER'] = $this->normalizeLabSection($normalized['LAB_TALLER']);
-        $normalized['SECCION'] = $normalized['SECCION'] !== '' ? (string) max(1, (int) $normalized['SECCION']) : '';
+        $normalized['SECCION_INGLES'] = $this->normalizeEnglishSection($normalized['SECCION_INGLES'] ?: $legacyEnglish);
+        $normalized['SECCION_LAB'] = $this->normalizeLabSection($normalized['SECCION_LAB'] ?: $legacyLab);
+        $normalized['SECCION'] = $legacySection !== '' ? (string) max(1, (int) $legacySection) : '';
         $normalized['CORREO_ALUMNO'] = mb_strtolower($normalized['CORREO_ALUMNO']);
         $normalized['TUTOR_CORREO'] = mb_strtolower($normalized['TUTOR_CORREO']);
 
@@ -566,12 +572,12 @@ class CycleStudentsTemplateController extends Controller
             return "Fila {$rowNumber}: no se encontro el grupo {$row['GRADO']} {$row['GRUPO']} en este ciclo/campus.";
         }
 
-        if ($row['INGLES'] !== '' && ! in_array($row['INGLES'], ['BASICO', 'AVANZADO'], true)) {
-            return "Fila {$rowNumber}: INGLES debe ser BASICO o AVANZADO.";
+        if ($row['SECCION_INGLES'] !== '' && ! in_array($row['SECCION_INGLES'], ['BASICO', 'AVANZADO'], true)) {
+            return "Fila {$rowNumber}: SECCION_INGLES debe ser BASICO o AVANZADO.";
         }
 
-        if ($row['LAB_TALLER'] !== '' && ! in_array($row['LAB_TALLER'], ['A', 'B', 'C'], true)) {
-            return "Fila {$rowNumber}: LAB_TALLER debe ser A, B o C.";
+        if ($row['SECCION_LAB'] !== '' && ! in_array($row['SECCION_LAB'], ['A', 'B', 'C'], true)) {
+            return "Fila {$rowNumber}: SECCION_LAB debe ser A, B o C.";
         }
 
         if ($row['CORREO_ALUMNO'] !== '' && ! filter_var($row['CORREO_ALUMNO'], FILTER_VALIDATE_EMAIL)) {
@@ -735,19 +741,19 @@ class CycleStudentsTemplateController extends Controller
     {
         $queries = [];
 
-        if (($row['INGLES'] ?? '') !== '') {
+        if (($row['SECCION_INGLES'] ?? '') !== '') {
             $queries[] = TeachingAssignment::query()
                 ->where('school_cycle_group_id', (int) $cycleGroup->id)
                 ->where('section_type', 'english')
-                ->where('section_label', $row['INGLES'])
+                ->where('section_label', $row['SECCION_INGLES'])
                 ->where('is_active', true);
         }
 
-        if (($row['LAB_TALLER'] ?? '') !== '') {
+        if (($row['SECCION_LAB'] ?? '') !== '') {
             $queries[] = TeachingAssignment::query()
                 ->where('school_cycle_group_id', (int) $cycleGroup->id)
                 ->where('section_type', 'lab_taller')
-                ->where('section_label', $row['LAB_TALLER'])
+                ->where('section_label', $row['SECCION_LAB'])
                 ->where('is_active', true);
         }
 
@@ -864,7 +870,9 @@ class CycleStudentsTemplateController extends Controller
 
     private function normalizeHeader(string $value): string
     {
-        return mb_strtoupper(trim($value));
+        $value = Str::ascii(mb_strtoupper(trim($value)));
+
+        return trim(preg_replace('/[^A-Z0-9]+/', '_', $value) ?? '', '_');
     }
 
     private function normalizeStatus(string $value): string
