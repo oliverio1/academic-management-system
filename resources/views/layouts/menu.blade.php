@@ -131,6 +131,14 @@
 </li>
 
 <li class="nav-item">
+    <a href="{{ route('school-cycles.create') }}"
+       class="nav-link {{ isActive('school-cycles.create') }}">
+        <i class="nav-icon fas fa-plus-square"></i>
+        <p>Nuevo ciclo</p>
+    </a>
+</li>
+
+<li class="nav-item">
     <a href="{{ route('coordination.paper-exams.schedule') }}"
        class="nav-link {{ isActive('coordination.paper-exams.schedule') }}">
         <i class="nav-icon fas fa-calendar-check"></i>
