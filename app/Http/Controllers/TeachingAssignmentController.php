@@ -72,7 +72,10 @@ class TeachingAssignmentController extends Controller
 
         foreach ($allowedSubjectIds as $subjectId) {
             $sectionsForSubject = (int) ($inputSubjectSections[$subjectId] ?? 1);
+            $subject = $this->subjectsForGroup($group)->firstWhere('id', $subjectId);
             for ($section = 1; $section <= 3; $section++) {
+                $sectionDescriptor = $this->sectionDescriptor($section, (string) ($subject?->name ?? ''));
+
                 if ($section > $sectionsForSubject) {
                     TeachingAssignment::query()
                         ->where('group_id', $group->id)
@@ -105,6 +108,8 @@ class TeachingAssignmentController extends Controller
                     ],
                     [
                         'teacher_id' => $teacherId,
+                        'section_type' => $sectionDescriptor['type'],
+                        'section_label' => $sectionDescriptor['label'],
                         'nrc' => $nrc !== '' ? mb_substr($nrc, 0, 30) : null,
                         'is_active' => true,
                     ]
@@ -768,5 +773,41 @@ class TeachingAssignmentController extends Controller
         return $teachingAssignment->group->students()
             ->where('is_active', true)
             ->with('user');
+    }
+
+    private function sectionDescriptor(int $sectionNumber, string $subjectName): array
+    {
+        $subjectKey = $this->normalizeKey($subjectName);
+
+        if (str_contains($subjectKey, 'ingles') || str_contains($subjectKey, 'english')) {
+            return [
+                'type' => 'english',
+                'label' => $sectionNumber === 2 ? 'AVANZADO' : 'BASICO',
+            ];
+        }
+
+        if (str_contains($subjectKey, 'laboratorio') || str_contains($subjectKey, 'lab') || str_contains($subjectKey, 'taller')) {
+            return [
+                'type' => 'lab_taller',
+                'label' => match ($sectionNumber) {
+                    2 => 'B',
+                    3 => 'C',
+                    default => 'A',
+                },
+            ];
+        }
+
+        return [
+            'type' => null,
+            'label' => null,
+        ];
+    }
+
+    private function normalizeKey(string $value): string
+    {
+        $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
+        $value = mb_strtolower(trim($value));
+
+        return preg_replace('/\s+/', ' ', $value) ?? '';
     }
 }

@@ -38,7 +38,7 @@
                                         <div class="col-md-4 mb-3">
                                             <div class="card h-100 border">
                                                 <div class="card-header bg-light">
-                                                    <strong>Sección {{ $section }}</strong>
+                                                    <strong>{{ $assignment?->section_display ?? 'Seccion '.$section }}</strong>
                                                     <div class="small text-muted mt-1">
                                                         {{ optional(optional($assignment)->teacher)->user->name ?? 'Sin docente asignado' }}
                                                     </div>

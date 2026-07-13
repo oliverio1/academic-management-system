@@ -16,9 +16,24 @@ class TeachingAssignment extends Model
         'school_cycle_group_id',
         'subject_id',
         'section_number',
+        'section_type',
+        'section_label',
         'nrc',
         'is_active',
     ];
+
+    public function getSectionDisplayAttribute(): string
+    {
+        if ($this->section_type === 'english') {
+            return 'Ingles ' . mb_strtolower((string) ($this->section_label ?: $this->section_number));
+        }
+
+        if ($this->section_type === 'lab_taller') {
+            return 'Lab/Taller ' . ($this->section_label ?: $this->section_number);
+        }
+
+        return 'Seccion ' . $this->section_number;
+    }
 
     public function teacher() {
         return $this->belongsTo(Teacher::class);

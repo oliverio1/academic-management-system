@@ -218,8 +218,10 @@ class ImportMasterScheduleCommand extends Command
         $teacherName = trim((string) $this->rowValue($row, 'docente'));
         $day = $this->dayKey((string) $this->rowValue($row, 'dia'));
         $time = $this->parseTimeRange((string) $this->rowValue($row, 'hora'));
-        $sectionNumber = $this->sectionNumber((string) $this->rowValue($row, 'seccion'));
         $type = trim((string) $this->rowValue($row, 'modalidad'));
+        $rawSection = (string) $this->rowValue($row, 'seccion');
+        $section = $this->sectionDescriptor($rawSection, $subjectName, $type);
+        $sectionNumber = $section['number'];
 
         $missing = [];
         if ($groupName === '') {
@@ -294,6 +296,8 @@ class ImportMasterScheduleCommand extends Command
                 'tenant_id' => (string) tenant('id') ?: null,
                 'group_id' => $group->id,
                 'teacher_id' => $teacher->id,
+                'section_type' => $section['type'],
+                'section_label' => $section['label'],
                 'is_active' => true,
             ]
         );
@@ -311,6 +315,8 @@ class ImportMasterScheduleCommand extends Command
             ],
             [
                 'tenant_id' => (string) tenant('id') ?: null,
+                'section_type' => $section['type'],
+                'section_label' => $section['label'],
                 'type' => $type !== '' ? $type : null,
                 'is_active' => true,
             ]
@@ -627,10 +633,60 @@ class ImportMasterScheduleCommand extends Command
         $normalized = $this->normalizeKey($value);
 
         return match (true) {
-            str_contains($normalized, 'seccion b') => 2,
-            str_contains($normalized, 'seccion c') => 3,
+            in_array($normalized, ['b', '2'], true) || str_contains($normalized, 'seccion b') => 2,
+            in_array($normalized, ['c', '3'], true) || str_contains($normalized, 'seccion c') => 3,
             default => 1,
         };
+    }
+
+    private function sectionDescriptor(string $rawSection, string $subjectName, string $type): array
+    {
+        $subjectKey = $this->normalizeKey($subjectName);
+        $typeKey = $this->normalizeKey($type);
+        $sectionKey = $this->normalizeKey($rawSection);
+
+        if (str_contains($subjectKey, 'ingles') || str_contains($subjectKey, 'english')) {
+            $isAdvanced = str_contains($sectionKey, 'avanz')
+                || str_contains($sectionKey, 'advanced')
+                || str_contains($sectionKey, 'seccion b')
+                || $sectionKey === 'b'
+                || $sectionKey === '2';
+
+            return [
+                'number' => $isAdvanced ? 2 : 1,
+                'type' => 'english',
+                'label' => $isAdvanced ? 'AVANZADO' : 'BASICO',
+            ];
+        }
+
+        if (
+            str_contains($subjectKey, 'laboratorio')
+            || str_contains($subjectKey, 'lab')
+            || str_contains($subjectKey, 'taller')
+            || str_contains($typeKey, 'laboratorio')
+            || str_contains($typeKey, 'lab')
+            || str_contains($typeKey, 'taller')
+            || str_contains($typeKey, 'dividid')
+        ) {
+            $number = $this->sectionNumber($rawSection);
+            $label = match ($number) {
+                2 => 'B',
+                3 => 'C',
+                default => 'A',
+            };
+
+            return [
+                'number' => $number,
+                'type' => 'lab_taller',
+                'label' => $label,
+            ];
+        }
+
+        return [
+            'number' => $this->sectionNumber($rawSection),
+            'type' => null,
+            'label' => null,
+        ];
     }
 
     private function skip(int $rowNumber, string $reason): void

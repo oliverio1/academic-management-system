@@ -14,6 +14,8 @@ class Schedule extends Model
         'teaching_assignment_id',
         'school_cycle_id',
         'section_number',
+        'section_type',
+        'section_label',
         'day_of_week',
         'start_time',
         'end_time',

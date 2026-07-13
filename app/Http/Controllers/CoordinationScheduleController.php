@@ -612,6 +612,8 @@ class CoordinationScheduleController extends Controller
             'teaching_assignment_id' => $assignment->id,
             'school_cycle_id' => (int) $data['school_cycle_id'],
             'section_number' => (int) $data['section_number'],
+            'section_type' => $assignment->section_type,
+            'section_label' => $assignment->section_label,
             'day_of_week' => $data['day_of_week'],
             'start_time' => $data['start_time'],
             'end_time' => $data['end_time'],
@@ -666,6 +668,11 @@ class CoordinationScheduleController extends Controller
             $cycleGroup->update(['is_active' => true]);
         }
 
+        $sectionDescriptor = $this->sectionDescriptor(
+            $sectionNumber,
+            (string) Subject::query()->whereKey($subjectId)->value('name')
+        );
+
         $assignment = TeachingAssignment::updateOrCreate(
             [
                 'school_cycle_group_id' => $cycleGroup->id,
@@ -675,6 +682,8 @@ class CoordinationScheduleController extends Controller
             [
                 'group_id' => $groupId,
                 'teacher_id' => $teacherId,
+                'section_type' => $sectionDescriptor['type'],
+                'section_label' => $sectionDescriptor['label'],
                 'is_active' => true,
             ]
         );
@@ -917,5 +926,41 @@ class CoordinationScheduleController extends Controller
     private function activeCampusId(): int
     {
         return (int) session('active_campus_id', 0);
+    }
+
+    private function sectionDescriptor(int $sectionNumber, string $subjectName): array
+    {
+        $subjectKey = $this->normalizeKey($subjectName);
+
+        if (str_contains($subjectKey, 'ingles') || str_contains($subjectKey, 'english')) {
+            return [
+                'type' => 'english',
+                'label' => $sectionNumber === 2 ? 'AVANZADO' : 'BASICO',
+            ];
+        }
+
+        if (str_contains($subjectKey, 'laboratorio') || str_contains($subjectKey, 'lab') || str_contains($subjectKey, 'taller')) {
+            return [
+                'type' => 'lab_taller',
+                'label' => match ($sectionNumber) {
+                    2 => 'B',
+                    3 => 'C',
+                    default => 'A',
+                },
+            ];
+        }
+
+        return [
+            'type' => null,
+            'label' => null,
+        ];
+    }
+
+    private function normalizeKey(string $value): string
+    {
+        $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
+        $value = mb_strtolower(trim($value));
+
+        return preg_replace('/\s+/', ' ', $value) ?? '';
     }
 }

@@ -65,7 +65,7 @@
                                                     <td>
                                                         <strong>{{ $subject->name }}</strong>
                                                     </td>
-                                                    <td>Sección {{ $section }}</td>
+                                                    <td>{{ $assignmentForSection?->section_display ?? 'Seccion '.$section }}</td>
                                                     <td>
                                                         <select name="assignments[{{ $subject->id }}][{{ $section }}]" class="form-control form-control-sm">
                                                             <option value="">-- Sin asignar --</option>
