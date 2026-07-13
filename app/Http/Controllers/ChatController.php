@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\Group;
+use App\Models\SchoolCycle;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\TeachingAssignment;
@@ -27,7 +28,9 @@ class ChatController extends Controller
             ->with(['participants:id,name', 'group:id,name'])
             ->whereIn('id', $conversationIds)
             ->orderByRaw('COALESCE(last_message_at, created_at) DESC')
-            ->get();
+            ->get()
+            ->filter(fn (ChatConversation $conversation) => $this->userCanAccessConversation($user, $conversation))
+            ->values();
 
         $selected = $selectedId
             ? $conversations->firstWhere('id', $selectedId)
@@ -64,7 +67,9 @@ class ChatController extends Controller
             ->with(['participants:id,name', 'group:id,name'])
             ->whereIn('id', $conversationIds)
             ->orderByRaw('COALESCE(last_message_at, created_at) DESC')
-            ->get();
+            ->get()
+            ->filter(fn (ChatConversation $conversation) => $this->userCanAccessConversation($user, $conversation))
+            ->values();
 
         $selected = $conversations->first();
         $messages = $selected
@@ -180,7 +185,7 @@ class ChatController extends Controller
     public function storeMessage(Request $request, ChatConversation $conversation)
     {
         $authUser = $request->user();
-        abort_unless($conversation->participants()->where('users.id', $authUser->id)->exists(), 403);
+        abort_unless($this->userCanAccessConversation($authUser, $conversation), 403);
 
         $data = $request->validate([
             'body' => ['required', 'string', 'max:5000'],
@@ -208,7 +213,7 @@ class ChatController extends Controller
     public function fetchMessages(Request $request, ChatConversation $conversation)
     {
         $authUser = $request->user();
-        abort_unless($conversation->participants()->where('users.id', $authUser->id)->exists(), 403);
+        abort_unless($this->userCanAccessConversation($authUser, $conversation), 403);
 
         $afterId = (int) $request->query('after_id', 0);
 
@@ -251,24 +256,21 @@ class ChatController extends Controller
         }
 
         if ($authUser->hasRole('teacher')) {
+            $administrativeUserIds = $this->administrativeUserIds();
+            $studentUserIds = $this->studentUserIdsForTeacher($authUser);
+            $allowedIds = $administrativeUserIds->merge($studentUserIds)->unique()->values();
+
             return User::query()
                 ->select('id', 'name')
+                ->whereIn('id', $allowedIds)
                 ->where('id', '!=', $authUser->id)
-                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['guardian', 'tutor']))
                 ->orderBy('name')
                 ->get();
         }
 
         if ($authUser->hasRole('student') && $authUser->student) {
-            $groupId = $authUser->student->group_id;
-            $teacherUserIds = TeachingAssignment::query()
-                ->where('group_id', $groupId)
-                ->pluck('teacher_id')
-                ->pipe(fn ($teacherIds) => Teacher::query()
-                    ->whereIn('id', $teacherIds)
-                    ->pluck('user_id'));
-
-            $administrativeUserIds = User::role(['coordinator', 'admin'])->pluck('id');
+            $teacherUserIds = $this->teacherUserIdsForStudent($authUser->student);
+            $administrativeUserIds = $this->administrativeUserIds();
             $allowedIds = $teacherUserIds->merge($administrativeUserIds)->unique()->values();
 
             return User::query()
@@ -316,7 +318,12 @@ class ChatController extends Controller
         }
 
         if ($authUser->hasRole('teacher') && $authUser->teacher) {
-            $groupIds = TeachingAssignment::query()
+            $activeCycleId = $this->activeCycleIdForCurrentCampus();
+            if (! $activeCycleId) {
+                return collect();
+            }
+
+            $groupIds = $this->assignmentsForActiveCycle()
                 ->where('teacher_id', $authUser->teacher->id)
                 ->pluck('group_id')
                 ->unique();
@@ -334,13 +341,19 @@ class ChatController extends Controller
 
     protected function groupParticipantUserIds(Group $group): array
     {
+        $activeCycleId = $this->activeCycleIdForCurrentCampus();
+        if (! $activeCycleId) {
+            return [];
+        }
+
         $studentUserIds = Student::query()
             ->where('group_id', $group->id)
+            ->where('is_active', true)
             ->whereNotNull('user_id')
             ->pluck('user_id')
             ->all();
 
-        $teacherUserIds = TeachingAssignment::query()
+        $teacherUserIds = $this->assignmentsForActiveCycle()
             ->where('group_id', $group->id)
             ->pluck('teacher_id')
             ->pipe(fn ($teacherIds) => Teacher::query()
@@ -349,9 +362,131 @@ class ChatController extends Controller
                 ->pluck('user_id')
                 ->all());
 
-        $staffUserIds = User::role(['coordinator', 'prefect'])->pluck('id')->all();
+        $staffUserIds = User::role(['coordinator', 'admin'])->pluck('id')->all();
 
         return array_values(array_unique(array_merge($studentUserIds, $teacherUserIds, $staffUserIds)));
+    }
+
+    protected function userCanAccessConversation(User $authUser, ChatConversation $conversation): bool
+    {
+        if (! $conversation->participants()->where('users.id', $authUser->id)->exists()) {
+            return false;
+        }
+
+        if ($authUser->hasRole('admin') || $authUser->hasRole('coordinator')) {
+            return true;
+        }
+
+        if ($conversation->type === 'direct') {
+            $otherUserId = (int) $conversation->participants()
+                ->where('users.id', '!=', $authUser->id)
+                ->value('users.id');
+
+            return $otherUserId > 0
+                && $this->availableUsersFor($authUser)->contains('id', $otherUserId);
+        }
+
+        if ($conversation->type === 'group') {
+            return $conversation->group_id
+                && $this->availableGroupsFor($authUser)->contains('id', (int) $conversation->group_id);
+        }
+
+        return false;
+    }
+
+    protected function administrativeUserIds(): Collection
+    {
+        return collect(User::role(['coordinator', 'admin'])->pluck('id')->all());
+    }
+
+    protected function studentUserIdsForTeacher(User $authUser): Collection
+    {
+        if (! $authUser->teacher) {
+            return collect();
+        }
+
+        $assignments = $this->assignmentsForActiveCycle()
+            ->with([
+                'students:id,user_id',
+                'group.students:id,user_id,group_id,is_active',
+            ])
+            ->where('teacher_id', $authUser->teacher->id)
+            ->get(['id', 'group_id']);
+
+        return collect($assignments
+            ->flatMap(function (TeachingAssignment $assignment) {
+                $sectionStudents = $assignment->students
+                    ->pluck('user_id')
+                    ->filter();
+
+                if ($sectionStudents->isNotEmpty()) {
+                    return $sectionStudents;
+                }
+
+                return optional($assignment->group)->students
+                    ? $assignment->group->students
+                        ->where('is_active', true)
+                        ->pluck('user_id')
+                        ->filter()
+                    : collect();
+            })
+            ->unique()
+            ->values()
+            ->all());
+    }
+
+    protected function teacherUserIdsForStudent(Student $student): Collection
+    {
+        $assignments = $this->assignmentsForActiveCycle()
+            ->with(['teacher:id,user_id', 'students:id'])
+            ->where('group_id', $student->group_id)
+            ->get(['id', 'teacher_id', 'group_id']);
+
+        return collect($assignments
+            ->filter(function (TeachingAssignment $assignment) use ($student) {
+                return $assignment->students->isEmpty()
+                    || $assignment->students->contains('id', (int) $student->id);
+            })
+            ->map(fn (TeachingAssignment $assignment) => optional($assignment->teacher)->user_id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all());
+    }
+
+    protected function assignmentsForActiveCycle()
+    {
+        $activeCycleId = $this->activeCycleIdForCurrentCampus();
+
+        return TeachingAssignment::query()
+            ->where('is_active', true)
+            ->when(
+                $activeCycleId,
+                fn ($query) => $query->where(function ($nested) use ($activeCycleId) {
+                    $nested->whereHas('schoolCycleGroup', fn ($q) => $q->where('school_cycle_id', $activeCycleId))
+                        ->orWhereHas('schedules', fn ($q) => $q->where('school_cycle_id', $activeCycleId));
+                }),
+                fn ($query) => $query->whereRaw('1 = 0')
+            );
+    }
+
+    protected function activeCycleIdForCurrentCampus(): ?int
+    {
+        $activeCampusId = (int) session('active_campus_id', 0);
+
+        return SchoolCycle::query()
+            ->where('is_active', true)
+            ->when($activeCampusId > 0, fn ($query) => $this->applyCampusFilterToCycleQuery($query, $activeCampusId))
+            ->orderByDesc('start_date')
+            ->value('id');
+    }
+
+    protected function applyCampusFilterToCycleQuery($query, int $activeCampusId): void
+    {
+        $query->where(function ($nested) use ($activeCampusId) {
+            $nested->where('campus_id', $activeCampusId)
+                ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
+        });
     }
 
     protected function countUnreadConversations(User $user): int
@@ -361,8 +496,21 @@ class ChatController extends Controller
             ->where('cp.user_id', $user->id)
             ->get();
 
+        $accessibleConversationIds = ChatConversation::query()
+            ->with(['participants:id', 'group:id'])
+            ->whereIn('id', $rows->pluck('conversation_id'))
+            ->get()
+            ->filter(fn (ChatConversation $conversation) => $this->userCanAccessConversation($user, $conversation))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         $count = 0;
         foreach ($rows as $row) {
+            if (! in_array((int) $row->conversation_id, $accessibleConversationIds, true)) {
+                continue;
+            }
+
             $hasUnread = DB::table('chat_messages')
                 ->where('conversation_id', $row->conversation_id)
                 ->where('user_id', '!=', $user->id)
