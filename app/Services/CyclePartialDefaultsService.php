@@ -12,7 +12,9 @@ class CyclePartialDefaultsService
 {
     public function syncForCycle(SchoolCycle $cycle): void
     {
-        $count = $this->defaultCountForModality($cycle->modality?->name);
+        $cycle->loadMissing(['modality', 'modalities']);
+
+        $count = $this->defaultCountForCycle($cycle);
         if (!$count) {
             return;
         }
@@ -85,6 +87,23 @@ class CyclePartialDefaultsService
         }
 
         return null;
+    }
+
+    public function defaultCountForCycle(SchoolCycle $cycle): ?int
+    {
+        $counts = collect();
+
+        if ($cycle->modality) {
+            $counts->push($this->defaultCountForModality($cycle->modality->name));
+        }
+
+        foreach ($cycle->modalities as $modality) {
+            $counts->push($this->defaultCountForModality($modality->name));
+        }
+
+        return $counts
+            ->filter()
+            ->max();
     }
 
     private function buildRanges(SchoolCycle $cycle, int $count): Collection
@@ -177,4 +196,3 @@ class CyclePartialDefaultsService
         return strtr($value, $map);
     }
 }
-

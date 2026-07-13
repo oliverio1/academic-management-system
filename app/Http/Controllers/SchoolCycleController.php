@@ -103,7 +103,7 @@ class SchoolCycleController extends Controller
                 }
             }
 
-            $newCycle->loadMissing('modality');
+            $newCycle->load(['modality', 'modalities']);
             $partialDefaults->syncForCycle($newCycle);
         });
 
@@ -150,7 +150,7 @@ class SchoolCycleController extends Controller
             ]);
             $schoolCycle->modalities()->sync($modalityIds->all());
             $schoolCycle->campuses()->sync($campusIds->all());
-            $schoolCycle->loadMissing('modality');
+            $schoolCycle->load(['modality', 'modalities']);
             $partialDefaults->syncForCycle($schoolCycle);
 
             if ($wasActive && ! $newIsActive) {
