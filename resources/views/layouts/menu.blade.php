@@ -437,9 +437,16 @@
         </li>
         <li class="nav-item">
             <a href="{{ route('school-cycles.index') }}"
-               class="nav-link {{ isActive('school-cycles.*') }}">
+               class="nav-link {{ isActive(['school-cycles.index', 'school-cycles.edit', 'school-cycles.partials.*']) }}">
                 <i class="far fa-circle nav-icon"></i>
                 <p>Ciclos y parciales</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('school-cycles.create') }}"
+               class="nav-link {{ isActive('school-cycles.create') }}">
+                <i class="far fa-plus-square nav-icon"></i>
+                <p>Nuevo ciclo</p>
             </a>
         </li>
         <li class="nav-item">
