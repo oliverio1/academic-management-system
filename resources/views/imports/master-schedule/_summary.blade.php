@@ -6,6 +6,9 @@
         'Filas omitidas',
         'Horarios creados/actualizados',
     ];
+    if (array_key_exists('Sesiones academicas creadas', $metrics)) {
+        $primaryMetrics[] = 'Sesiones academicas creadas';
+    }
     $catalogMetrics = [
         'Grupos creados/reactivados',
         'Materias creadas/reactivadas',

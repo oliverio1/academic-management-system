@@ -125,6 +125,10 @@
                                 <input type="checkbox" id="deactivate_existing" name="deactivate_existing" value="1" class="custom-control-input">
                                 <label for="deactivate_existing" class="custom-control-label">Inactivar horarios existentes del mismo ciclo/campus antes de importar</label>
                             </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" id="generate_sessions" name="generate_sessions" value="1" class="custom-control-input" checked>
+                                <label for="generate_sessions" class="custom-control-label">Generar sesiones academicas del ciclo despues de importar</label>
+                            </div>
                         </div>
                     </div>
 

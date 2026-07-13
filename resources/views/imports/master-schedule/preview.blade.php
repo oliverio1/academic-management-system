@@ -19,6 +19,9 @@
                     @if($exitCode === 0)
                         <div class="alert {{ $summary['has_warnings'] ? 'alert-warning' : 'alert-success' }}">
                             Esta validacion no guardo cambios. Revisa el resumen antes de confirmar la importacion.
+                            @if($options['generate_sessions'] ?? false)
+                                <br>Al confirmar, tambien se generaran las sesiones academicas del ciclo.
+                            @endif
                         </div>
                     @endif
 

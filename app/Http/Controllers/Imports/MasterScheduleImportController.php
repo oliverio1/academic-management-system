@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Imports;
 use App\Http\Controllers\Controller;
 use App\Models\Campus;
 use App\Models\Modality;
+use App\Models\Schedule;
 use App\Models\SchoolCycle;
 use App\Services\CyclePartialDefaultsService;
+use App\Services\AcademicSessionGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -70,6 +72,7 @@ class MasterScheduleImportController extends Controller
             'campus' => $campus,
             'output' => $output,
             'summary' => $this->parseImportOutput($output),
+            'options' => $options,
             'exitCode' => $exitCode,
         ]);
     }
@@ -97,6 +100,11 @@ class MasterScheduleImportController extends Controller
             dryRun: false
         );
         $output = Artisan::output();
+        $summary = $this->parseImportOutput($output);
+
+        if ($exitCode === 0 && (bool) (($payload['options']['generate_sessions'] ?? false))) {
+            $summary['metrics']['Sesiones academicas creadas'] = $this->generateAcademicSessions($cycle);
+        }
 
         session()->forget(self::SESSION_KEY);
 
@@ -104,7 +112,7 @@ class MasterScheduleImportController extends Controller
             'cycle' => $cycle,
             'campus' => $campus,
             'output' => $output,
-            'summary' => $this->parseImportOutput($output),
+            'summary' => $summary,
             'exitCode' => $exitCode,
         ]);
     }
@@ -120,6 +128,7 @@ class MasterScheduleImportController extends Controller
             'create_missing_subjects' => ['nullable', 'boolean'],
             'create_missing_teachers' => ['nullable', 'boolean'],
             'deactivate_existing' => ['nullable', 'boolean'],
+            'generate_sessions' => ['nullable', 'boolean'],
         ];
 
         if ($preview) {
@@ -174,7 +183,28 @@ class MasterScheduleImportController extends Controller
             'create_missing_subjects' => ! empty($data['create_missing_subjects']),
             'create_missing_teachers' => ! empty($data['create_missing_teachers']),
             'deactivate_existing' => ! empty($data['deactivate_existing']),
+            'generate_sessions' => ! empty($data['generate_sessions']),
         ];
+    }
+
+    private function generateAcademicSessions(SchoolCycle $cycle): int
+    {
+        set_time_limit(0);
+
+        $generator = app(AcademicSessionGeneratorService::class);
+        $created = 0;
+
+        Schedule::query()
+            ->where('school_cycle_id', (int) $cycle->id)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->chunkById(100, function ($schedules) use ($generator, &$created) {
+                foreach ($schedules as $schedule) {
+                    $created += $generator->generateForSchedule($schedule);
+                }
+            });
+
+        return $created;
     }
 
     private function runImporter(
