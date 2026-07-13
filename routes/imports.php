@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Imports\AttendanceImportController;
+use App\Http\Controllers\Imports\CycleStudentsTemplateController;
 use App\Http\Controllers\Imports\GradesImportController;
 use App\Http\Controllers\Imports\MasterScheduleImportController;
 
@@ -26,6 +27,12 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
 
         Route::post('master-schedule/import', [MasterScheduleImportController::class, 'import'])
             ->name('master-schedule.import');
+
+        Route::get('cycle-students', [CycleStudentsTemplateController::class, 'create'])
+            ->name('cycle-students.create');
+
+        Route::get('cycle-students/template', [CycleStudentsTemplateController::class, 'template'])
+            ->name('cycle-students.template');
 
         /*
         |--------------------------------------------------------------------------

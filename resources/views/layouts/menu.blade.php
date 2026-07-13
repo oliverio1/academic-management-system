@@ -478,6 +478,13 @@
             </a>
         </li>
         <li class="nav-item">
+            <a href="{{ route('imports.cycle-students.create') }}"
+               class="nav-link {{ isActive('imports.cycle-students.*') }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Cargar alumnos a ciclo</p>
+            </a>
+        </li>
+        <li class="nav-item">
             <a href="{{ route('imports.grades.create') }}"
                class="nav-link {{ isActive('imports.grades.*') }}">
                 <i class="far fa-circle nav-icon"></i>
