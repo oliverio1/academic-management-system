@@ -267,14 +267,12 @@ class TeacherDidacticPlanController extends Controller
     public function create(TeachingAssignment $assignment)
     {
         $this->authorizeAssignmentOwner($assignment);
+        $assignment->loadMissing(['schoolCycleGroup.schoolCycle', 'group.level']);
 
         [$unitOptions, $topicOptions, $subtopicOptions] = $this->buildTemarioSelectors($assignment);
 
-        $cycles = SchoolCycle::query()
-            ->where('modality_id', $assignment->group->level->modality_id)
-            ->when((int) session('active_campus_id', 0) > 0, fn ($q) => $this->applyCampusFilterToCycleQuery($q, (int) session('active_campus_id')))
-            ->orderByDesc('start_date')
-            ->get();
+        $cycles = $this->cyclesForAssignment($assignment);
+        $defaultCycleId = $this->defaultCycleForAssignment($assignment, $cycles)?->id;
 
         $periods = AcademicPeriod::query()
             ->where('modality_id', $assignment->group->level->modality_id)
@@ -288,6 +286,7 @@ class TeacherDidacticPlanController extends Controller
             'topicOptions' => $topicOptions,
             'subtopicOptions' => $subtopicOptions,
             'cycles' => $cycles,
+            'defaultCycleId' => $defaultCycleId,
             'periods' => $periods,
             'isEdit' => false,
         ]);
@@ -313,14 +312,12 @@ class TeacherDidacticPlanController extends Controller
         $plan->loadMissing(['assignment.group.level', 'items']);
         $assignment = $plan->assignment;
         $this->authorizeAssignmentOwner($assignment);
+        $assignment->loadMissing(['schoolCycleGroup.schoolCycle', 'group.level']);
 
         [$unitOptions, $topicOptions, $subtopicOptions] = $this->buildTemarioSelectors($assignment);
 
-        $cycles = SchoolCycle::query()
-            ->where('modality_id', $assignment->group->level->modality_id)
-            ->when((int) session('active_campus_id', 0) > 0, fn ($q) => $this->applyCampusFilterToCycleQuery($q, (int) session('active_campus_id')))
-            ->orderByDesc('start_date')
-            ->get();
+        $cycles = $this->cyclesForAssignment($assignment, $plan->school_cycle_id ? [(int) $plan->school_cycle_id] : []);
+        $defaultCycleId = (int) ($plan->school_cycle_id ?: optional($this->defaultCycleForAssignment($assignment, $cycles))->id);
 
         $periods = AcademicPeriod::query()
             ->where('modality_id', $assignment->group->level->modality_id)
@@ -334,6 +331,7 @@ class TeacherDidacticPlanController extends Controller
             'topicOptions' => $topicOptions,
             'subtopicOptions' => $subtopicOptions,
             'cycles' => $cycles,
+            'defaultCycleId' => $defaultCycleId,
             'periods' => $periods,
             'isEdit' => true,
         ]);
@@ -571,9 +569,16 @@ class TeacherDidacticPlanController extends Controller
 
         $temarioIds = $assignment->temarios()->pluck('id');
 
+        $allowedCycleIds = $this->cycleIdsForAssignment($assignment);
+
         $data = $request->validate([
             'title' => 'required|string|max:255',
-            'school_cycle_id' => 'required|integer|exists:school_cycles,id',
+            'school_cycle_id' => [
+                'required',
+                'integer',
+                'exists:school_cycles,id',
+                Rule::in($allowedCycleIds->all()),
+            ],
             'academic_period_id' => 'nullable|integer|exists:academic_periods,id',
             'evaluation_instruments' => 'nullable|string',
             'general_resources' => 'nullable|string',
@@ -815,6 +820,78 @@ class TeacherDidacticPlanController extends Controller
             ->exists();
 
         abort_if(!$teacherId || $assignment->teacher_id !== $teacherId || !$belongsToCampus, 403);
+    }
+
+    private function cyclesForAssignment(TeachingAssignment $assignment, array $extraCycleIds = [])
+    {
+        $cycleIds = $this->cycleIdsForAssignment($assignment)
+            ->merge($extraCycleIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($cycleIds->isEmpty()) {
+            return collect();
+        }
+
+        $assignmentCycleId = (int) ($assignment->schoolCycleGroup?->school_cycle_id ?? 0);
+
+        return SchoolCycle::query()
+            ->whereIn('id', $cycleIds->all())
+            ->get()
+            ->sort(function (SchoolCycle $a, SchoolCycle $b) use ($assignmentCycleId) {
+                $aIsAssignmentCycle = (int) $a->id === $assignmentCycleId;
+                $bIsAssignmentCycle = (int) $b->id === $assignmentCycleId;
+
+                if ($aIsAssignmentCycle !== $bIsAssignmentCycle) {
+                    return $aIsAssignmentCycle ? -1 : 1;
+                }
+
+                $startComparison = (optional($b->start_date)->timestamp ?? 0) <=> (optional($a->start_date)->timestamp ?? 0);
+                if ($startComparison !== 0) {
+                    return $startComparison;
+                }
+
+                return ((int) $b->id) <=> ((int) $a->id);
+            })
+            ->values();
+    }
+
+    private function cycleIdsForAssignment(TeachingAssignment $assignment)
+    {
+        $ids = collect();
+
+        $cycleGroupCycleId = (int) ($assignment->schoolCycleGroup?->school_cycle_id ?? 0);
+        if ($cycleGroupCycleId > 0) {
+            $ids->push($cycleGroupCycleId);
+        }
+
+        $scheduleCycleIds = $assignment->schedules()
+            ->where('is_active', true)
+            ->whereNotNull('school_cycle_id')
+            ->pluck('school_cycle_id')
+            ->map(fn ($id) => (int) $id);
+
+        return $ids
+            ->merge($scheduleCycleIds)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function defaultCycleForAssignment(TeachingAssignment $assignment, $cycles): ?SchoolCycle
+    {
+        $assignmentCycleId = (int) ($assignment->schoolCycleGroup?->school_cycle_id ?? 0);
+
+        if ($assignmentCycleId > 0) {
+            $cycle = $cycles->firstWhere('id', $assignmentCycleId);
+            if ($cycle) {
+                return $cycle;
+            }
+        }
+
+        return $cycles->firstWhere('is_active', true) ?: $cycles->first();
     }
 
     private function applyCampusFilterToCycleQuery($query, int $activeCampusId): void

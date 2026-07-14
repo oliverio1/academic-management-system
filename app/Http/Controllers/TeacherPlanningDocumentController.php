@@ -132,6 +132,7 @@ class TeacherPlanningDocumentController extends Controller
         $assignment->loadMissing([
             'teacher.user',
             'group.level.modality',
+            'schoolCycleGroup.schoolCycle',
             'subject',
             'didacticPlans.items.temarioPoint',
             'didacticPlans.temarioUnitPoint',
@@ -145,16 +146,23 @@ class TeacherPlanningDocumentController extends Controller
 
         $cycleId = (int) $request->query('school_cycle_id', 0);
         if ($cycleId > 0) {
-            $cycle = SchoolCycle::find($cycleId);
+            $cycle = $this->cycleBelongsToAssignment($assignment, $cycleId)
+                ? SchoolCycle::find($cycleId)
+                : null;
         }
 
         if (!$cycle) {
-            $cycle = SchoolCycle::query()
-                ->where('modality_id', $assignment->group->level->modality_id)
+            $cycle = $assignment->schoolCycleGroup?->schoolCycle;
+        }
+
+        if (!$cycle) {
+            $scheduleCycleId = $assignment->schedules()
                 ->where('is_active', true)
-                ->when((int) session('active_campus_id', 0) > 0, fn ($q) => $q->where('campus_id', (int) session('active_campus_id')))
-                ->orderByDesc('start_date')
-                ->first();
+                ->whereNotNull('school_cycle_id')
+                ->orderByDesc('school_cycle_id')
+                ->value('school_cycle_id');
+
+            $cycle = $scheduleCycleId ? SchoolCycle::find((int) $scheduleCycleId) : null;
         }
 
         $partialId = (int) $request->query('cycle_partial_id', 0);
@@ -232,18 +240,31 @@ class TeacherPlanningDocumentController extends Controller
         $teacherId = auth()->user()?->teacher?->id;
         $activeCampusId = (int) session('active_campus_id', 0);
         $belongsToCampus = $activeCampusId <= 0 || $assignment->schedules()
-            ->where('school_cycle_id', function ($query) use ($activeCampusId) {
-                $query->select('id')
-                    ->from('school_cycles')
-                    ->where('is_active', true)
-                    ->where('campus_id', $activeCampusId)
-                    ->orderByDesc('start_date')
-                    ->limit(1);
-            })
+            ->whereHas('schoolCycle', fn ($query) => $this->applyCampusFilterToCycleQuery($query, $activeCampusId))
             ->where('is_active', true)
             ->exists();
 
         abort_if(!$teacherId || $assignment->teacher_id !== $teacherId || !$belongsToCampus, 403);
+    }
+
+    private function cycleBelongsToAssignment(TeachingAssignment $assignment, int $cycleId): bool
+    {
+        if ((int) ($assignment->schoolCycleGroup?->school_cycle_id ?? 0) === $cycleId) {
+            return true;
+        }
+
+        return $assignment->schedules()
+            ->where('school_cycle_id', $cycleId)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    private function applyCampusFilterToCycleQuery($query, int $activeCampusId): void
+    {
+        $query->where(function ($nested) use ($activeCampusId) {
+            $nested->where('campus_id', $activeCampusId)
+                ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
+        });
     }
 
     private function safeName(string $text): string

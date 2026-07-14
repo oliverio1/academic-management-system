@@ -6,7 +6,7 @@
 @php
     $existingItems = old('items');
     $existingUnitsPayload = old('units_payload');
-    $defaultCycleId = optional($cycles->firstWhere('is_active', true) ?: $cycles->first())->id;
+    $defaultCycleId = $defaultCycleId ?? optional($cycles->firstWhere('is_active', true) ?: $cycles->first())->id;
     $selectedCycleId = (string) old('school_cycle_id', $plan->school_cycle_id ?: $defaultCycleId);
     $cyclesForJs = $cycles->map(function ($cycle) {
         return [
