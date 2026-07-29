@@ -43,4 +43,9 @@ class TeacherDocumentRequestItem extends Model
     {
         return $this->hasOne(TeacherDocumentSubmission::class, 'item_id')->latestOfMany('submitted_at');
     }
+
+    public function editableContent()
+    {
+        return $this->hasOne(TeacherDocumentContent::class, 'item_id');
+    }
 }

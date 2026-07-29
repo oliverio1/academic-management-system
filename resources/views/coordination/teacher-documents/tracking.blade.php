@@ -29,7 +29,10 @@
                         </thead>
                         <tbody>
                         @forelse($items as $item)
-                            @php $latest = $item->latestSubmission; @endphp
+                            @php
+                                $latest = $item->latestSubmission;
+                                $pdfUrl = $item->document_pdf_url ?? null;
+                            @endphp
                             <tr>
                                 <td>{{ optional($item->request)->title ?? '-' }}</td>
                                 <td>{{ optional(optional($item->request)->due_date)->format('d/m/Y') ?? '-' }}</td>
@@ -59,13 +62,17 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if($latest)
-                                        <a href="{{ asset('storage/'.$latest->file_path) }}" target="_blank">Ver PDF</a>
+                                    @if($pdfUrl)
+                                        <a href="{{ $pdfUrl }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                            Ver PDF
+                                        </a>
                                     @else
-                                        -
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                            Ver PDF
+                                        </button>
                                     @endif
                                 </td>
-                                <td>{{ $latest ? optional($latest->submitted_at)->format('d/m/Y H:i') : '-' }}</td>
+                                <td>{{ $latest ? optional($latest->submitted_at)->format('d/m/Y H:i') : (($item->system_artifact_label ?? null) ? 'Registrado en sistema' : '-') }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="10" class="text-center text-muted">No hay registros para seguimiento.</td></tr>

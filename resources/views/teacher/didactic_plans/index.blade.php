@@ -35,8 +35,19 @@
                                                 <span class="badge {{ $assignment->planning_status['class'] ?? 'badge-secondary' }}">
                                                     {{ $assignment->planning_status['label'] ?? 'No comenzado' }}
                                                 </span>
+                                                @if(($assignment->latest_plan_status ?? null) === \App\Models\DidacticPlan::STATUS_TENTATIVE)
+                                                    <div class="small text-muted mt-1">Generada automáticamente; pendiente de confirmar.</div>
+                                                @endif
                                             </td>
                                             <td class="text-right">
+                                                <a href="{{ route('teacher.didactic-plans.template', $assignment) }}"
+                                                   class="btn btn-outline-success btn-sm mr-1">
+                                                    Descargar Excel
+                                                </a>
+                                                <a href="{{ route('teacher.didactic-plans.import', $assignment) }}"
+                                                   class="btn btn-outline-info btn-sm mr-1">
+                                                    Cargar Excel
+                                                </a>
                                                 @if(!empty($assignment->clone_source_assignment_id))
                                                     <form action="{{ route('teacher.didactic-plans.clone-from-peer', $assignment) }}"
                                                           method="POST"
@@ -72,6 +83,19 @@
                                                            class="btn btn-primary btn-sm">
                                                             Ver
                                                         </a>
+                                                        <form action="{{ route('teacher.didactic-plans.clone-to-peer-groups', $assignment->latest_plan_id) }}"
+                                                              method="POST"
+                                                              class="d-inline-block ml-1"
+                                                              onsubmit="return confirm('Se generaran planeaciones para los otros grupos de esta misma materia ajustando las fechas al horario de cada grupo. Deseas continuar?');">
+                                                            @csrf
+                                                            <label class="small text-muted mb-0 mr-1">
+                                                                <input type="checkbox" name="replace_existing" value="1">
+                                                                Reemplazar
+                                                            </label>
+                                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                                Clonar a otros grupos
+                                                            </button>
+                                                        </form>
                                                     @endif
                                                 @else
                                                     <a href="{{ route('teacher.didactic-plans.create', $assignment) }}"

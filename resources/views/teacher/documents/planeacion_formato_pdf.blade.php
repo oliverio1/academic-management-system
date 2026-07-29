@@ -2,7 +2,7 @@
 
 @section('content')
 @php
-    $logoPath = public_path('logo.png');
+    $logoPath = public_path('images/ula-logo.png');
     $logoBase64 = null;
     if (file_exists($logoPath)) {
         $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
@@ -37,6 +37,7 @@
 
 <style>
     body { font-family: DejaVu Sans, sans-serif; font-size: 10px; line-height: 1.35; color: #111; }
+    .pdf-logo { max-width: 84px; max-height: 36px; }
     .header-table td { border: 1px solid #008b8b; vertical-align: middle; }
     .meta td, .meta th { border: 1px solid #008b8b; padding: 4px; }
     .plan td, .plan th { border: 1px solid #008b8b; padding: 4px; vertical-align: top; }
@@ -52,12 +53,14 @@
 
 <table class="header-table mb-6" style="width:100%;">
     <tr>
-        <td style="width: 22%; text-align:center;">
+        <td class="center">
             @if($logoBase64)
-                <img src="{{ $logoBase64 }}" style="height:52px;" alt="Logo">
+                <img src="{{ $logoBase64 }}" class="pdf-logo" alt="Logo">
             @endif
         </td>
-        <td class="center" style="width: 78%;">
+    </tr>
+    <tr>
+        <td class="center">
             <div class="title teal">FORMATO DE PLANEACION DIDACTICA</div>
             <div class="subtitle">UNIVERSIDAD LATINOAMERICANA - CAMPUS VALLE</div>
         </td>

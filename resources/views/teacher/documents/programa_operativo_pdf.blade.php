@@ -2,7 +2,7 @@
 
 @section('content')
 @php
-    $logoPath = public_path('logo.png');
+    $logoPath = public_path('images/ula-logo.png');
     $logoBase64 = null;
     if (file_exists($logoPath)) {
         $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
@@ -10,6 +10,7 @@
 @endphp
 
 <style>
+    .pdf-logo { max-width: 84px; max-height: 36px; }
     .header-table td { border: none; vertical-align: top; }
     .meta-box td { border: 1px solid #000; padding: 4px; }
     .small { font-size: 10px; line-height: 1.35; }
@@ -21,12 +22,14 @@
 
 <table class="header-table" style="width:100%;">
     <tr>
-        <td style="width: 20%;">
+        <td class="center">
             @if($logoBase64)
-                <img src="{{ $logoBase64 }}" style="height:52px;" alt="Logo">
+                <img src="{{ $logoBase64 }}" class="pdf-logo" alt="Logo">
             @endif
         </td>
-        <td class="center" style="width: 80%;">
+    </tr>
+    <tr>
+        <td class="center">
             <div class="title">PROGRAMA OPERATIVO PARA LA PLANEACION DIDACTICA</div>
             <div class="subtitle">Universidad Latinoamericana - Campus Valle</div>
         </td>

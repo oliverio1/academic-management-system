@@ -14,6 +14,14 @@
                             <small class="text-muted">{{ $assignment->subject->name }} - Grupo {{ $assignment->group->name }}</small>
                         </div>
                         <div>
+                            <a href="{{ route('teacher.didactic-plans.template', $assignment) }}"
+                               class="btn btn-outline-success btn-sm">
+                                Descargar Excel
+                            </a>
+                            <a href="{{ route('teacher.didactic-plans.import', $assignment) }}"
+                               class="btn btn-outline-info btn-sm">
+                                Cargar Excel
+                            </a>
                             <a href="{{ route('teacher.didactic-plans.create', $assignment) }}"
                                class="btn btn-primary btn-sm">
                                 Nueva planeación
@@ -40,6 +48,7 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Título</th>
+                                        <th>Estatus</th>
                                         <th>Ciclo</th>
                                         <th>Parcial</th>
                                         <th>Rango</th>
@@ -51,6 +60,14 @@
                                     @foreach($plans as $plan)
                                         <tr>
                                             <td>{{ $plan->title }}</td>
+                                            <td>
+                                                @if(($plan->status ?? \App\Models\DidacticPlan::STATUS_FINAL) === \App\Models\DidacticPlan::STATUS_TENTATIVE)
+                                                    <span class="badge badge-info">Tentativa</span>
+                                                    <div class="small text-muted">Generada por sistema</div>
+                                                @else
+                                                    <span class="badge badge-success">Final</span>
+                                                @endif
+                                            </td>
                                             <td>{{ $plan->schoolCycle->name ?? '-' }}</td>
                                             <td>{{ $plan->academicPeriod->name ?? '-' }}</td>
                                             <td>
@@ -60,6 +77,16 @@
                                             </td>
                                             <td>{{ $plan->items->count() }}</td>
                                             <td class="text-right">
+                                                @if(($plan->status ?? \App\Models\DidacticPlan::STATUS_FINAL) === \App\Models\DidacticPlan::STATUS_TENTATIVE)
+                                                    <form method="POST"
+                                                          action="{{ route('teacher.didactic-plans.confirm-final', $plan) }}"
+                                                          class="d-inline-block"
+                                                          onsubmit="return confirm('Se confirmara esta planeacion como final. Despues se tomara como base para generar actividades. Deseas continuar?');">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button class="btn btn-success btn-sm">Confirmar como final</button>
+                                                    </form>
+                                                @endif
                                                 <a href="{{ route('teacher.didactic-plans.pdf', $plan) }}"
                                                    class="btn btn-outline-primary btn-sm"
                                                    target="_blank">
@@ -69,6 +96,17 @@
                                                    class="btn btn-outline-secondary btn-sm">
                                                     Editar
                                                 </a>
+                                                <form method="POST"
+                                                      action="{{ route('teacher.didactic-plans.clone-to-peer-groups', $plan) }}"
+                                                      class="d-inline-block"
+                                                      onsubmit="return confirm('Se generaran planeaciones para los otros grupos de esta misma materia ajustando las fechas al horario de cada grupo. Deseas continuar?');">
+                                                    @csrf
+                                                    <label class="small text-muted mb-0 mr-1">
+                                                        <input type="checkbox" name="replace_existing" value="1">
+                                                        Reemplazar
+                                                    </label>
+                                                    <button class="btn btn-outline-success btn-sm">Clonar a otros grupos</button>
+                                                </form>
                                                 <form method="POST"
                                                       action="{{ route('teacher.didactic-plans.destroy', $plan) }}"
                                                       class="d-inline"

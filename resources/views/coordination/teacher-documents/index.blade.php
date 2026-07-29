@@ -8,67 +8,67 @@
         <div class="col-md-12 mt-3">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Seguimiento de entregables docentes</h4>
-                    <a href="{{ route('coordination.teacher-documents.create') }}" class="btn btn-primary btn-sm">Solicitar documentos</a>
+                    <div>
+                        <h4 class="mb-0">Expediente docente</h4>
+                        @if($activeCycle)
+                            <small class="text-muted">Ciclo activo: {{ $activeCycle->name }}</small>
+                        @endif
+                    </div>
+                    <div>
+                        <a href="{{ route('coordination.teacher-documents.create') }}" class="btn btn-primary btn-sm">Solicitud especial</a>
+                    </div>
                 </div>
                 <div class="card-body table-responsive p-3">
                     <table data-datatable="true" class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Solicitud</th>
-                                <th>Fecha límite</th>
                                 <th>Docente</th>
-                                <th>Materia</th>
-                                <th>Grupo</th>
-                                <th>Documento</th>
-                                <th>Visible alumno</th>
-                                <th>Estatus</th>
-                                <th>Archivo</th>
-                                <th>Fecha entrega</th>
+                                <th>Asignaciones</th>
+                                <th>Entrega</th>
+                                <th>Alerta</th>
+                                <th>Detalle</th>
                             </tr>
                         </thead>
                         <tbody>
-                        @forelse($items as $item)
-                            @php $latest = $item->latestSubmission; @endphp
+                        @forelse($teacherRows as $row)
                             <tr>
-                                <td>{{ optional($item->request)->title ?? '-' }}</td>
-                                <td>{{ optional(optional($item->request)->due_date)->format('d/m/Y') ?? '-' }}</td>
-                                <td>{{ optional(optional($item->assignment->teacher)->user)->name ?? '-' }}</td>
-                                <td>{{ optional($item->assignment->subject)->name ?? '-' }}</td>
-                                <td>{{ optional($item->assignment->group)->name ?? '-' }}</td>
-                                <td>{{ $documentTypes[$item->document_type] ?? $item->document_type }}</td>
-                                <td>
-                                    <form method="POST" action="{{ route('coordination.teacher-documents.items.visibility', $item) }}" class="d-flex align-items-center">
-                                        @csrf
-                                        @method('PATCH')
-                                        <input type="hidden" name="is_student_visible" value="{{ $item->is_student_visible ? 0 : 1 }}">
-                                        @if($item->is_student_visible)
-                                            <button class="btn btn-sm btn-success" title="Ocultar para alumnos">Sí</button>
-                                        @else
-                                            <button class="btn btn-sm btn-outline-secondary" title="Mostrar para alumnos">No</button>
-                                        @endif
-                                    </form>
+                                <td>{{ $row['teacher']?->user?->name ?? '-' }}</td>
+                                <td>{{ $row['assignments_count'] }}</td>
+                                <td style="min-width: 220px;">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span>{{ $row['delivered'] }} de {{ $row['total'] }}</span>
+                                        <strong>{{ $row['percentage'] }}%</strong>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar {{ $row['has_overdue'] ? 'bg-danger' : 'bg-success' }}"
+                                             role="progressbar"
+                                             style="width: {{ $row['percentage'] }}%;"
+                                             aria-valuenow="{{ $row['percentage'] }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100"></div>
+                                    </div>
                                 </td>
                                 <td>
-                                    @if($item->tracking_status === 'overdue')
-                                        <span class="badge badge-danger">Atrasado</span>
-                                    @elseif($item->tracking_status === 'pending')
-                                        <span class="badge badge-warning">Pendiente</span>
+                                    @if($row['has_overdue'])
+                                        <span class="badge badge-danger">{{ $row['overdue'] }} atrasado(s)</span>
+                                    @elseif($row['pending'] > 0)
+                                        <span class="badge badge-warning">{{ $row['pending'] }} pendiente(s)</span>
                                     @else
-                                        <span class="badge badge-success">Entregado</span>
+                                        <span class="badge badge-success">Completo</span>
                                     @endif
                                 </td>
                                 <td>
-                                    @if($latest)
-                                        <a href="{{ asset('storage/'.$latest->file_path) }}" target="_blank">Ver PDF</a>
+                                    @if($row['teacher'])
+                                        <a href="{{ route('coordination.teacher-documents.teachers.show', $row['teacher']) }}" class="btn btn-sm btn-outline-primary">Ver detalle</a>
                                     @else
                                         -
                                     @endif
                                 </td>
-                                <td>{{ $latest ? optional($latest->submitted_at)->format('d/m/Y H:i') : '-' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="10" class="text-center text-muted">No hay registros para seguimiento.</td></tr>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No hay profesores con asignaciones en el ciclo activo.</td>
+                            </tr>
                         @endforelse
                         </tbody>
                     </table>

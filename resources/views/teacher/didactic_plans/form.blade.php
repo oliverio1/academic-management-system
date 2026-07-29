@@ -106,11 +106,11 @@
         'Coevaluación',
     ];
 @endphp
-<div class="content px-3">
+<div class="content px-3 planning-page">
     <div class="row">
         <div class="col-md-12 mt-3">
-            <div class="card">
-                <div class="card-header">
+            <div class="card planning-card">
+                <div class="card-header planning-header">
                     <h4 class="mb-0">
                         {{ $isEdit ? 'Editar planeación didáctica' : 'Nueva planeación didáctica' }}
                     </h4>
@@ -123,7 +123,7 @@
                         @method('PUT')
                     @endif
                     <input type="hidden" name="units_payload" id="units_payload" value="{{ old('units_payload') }}">
-                    <div class="card-body">
+                    <div class="card-body planning-body">
                         @if($errors->any())
                             <div class="alert alert-danger">
                                 <strong>Revisa la información antes de guardar.</strong>
@@ -147,7 +147,7 @@
                             <input type="hidden" name="school_cycle_id" id="school_cycle_id" value="{{ $selectedCycleId }}">
                         </div>
 
-                        <div class="alert alert-light border" id="cycle-range-box">
+                        <div class="alert alert-light border planning-cycle-box" id="cycle-range-box">
                             <div>
                                 <strong>Rango de planeación del ciclo actual:</strong>
                                 <span id="cycle-range-text" class="text-muted">No hay ciclo activo configurado.</span>
@@ -182,7 +182,7 @@
                             <label>Renglones de planeación (tema y actividades)</label>
                             <small class="d-block text-muted mb-2">En Recursos y Evaluación puedes seleccionar varias opciones con Ctrl (Windows) o Cmd (Mac).</small>
                             <div class="table-responsive">
-                                <table class="table table-bordered table-sm" id="items-table">
+                                <table class="table table-bordered table-sm planning-items-table" id="items-table">
                                     <thead class="thead-light">
                                         <tr>
                                             <th style="min-width: 230px;">Tema</th>
@@ -203,7 +203,7 @@
                                                 $selectedSubtopics = collect($item['temario_subtopic_ids'] ?? [])->map(fn ($id) => (string) $id);
                                             @endphp
                                             <tr data-row-index="{{ $i }}">
-                                                <td>
+                                                <td data-label="Tema">
                                                     <select name="items[{{ $i }}][temario_point_id]"
                                                             class="form-control form-control-sm js-topic-select">
                                                         <option value="">Seleccionar tema</option>
@@ -216,7 +216,7 @@
                                                         @endforeach
                                                     </select>
                                                 </td>
-                                                <td>
+                                                <td data-label="Subtemas">
                                                     <select name="items[{{ $i }}][temario_subtopic_ids][]"
                                                             class="form-control form-control-sm js-subtopic-select"
                                                             multiple
@@ -230,9 +230,9 @@
                                                         @endforeach
                                                     </select>
                                                 </td>
-                                                <td><textarea name="items[{{ $i }}][opening]" class="form-control form-control-sm" rows="2">{{ $item['opening'] ?? '' }}</textarea></td>
-                                                <td><textarea name="items[{{ $i }}][development]" class="form-control form-control-sm" rows="2">{{ $item['development'] ?? '' }}</textarea></td>
-                                                <td><textarea name="items[{{ $i }}][closing]" class="form-control form-control-sm" rows="2">{{ $item['closing'] ?? '' }}</textarea></td>
+                                                <td data-label="Apertura"><textarea name="items[{{ $i }}][opening]" class="form-control form-control-sm" rows="2">{{ $item['opening'] ?? '' }}</textarea></td>
+                                                <td data-label="Desarrollo"><textarea name="items[{{ $i }}][development]" class="form-control form-control-sm" rows="2">{{ $item['development'] ?? '' }}</textarea></td>
+                                                <td data-label="Cierre"><textarea name="items[{{ $i }}][closing]" class="form-control form-control-sm" rows="2">{{ $item['closing'] ?? '' }}</textarea></td>
                                                 @php
                                                     $selectedResources = collect(preg_split('/[;,\\r\\n]+/u', (string) ($item['resources'] ?? '')) ?: [])
                                                         ->map(fn ($value) => trim((string) $value))
@@ -243,7 +243,7 @@
                                                         ->filter()
                                                         ->values();
                                                 @endphp
-                                                <td>
+                                                <td data-label="Recursos">
                                                     <select class="form-control form-control-sm js-resource-select" multiple size="4">
                                                         @foreach($resourceOptions as $option)
                                                             <option value="{{ $option }}" {{ $selectedResources->contains($option) ? 'selected' : '' }}>{{ $option }}</option>
@@ -251,7 +251,7 @@
                                                     </select>
                                                     <input type="hidden" name="items[{{ $i }}][resources]" class="js-resource-hidden" value="{{ $item['resources'] ?? '' }}">
                                                 </td>
-                                                <td>
+                                                <td data-label="Evaluacion">
                                                     <select class="form-control form-control-sm js-evaluation-select" multiple size="4">
                                                         @foreach($evaluationOptions as $option)
                                                             <option value="{{ $option }}" {{ $selectedEvaluations->contains($option) ? 'selected' : '' }}>{{ $option }}</option>
@@ -259,9 +259,9 @@
                                                     </select>
                                                     <input type="hidden" name="items[{{ $i }}][evaluation]" class="js-evaluation-hidden" value="{{ $item['evaluation'] ?? '' }}">
                                                 </td>
-                                                <td><input type="date" name="items[{{ $i }}][start_date]" class="form-control form-control-sm js-date-start" value="{{ $item['start_date'] ?? '' }}"></td>
-                                                <td><input type="date" name="items[{{ $i }}][end_date]" class="form-control form-control-sm js-date-end" value="{{ $item['end_date'] ?? '' }}"></td>
-                                                <td class="text-center">
+                                                <td data-label="Inicio"><input type="date" name="items[{{ $i }}][start_date]" class="form-control form-control-sm js-date-start" value="{{ $item['start_date'] ?? '' }}"></td>
+                                                <td data-label="Termino"><input type="date" name="items[{{ $i }}][end_date]" class="form-control form-control-sm js-date-end" value="{{ $item['end_date'] ?? '' }}"></td>
+                                                <td class="text-center planning-row-actions" data-label="Acciones">
                                                     <button type="button" class="btn btn-outline-danger btn-sm js-remove-row">x</button>
                                                 </td>
                                             </tr>
@@ -277,7 +277,7 @@
                         <div class="form-group">
                             <label>Unidades capturadas</label>
                             <div class="table-responsive">
-                                <table class="table table-sm table-bordered mb-0">
+                                <table class="table table-sm table-bordered mb-0 planning-units-table">
                                     <thead class="thead-light">
                                         <tr>
                                             <th>Unidad</th>
@@ -315,7 +315,7 @@
                             <textarea name="notes" class="form-control" rows="2">{{ old('notes', $plan->notes) }}</textarea>
                         </div>
                     </div>
-                    <div class="card-footer d-flex justify-content-between">
+                    <div class="card-footer d-flex justify-content-between planning-footer">
                         <a href="{{ route('teacher.didactic-plans.plans', $assignment) }}" class="btn btn-secondary">Cancelar</a>
                         <button class="btn btn-primary">Guardar planeación</button>
                     </div>
@@ -327,7 +327,7 @@
 
 <template id="row-template">
     <tr data-row-index="__INDEX__">
-        <td>
+        <td data-label="Tema">
             <select name="items[__INDEX__][temario_point_id]" class="form-control form-control-sm js-topic-select">
                 <option value="">Seleccionar tema</option>
                 @foreach($topicOptions as $topic)
@@ -335,17 +335,17 @@
                 @endforeach
             </select>
         </td>
-        <td>
+        <td data-label="Subtemas">
             <select name="items[__INDEX__][temario_subtopic_ids][]" class="form-control form-control-sm js-subtopic-select" multiple size="5">
                 @foreach($subtopicOptions as $subtopic)
                     <option value="{{ $subtopic['id'] }}" data-topic-id="{{ $subtopic['topic_id'] }}">{{ $subtopic['text'] }}</option>
                 @endforeach
             </select>
         </td>
-        <td><textarea name="items[__INDEX__][opening]" class="form-control form-control-sm" rows="2"></textarea></td>
-        <td><textarea name="items[__INDEX__][development]" class="form-control form-control-sm" rows="2"></textarea></td>
-        <td><textarea name="items[__INDEX__][closing]" class="form-control form-control-sm" rows="2"></textarea></td>
-        <td>
+        <td data-label="Apertura"><textarea name="items[__INDEX__][opening]" class="form-control form-control-sm" rows="2"></textarea></td>
+        <td data-label="Desarrollo"><textarea name="items[__INDEX__][development]" class="form-control form-control-sm" rows="2"></textarea></td>
+        <td data-label="Cierre"><textarea name="items[__INDEX__][closing]" class="form-control form-control-sm" rows="2"></textarea></td>
+        <td data-label="Recursos">
             <select class="form-control form-control-sm js-resource-select" multiple size="4">
                 @foreach($resourceOptions as $option)
                     <option value="{{ $option }}">{{ $option }}</option>
@@ -353,7 +353,7 @@
             </select>
             <input type="hidden" name="items[__INDEX__][resources]" class="js-resource-hidden">
         </td>
-        <td>
+        <td data-label="Evaluacion">
             <select class="form-control form-control-sm js-evaluation-select" multiple size="4">
                 @foreach($evaluationOptions as $option)
                     <option value="{{ $option }}">{{ $option }}</option>
@@ -361,13 +361,394 @@
             </select>
             <input type="hidden" name="items[__INDEX__][evaluation]" class="js-evaluation-hidden">
         </td>
-        <td><input type="date" name="items[__INDEX__][start_date]" class="form-control form-control-sm js-date-start"></td>
-        <td><input type="date" name="items[__INDEX__][end_date]" class="form-control form-control-sm js-date-end"></td>
-        <td class="text-center">
+        <td data-label="Inicio"><input type="date" name="items[__INDEX__][start_date]" class="form-control form-control-sm js-date-start"></td>
+        <td data-label="Termino"><input type="date" name="items[__INDEX__][end_date]" class="form-control form-control-sm js-date-end"></td>
+        <td class="text-center planning-row-actions" data-label="Acciones">
             <button type="button" class="btn btn-outline-danger btn-sm js-remove-row">x</button>
         </td>
     </tr>
 </template>
+@endsection
+
+@section('page_css')
+<style>
+    .planning-page {
+        padding-bottom: 24px;
+    }
+
+    .planning-card {
+        border: 0;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .planning-header {
+        padding: 20px 24px;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .planning-header h4 {
+        font-size: 1.25rem;
+        line-height: 1.3;
+    }
+
+    .planning-body {
+        padding: 24px;
+    }
+
+    .planning-body label {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .planning-body .form-control,
+    .planning-body .custom-select {
+        min-height: 42px;
+    }
+
+    .planning-body textarea.form-control {
+        min-height: 88px;
+        resize: vertical;
+    }
+
+    .planning-section {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid #eef2f7;
+    }
+
+    .planning-cycle-box {
+        margin-bottom: 20px;
+        padding: 16px 18px;
+        background: #f8fafc;
+        border-color: #e5e7eb !important;
+    }
+
+    .planning-items-table {
+        min-width: 1720px;
+        margin-bottom: 0;
+    }
+
+    .planning-items-table th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+        color: #4b5563;
+        vertical-align: middle;
+    }
+
+    .planning-items-table td {
+        vertical-align: top;
+        background: #fff;
+    }
+
+    .planning-items-table select[multiple] {
+        min-height: 116px;
+    }
+
+    .planning-button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 14px;
+    }
+
+    #add-row-btn,
+    #save-unit-btn {
+        margin-top: 12px;
+        margin-right: 8px;
+        min-height: 38px;
+    }
+
+    .planning-button-row .badge {
+        padding: 8px 10px;
+        font-size: .85rem;
+    }
+
+    #units-temp-counter {
+        padding: 8px 10px;
+        font-size: .85rem;
+        vertical-align: middle;
+    }
+
+    .planning-footer {
+        gap: 12px;
+        padding: 16px 24px;
+        background: #fff;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    @media (max-width: 1199.98px) {
+        .planning-body {
+            padding: 20px;
+        }
+
+        .planning-items-table {
+            min-width: 1480px;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .planning-items-table {
+            min-width: 0;
+            border: 0;
+            border-collapse: separate;
+            border-spacing: 0 14px;
+        }
+
+        .planning-items-table thead {
+            display: none;
+        }
+
+        .planning-items-table tbody,
+        .planning-items-table tr {
+            display: block;
+        }
+
+        .planning-items-table tr {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr)) 140px 140px 68px;
+            border: 1px solid #dbe3ef;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+            background: #fff;
+        }
+
+        .planning-items-table td {
+            display: block;
+            border: 0;
+            border-right: 1px solid #eef2f7;
+            border-bottom: 1px solid #eef2f7;
+            padding: 12px;
+        }
+
+        .planning-items-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 6px;
+            font-size: .72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .02em;
+            color: #64748b;
+        }
+
+        .planning-items-table td[data-label="Tema"] {
+            grid-column: 1 / span 3;
+        }
+
+        .planning-items-table td[data-label="Subtemas"] {
+            grid-column: 4 / span 6;
+            border-right: 0;
+        }
+
+        .planning-items-table td[data-label="Apertura"] {
+            grid-column: 1 / span 3;
+        }
+
+        .planning-items-table td[data-label="Desarrollo"] {
+            grid-column: 4 / span 3;
+        }
+
+        .planning-items-table td[data-label="Cierre"] {
+            grid-column: 7 / span 3;
+            border-right: 0;
+        }
+
+        .planning-items-table td[data-label="Recursos"] {
+            grid-column: 1 / span 2;
+        }
+
+        .planning-items-table td[data-label="Evaluacion"] {
+            grid-column: 3 / span 3;
+        }
+
+        .planning-items-table td[data-label="Inicio"] {
+            grid-column: 6;
+        }
+
+        .planning-items-table td[data-label="Termino"] {
+            grid-column: 7;
+        }
+
+        .planning-items-table td[data-label="Acciones"] {
+            grid-column: 8 / span 2;
+            border-right: 0;
+        }
+
+        .planning-items-table textarea.form-control-sm {
+            min-height: 96px;
+        }
+
+        .planning-items-table select[multiple] {
+            min-height: 126px;
+        }
+
+        .planning-row-actions {
+            background: #f8fafc !important;
+        }
+
+        .planning-row-actions .btn {
+            width: 100%;
+            min-height: 38px;
+        }
+    }
+
+    @media (max-width: 991.98px) {
+        .planning-page {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+
+        .planning-header,
+        .planning-body,
+        .planning-footer {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .planning-items-table,
+        .planning-units-table,
+        .planning-items-table thead,
+        .planning-units-table thead,
+        .planning-items-table tbody,
+        .planning-units-table tbody,
+        .planning-items-table tr,
+        .planning-units-table tr,
+        .planning-items-table td {
+            display: block;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .planning-units-table td {
+            display: block;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .planning-items-table,
+        .planning-units-table {
+            border: 0;
+        }
+
+        .planning-items-table thead,
+        .planning-units-table thead {
+            display: none;
+        }
+
+        .planning-items-table tr,
+        .planning-units-table tr {
+            margin-bottom: 16px;
+            border: 1px solid #dbe3ef;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        }
+
+        .planning-items-table td,
+        .planning-units-table td {
+            border: 0;
+            border-bottom: 1px solid #eef2f7;
+            padding: 12px;
+        }
+
+        .planning-items-table td:last-child,
+        .planning-units-table td:last-child {
+            border-bottom: 0;
+        }
+
+        .planning-items-table td::before,
+        .planning-units-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 6px;
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .02em;
+            color: #64748b;
+        }
+
+        .planning-items-table .form-control-sm {
+            min-height: 44px;
+            font-size: 1rem;
+        }
+
+        .planning-items-table textarea.form-control-sm {
+            min-height: 104px;
+        }
+
+        .planning-items-table select[multiple] {
+            min-height: 132px;
+        }
+
+        .planning-row-actions {
+            text-align: left !important;
+            background: #f8fafc !important;
+        }
+
+        .planning-row-actions .btn {
+            width: 100%;
+            min-height: 42px;
+        }
+
+        .planning-units-table td.text-center {
+            text-align: left !important;
+        }
+
+        .planning-units-table .btn {
+            min-height: 40px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+
+        #add-row-btn,
+        #save-unit-btn,
+        .planning-button-row .btn,
+        .planning-footer .btn {
+            flex: 1 1 220px;
+            min-height: 44px;
+        }
+
+        #add-row-btn,
+        #save-unit-btn {
+            width: 100%;
+            margin-right: 0;
+        }
+
+        #units-temp-counter {
+            display: inline-flex;
+            margin-top: 10px;
+            margin-left: 0 !important;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .planning-header h4 {
+            font-size: 1.1rem;
+        }
+
+        .planning-body {
+            padding-top: 16px;
+        }
+
+        .planning-cycle-box .badge {
+            white-space: normal;
+            line-height: 1.35;
+        }
+
+        .planning-footer {
+            flex-direction: column-reverse;
+        }
+
+        .planning-footer .btn {
+            width: 100%;
+        }
+    }
+</style>
 @endsection
 
 @section('page_scripts')
@@ -633,10 +1014,10 @@
         if (unitsTempBody) {
             const rowsHtml = unitBlocks.map((block, idx) => `
                 <tr>
-                    <td>${block.field_training_text || unitTextById(block.field_training_point_id)}</td>
-                    <td>${block.objective || '-'}</td>
-                    <td class="text-center">${(block.items || []).length}</td>
-                    <td class="text-center">
+                    <td data-label="Unidad">${block.field_training_text || unitTextById(block.field_training_point_id)}</td>
+                    <td data-label="Objetivo">${block.objective || '-'}</td>
+                    <td data-label="Renglones" class="text-center">${(block.items || []).length}</td>
+                    <td data-label="Acciones" class="text-center">
                         <button type="button" class="btn btn-sm btn-warning js-edit-unit" data-index="${idx}">Editar</button>
                         <button type="button" class="btn btn-sm btn-danger js-delete-unit" data-index="${idx}">Quitar</button>
                     </td>

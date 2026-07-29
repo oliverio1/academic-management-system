@@ -25,6 +25,9 @@ class EvaluationCriterionController extends Controller
             ->get();
 
         $total = $criteria->sum('percentage');
+        $cloneCandidates = $selectedPartialId
+            ? $this->cloneTargetCandidates($assignment, (int) $selectedPartialId)
+            : collect();
 
         return view('teacher.evaluation_criteria.index', compact(
             'assignment',
@@ -32,7 +35,8 @@ class EvaluationCriterionController extends Controller
             'total',
             'partials',
             'selectedPartial',
-            'selectedPartialId'
+            'selectedPartialId',
+            'cloneCandidates'
         ));
     }
 
@@ -200,6 +204,75 @@ class EvaluationCriterionController extends Controller
             ->with('success', 'Criterios de evaluacion actualizados correctamente.');
     }
 
+    public function cloneFromSameSubject(Request $request, TeachingAssignment $assignment)
+    {
+        $this->authorizeAssignmentOwner($assignment);
+
+        $allowedPartialIds = $this->partialsForAssignment($assignment)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $data = $request->validate([
+            'cycle_partial_id' => ['required', 'integer', Rule::in($allowedPartialIds)],
+            'to_assignment_ids' => ['required', 'array', 'min:1'],
+            'to_assignment_ids.*' => ['integer', 'exists:teaching_assignments,id'],
+        ]);
+
+        $partialId = (int) $data['cycle_partial_id'];
+        $targetAssignmentIds = collect($data['to_assignment_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($targetAssignmentIds->isEmpty()) {
+            return back()->withErrors([
+                'clone' => 'Selecciona al menos un grupo destino.',
+            ]);
+        }
+
+        $sourceCriteria = $assignment->evaluationCriteria()
+            ->where('cycle_partial_id', $partialId)
+            ->orderBy('id')
+            ->get();
+
+        if ($sourceCriteria->isEmpty()) {
+            return back()->withErrors([
+                'clone' => 'Esta materia no tiene rubros configurados en este parcial para clonar.',
+            ]);
+        }
+
+        $targets = $this->cloneTargetCandidates($assignment, $partialId)
+            ->whereIn('id', $targetAssignmentIds)
+            ->values();
+
+        if ($targets->count() !== $targetAssignmentIds->count()) {
+            return back()->withErrors([
+                'clone' => 'Selecciona solo grupos destino de la misma materia, ciclo y sin rubros configurados en este parcial.',
+            ]);
+        }
+
+        DB::transaction(function () use ($targets, $sourceCriteria, $partialId) {
+            foreach ($targets as $target) {
+                foreach ($sourceCriteria as $criterion) {
+                    $target->evaluationCriteria()->create([
+                        'cycle_partial_id' => $partialId,
+                        'name' => $criterion->name,
+                        'percentage' => $criterion->percentage,
+                    ]);
+                }
+            }
+        });
+
+        return redirect()
+            ->route('teacher.classes.evaluation.index', [
+                'assignment' => $assignment,
+                'partial_id' => $partialId,
+            ])
+            ->with('success', 'Rubros clonados correctamente a '.$targets->count().' grupo(s).');
+    }
+
     public function destroy(EvaluationCriterion $criterion)
     {
         $assignment = $criterion->assignment;
@@ -271,6 +344,53 @@ class EvaluationCriterionController extends Controller
         });
 
         return $active ?: $partials->first();
+    }
+
+    private function cloneTargetCandidates(TeachingAssignment $assignment, int $partialId)
+    {
+        $cycleId = (int) optional($assignment->schoolCycleGroup)->school_cycle_id;
+        $sourceCycleGroupId = (int) $assignment->school_cycle_group_id;
+
+        return TeachingAssignment::query()
+            ->with(['group:id,name'])
+            ->whereKeyNot($assignment->id)
+            ->where('teacher_id', $assignment->teacher_id)
+            ->where('subject_id', $assignment->subject_id)
+            ->where('is_active', true)
+            ->when($sourceCycleGroupId > 0, fn ($query) => $query->where('school_cycle_group_id', '!=', $sourceCycleGroupId))
+            ->when($cycleId > 0, fn ($query) => $query->whereHas('schoolCycleGroup', fn ($inner) => $inner->where('school_cycle_id', $cycleId)))
+            ->orderBy('group_id')
+            ->orderByRaw("CASE WHEN section_type IS NULL OR section_type = '' THEN 0 ELSE 1 END")
+            ->orderBy('section_number')
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (TeachingAssignment $candidate) => (int) ($candidate->school_cycle_group_id ?: $candidate->group_id))
+            ->map(function ($groupAssignments) use ($partialId) {
+                $assignmentIds = $groupAssignments
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->values();
+
+                $alreadyConfigured = EvaluationCriterion::query()
+                    ->whereIn('teaching_assignment_id', $assignmentIds)
+                    ->where('cycle_partial_id', $partialId)
+                    ->exists();
+
+                if ($alreadyConfigured) {
+                    return null;
+                }
+
+                return $groupAssignments
+                    ->sortBy(fn (TeachingAssignment $candidate) => [
+                        ($candidate->section_type === null || $candidate->section_type === '') ? 0 : 1,
+                        (int) ($candidate->section_number ?? 0),
+                        (int) $candidate->id,
+                    ])
+                    ->first();
+            })
+            ->filter()
+            ->sortBy(fn (TeachingAssignment $candidate) => $candidate->group?->name ?? '')
+            ->values();
     }
 
     private function hasDuplicateNames(array $criteria): bool

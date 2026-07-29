@@ -29,6 +29,16 @@
                     {{ $message }}
                 </div>
             @enderror
+            @error('clone')
+                <div class="alert alert-danger">
+                    {{ $message }}
+                </div>
+            @enderror
+            @error('to_assignment_ids')
+                <div class="alert alert-danger">
+                    Selecciona al menos un grupo destino.
+                </div>
+            @enderror
 
             @if($partials->isEmpty())
                 <div class="alert alert-warning">
@@ -51,6 +61,43 @@
                     </select>
                 </div>
             </div>
+
+            @if($criteria->isNotEmpty() && ($cloneCandidates ?? collect())->isNotEmpty())
+                <div class="alert alert-info border">
+                    <form method="POST" action="{{ route('teacher.classes.evaluation.clone', $assignment) }}" class="mb-0">
+                        @csrf
+                        <input type="hidden" name="cycle_partial_id" value="{{ $selectedPartialId }}">
+                        <div class="row align-items-end">
+                            <div class="col-md-8 mb-2 mb-md-0">
+                                <label class="mb-1"><strong>Clonar estos rubros a la misma materia</strong></label>
+                                <select name="to_assignment_ids[]" class="form-control" multiple required size="{{ min(5, max(2, $cloneCandidates->count())) }}">
+                                    @foreach($cloneCandidates as $candidate)
+                                        <option value="{{ $candidate->id }}">
+                                            Grupo {{ $candidate->group?->name ?? '-' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4 text-md-right">
+                                <button class="btn btn-info">
+                                    Clonar a grupos seleccionados
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Mantén Ctrl presionado para elegir varios grupos. Solo se muestran grupos de esta misma materia sin rubros configurados en este parcial.
+                        </small>
+                    </form>
+                </div>
+            @elseif($criteria->isEmpty() && !$partials->isEmpty())
+                <div class="alert alert-light border">
+                    No hay rubros configurados para este parcial. Captura primero los rubros de esta materia y después podrás clonarlos a otros grupos de la misma materia.
+                </div>
+            @elseif($criteria->isNotEmpty() && ($cloneCandidates ?? collect())->isEmpty())
+                <div class="alert alert-light border">
+                    No hay otros grupos de esta misma materia sin rubros configurados en este parcial.
+                </div>
+            @endif
 
             <form method="POST"
                 action="{{ $criteria->isNotEmpty()
