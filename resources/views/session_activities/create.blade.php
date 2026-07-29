@@ -7,6 +7,12 @@
     @php
         $isReadOnly = $isReadOnly ?? $session->isAttendanceClosed();
         $periodDisabled = $periodDisabled ?? false;
+        $selectedTopicId = (string) old('temario_point_id', optional($activity)->temario_point_id);
+        $selectedTopic = collect($topicOptions ?? [])->first(fn ($topic) => (string) $topic['id'] === $selectedTopicId);
+        $selectedUnitId = (string) old('temario_unit_id', $selectedTopic['unit_id'] ?? '');
+        $selectedSubtopics = collect(old('temario_subtopic_ids', optional($activity)->temario_subtopic_ids ?? []))
+            ->map(fn ($id) => (string) $id)
+            ->values();
     @endphp
     @if(session('warning'))
         <div class="alert alert-warning">
@@ -97,14 +103,30 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="temario_unit_id">
+                                    Unidad del temario
+                                </label>
+                                <select id="temario_unit_id"
+                                    name="temario_unit_id"
+                                    class="form-control"
+                                    {{ $isReadOnly ? 'disabled' : '' }}>
+                                    <option value="">Sin unidad especifica</option>
+                                    @foreach(($unitOptions ?? collect()) as $unit)
+                                        <option value="{{ $unit['id'] }}"
+                                            {{ $selectedUnitId === (string) $unit['id'] ? 'selected' : '' }}>
+                                            {{ $unit['text'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    Sirve para filtrar los temas disponibles.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="temario_point_id">
                                     Tema del temario visto en esta sesion
                                 </label>
-                                @php
-                                    $selectedSubtopics = collect(old('temario_subtopic_ids', optional($activity)->temario_subtopic_ids ?? []))
-                                        ->map(fn ($id) => (string) $id)
-                                        ->values();
-                                @endphp
                                 <select id="temario_point_id"
                                     name="temario_point_id"
                                     class="form-control"
@@ -112,7 +134,8 @@
                                     <option value="">Sin tema especifico</option>
                                     @foreach(($topicOptions ?? collect()) as $topic)
                                         <option value="{{ $topic['id'] }}"
-                                            {{ (string) old('temario_point_id', optional($activity)->temario_point_id) === (string) $topic['id'] ? 'selected' : '' }}>
+                                            data-unit-id="{{ $topic['unit_id'] }}"
+                                            {{ $selectedTopicId === (string) $topic['id'] ? 'selected' : '' }}>
                                             {{ $topic['text'] }}
                                             @if(!empty($topic['unit_text']))
                                                 | Unidad: {{ $topic['unit_text'] }}
@@ -259,11 +282,30 @@
 @section('page_scripts')
     <script>
         (function () {
+            const unitSelect = document.getElementById('temario_unit_id');
             const topicSelect = document.getElementById('temario_point_id');
             const subtopicSelect = document.getElementById('temario_subtopic_ids');
 
-            if (!topicSelect || !subtopicSelect) {
+            if (!unitSelect || !topicSelect || !subtopicSelect) {
                 return;
+            }
+
+            function filterTopicsByUnit() {
+                const unitId = unitSelect.value;
+
+                Array.from(topicSelect.options).forEach((option) => {
+                    if (option.value === '') {
+                        option.hidden = false;
+                        return;
+                    }
+
+                    const belongsTo = option.getAttribute('data-unit-id');
+                    const visible = unitId === '' || belongsTo === unitId;
+                    option.hidden = !visible;
+                    if (!visible && option.selected) {
+                        option.selected = false;
+                    }
+                });
             }
 
             function filterSubtopicsByTopic() {
@@ -278,7 +320,12 @@
                 });
             }
 
+            unitSelect.addEventListener('change', function () {
+                filterTopicsByUnit();
+                filterSubtopicsByTopic();
+            });
             topicSelect.addEventListener('change', filterSubtopicsByTopic);
+            filterTopicsByUnit();
             filterSubtopicsByTopic();
         })();
     </script>

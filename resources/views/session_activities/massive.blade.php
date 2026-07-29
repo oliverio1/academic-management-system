@@ -127,6 +127,87 @@
                                     @endforeach
                                 </tr>
                                 <tr>
+                                    <th class="field-col">Unidad</th>
+                                    @foreach($sessions as $session)
+                                        @php
+                                            $activity = $session->sessionActivity;
+                                            $lock = $sessionLocks[(int) $session->id] ?? ['locked' => false, 'reason' => null];
+                                            $selectedTopicId = (string) old("activities.{$session->id}.temario_point_id", optional($activity)->temario_point_id);
+                                            $selectedTopic = collect($topicOptions ?? [])->first(fn ($topic) => (string) $topic['id'] === $selectedTopicId);
+                                            $selectedUnitId = (string) old("activities.{$session->id}.temario_unit_id", $selectedTopic['unit_id'] ?? '');
+                                        @endphp
+                                        <td>
+                                            <select
+                                                name="activities[{{ $session->id }}][temario_unit_id]"
+                                                class="form-control form-control-sm js-massive-unit"
+                                                data-session-id="{{ $session->id }}"
+                                                {{ $lock['locked'] ? 'disabled' : '' }}>
+                                                <option value="">Sin unidad</option>
+                                                @foreach(($unitOptions ?? collect()) as $unit)
+                                                    <option value="{{ $unit['id'] }}" {{ $selectedUnitId === (string) $unit['id'] ? 'selected' : '' }}>
+                                                        {{ $unit['text'] }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                    @endforeach
+                                </tr>
+                                <tr>
+                                    <th class="field-col">Tema</th>
+                                    @foreach($sessions as $session)
+                                        @php
+                                            $activity = $session->sessionActivity;
+                                            $lock = $sessionLocks[(int) $session->id] ?? ['locked' => false, 'reason' => null];
+                                            $selectedTopicId = (string) old("activities.{$session->id}.temario_point_id", optional($activity)->temario_point_id);
+                                        @endphp
+                                        <td>
+                                            <select
+                                                name="activities[{{ $session->id }}][temario_point_id]"
+                                                class="form-control form-control-sm js-massive-topic topic-field-{{ $session->id }}"
+                                                data-session-id="{{ $session->id }}"
+                                                {{ $lock['locked'] ? 'disabled' : '' }}>
+                                                <option value="">Sin tema</option>
+                                                @foreach(($topicOptions ?? collect()) as $topic)
+                                                    <option value="{{ $topic['id'] }}"
+                                                        data-unit-id="{{ $topic['unit_id'] }}"
+                                                        {{ $selectedTopicId === (string) $topic['id'] ? 'selected' : '' }}>
+                                                        {{ $topic['text'] }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                    @endforeach
+                                </tr>
+                                <tr>
+                                    <th class="field-col">Subtemas</th>
+                                    @foreach($sessions as $session)
+                                        @php
+                                            $activity = $session->sessionActivity;
+                                            $lock = $sessionLocks[(int) $session->id] ?? ['locked' => false, 'reason' => null];
+                                            $selectedSubtopics = collect(old("activities.{$session->id}.temario_subtopic_ids", optional($activity)->temario_subtopic_ids ?? []))
+                                                ->map(fn ($id) => (string) $id)
+                                                ->values();
+                                        @endphp
+                                        <td>
+                                            <select
+                                                name="activities[{{ $session->id }}][temario_subtopic_ids][]"
+                                                class="form-control form-control-sm js-massive-subtopics subtopic-field-{{ $session->id }}"
+                                                data-session-id="{{ $session->id }}"
+                                                size="5"
+                                                multiple
+                                                {{ $lock['locked'] ? 'disabled' : '' }}>
+                                                @foreach(($subtopicOptions ?? collect()) as $subtopic)
+                                                    <option value="{{ $subtopic['id'] }}"
+                                                        data-topic-id="{{ $subtopic['topic_id'] }}"
+                                                        {{ $selectedSubtopics->contains((string) $subtopic['id']) ? 'selected' : '' }}>
+                                                        {{ $subtopic['text'] }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                    @endforeach
+                                </tr>
+                                <tr>
                                     <th class="field-col">Cuenta para evaluacion</th>
                                     @foreach($sessions as $session)
                                         @php
@@ -305,6 +386,53 @@ document.addEventListener('DOMContentLoaded', function () {
         setEvaluationFields(toggle.dataset.sessionId, toggle.checked);
         toggle.addEventListener('change', function () {
             setEvaluationFields(toggle.dataset.sessionId, toggle.checked);
+        });
+    });
+
+    function filterTemarioFields(sessionId) {
+        const unit = document.querySelector('.js-massive-unit[data-session-id="' + sessionId + '"]');
+        const topic = document.querySelector('.js-massive-topic[data-session-id="' + sessionId + '"]');
+        const subtopics = document.querySelector('.js-massive-subtopics[data-session-id="' + sessionId + '"]');
+
+        if (!unit || !topic || !subtopics) {
+            return;
+        }
+
+        const unitId = unit.value;
+        Array.from(topic.options).forEach(option => {
+            if (option.value === '') {
+                option.hidden = false;
+                return;
+            }
+
+            const visible = unitId === '' || option.dataset.unitId === unitId;
+            option.hidden = !visible;
+            if (!visible && option.selected) {
+                option.selected = false;
+            }
+        });
+
+        const topicId = topic.value;
+        Array.from(subtopics.options).forEach(option => {
+            const visible = topicId !== '' && option.dataset.topicId === topicId;
+            option.hidden = !visible;
+            if (!visible) {
+                option.selected = false;
+            }
+        });
+    }
+
+    document.querySelectorAll('.js-massive-unit').forEach(unit => {
+        filterTemarioFields(unit.dataset.sessionId);
+        unit.addEventListener('change', function () {
+            filterTemarioFields(unit.dataset.sessionId);
+        });
+    });
+
+    document.querySelectorAll('.js-massive-topic').forEach(topic => {
+        filterTemarioFields(topic.dataset.sessionId);
+        topic.addEventListener('change', function () {
+            filterTemarioFields(topic.dataset.sessionId);
         });
     });
 

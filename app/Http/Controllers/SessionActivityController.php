@@ -58,6 +58,8 @@ class SessionActivityController extends Controller
                 ];
             });
 
+        [$unitOptions, $topicOptions, $subtopicOptions] = $this->buildTemarioSelectorsForAssignment($assignment);
+
         $sessionLocks = $sessions
             ->mapWithKeys(fn (AcademicSession $session) => [
                 (int) $session->id => $this->massiveSessionLock($session, $lockService),
@@ -68,6 +70,9 @@ class SessionActivityController extends Controller
             'assignment' => $assignment,
             'sessions' => $sessions,
             'criteriaByPeriod' => $criteriaByPeriod,
+            'unitOptions' => $unitOptions,
+            'topicOptions' => $topicOptions,
+            'subtopicOptions' => $subtopicOptions,
             'sessionLocks' => $sessionLocks,
             'mode' => $mode,
             'anchorDate' => $anchorDate,
@@ -90,6 +95,9 @@ class SessionActivityController extends Controller
             'activities' => ['required', 'array'],
             'activities.*.title' => ['nullable', 'string', 'max:255'],
             'activities.*.description' => ['nullable', 'string'],
+            'activities.*.temario_point_id' => ['nullable', 'integer'],
+            'activities.*.temario_subtopic_ids' => ['nullable', 'array'],
+            'activities.*.temario_subtopic_ids.*' => ['integer'],
             'activities.*.is_evaluable' => ['nullable', 'boolean'],
             'activities.*.evaluation_title' => ['nullable', 'string', 'max:255'],
             'activities.*.evaluation_criterion_id' => ['nullable', 'integer'],
@@ -121,6 +129,12 @@ class SessionActivityController extends Controller
 
                 $title = trim((string) ($row['title'] ?? ''));
                 $description = trim((string) ($row['description'] ?? ''));
+                $topicPointId = (int) ($row['temario_point_id'] ?? 0);
+                $subtopicIds = collect($row['temario_subtopic_ids'] ?? [])
+                    ->map(fn ($id) => (int) $id)
+                    ->filter()
+                    ->unique()
+                    ->values();
                 $isEvaluable = (bool) ($row['is_evaluable'] ?? false);
                 $criterionId = (int) ($row['evaluation_criterion_id'] ?? 0);
                 $evaluationTitle = trim((string) ($row['evaluation_title'] ?? ''));
@@ -144,11 +158,29 @@ class SessionActivityController extends Controller
                     continue;
                 }
 
+                $topicPoint = $topicPointId > 0
+                    ? TemarioPoint::query()
+                        ->whereKey($topicPointId)
+                        ->whereIn('temario_id', $assignment->temarios()->pluck('id'))
+                        ->where('level', 2)
+                        ->first()
+                    : null;
+                if ($topicPointId > 0 && ! $topicPoint) {
+                    continue;
+                }
+
+                $validSubtopicIds = $this->validSubtopicIdsForTopic($assignment, $topicPoint, $subtopicIds);
+                if (! $topicPoint && $subtopicIds->isNotEmpty()) {
+                    $validSubtopicIds = collect();
+                }
+
                 $sessionActivity = SessionActivity::updateOrCreate(
                     ['academic_session_id' => (int) $session->id],
                     [
                         'title' => $title,
                         'description' => $description !== '' ? $description : null,
+                        'temario_point_id' => $topicPoint?->id,
+                        'temario_subtopic_ids' => $validSubtopicIds->all(),
                         'evaluation_criterion_id' => $isEvaluable ? $criterionId : null,
                     ]
                 );
@@ -210,12 +242,13 @@ class SessionActivityController extends Controller
             ->orderBy('name')
             ->get();
 
-        [$topicOptions, $subtopicOptions] = $this->buildTemarioSelectors($academicSession);
+        [$unitOptions, $topicOptions, $subtopicOptions] = $this->buildTemarioSelectors($academicSession);
 
         return view('session_activities.create', [
             'session' => $academicSession,
             'activity' => $academicSession->sessionActivity,
             'criteria' => $criteria,
+            'unitOptions' => $unitOptions,
             'topicOptions' => $topicOptions,
             'subtopicOptions' => $subtopicOptions,
             'isReadOnly' => $isReadOnly,
@@ -381,7 +414,12 @@ class SessionActivityController extends Controller
 
     private function buildTemarioSelectors(AcademicSession $academicSession): array
     {
-        $points = $academicSession->teachingAssignment
+        return $this->buildTemarioSelectorsForAssignment($academicSession->teachingAssignment);
+    }
+
+    private function buildTemarioSelectorsForAssignment(TeachingAssignment $assignment): array
+    {
+        $points = $assignment
             ->temarios()
             ->with(['points' => function ($query) {
                 $query->orderBy('position');
@@ -409,6 +447,14 @@ class SessionActivityController extends Controller
                 return $first ? [$first => $unit] : [];
             });
 
+        $unitOptions = $unitsByFirst
+            ->map(fn ($unit, $first) => [
+                'id' => (string) $first,
+                'text' => $this->pointText($unit),
+                'temario_title' => $unit['temario_title'],
+            ])
+            ->values();
+
         $topicOptions = $points
             ->filter(fn ($point) => (int) $point['level'] === 2)
             ->map(function ($topic) use ($unitsByFirst) {
@@ -418,6 +464,7 @@ class SessionActivityController extends Controller
                 return [
                     'id' => (int) $topic['id'],
                     'text' => $this->pointText($topic),
+                    'unit_id' => $first,
                     'unit_text' => $unit ? $this->pointText($unit) : null,
                     'key' => $topic['key'],
                     'temario_title' => $topic['temario_title'],
@@ -447,7 +494,33 @@ class SessionActivityController extends Controller
             ->filter(fn ($subtopic) => !empty($subtopic['topic_id']))
             ->values();
 
-        return [$topicOptions, $subtopicOptions];
+        return [$unitOptions, $topicOptions, $subtopicOptions];
+    }
+
+    private function validSubtopicIdsForTopic(TeachingAssignment $assignment, ?TemarioPoint $topicPoint, Collection $subtopicIds): Collection
+    {
+        if (! $topicPoint || $subtopicIds->isEmpty()) {
+            return collect();
+        }
+
+        $topicKey = $this->labelKey((string) $topicPoint->label);
+        if (! $topicKey) {
+            return collect();
+        }
+
+        return TemarioPoint::query()
+            ->whereIn('id', $subtopicIds->all())
+            ->whereIn('temario_id', $assignment->temarios()->pluck('id'))
+            ->where('level', '>=', 3)
+            ->get()
+            ->filter(function (TemarioPoint $subtopic) use ($topicKey) {
+                $subtopicKey = $this->labelKey((string) $subtopic->label);
+
+                return $subtopicKey && str_starts_with($subtopicKey, $topicKey . '.');
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
     }
 
     private function pointText(array $point): string

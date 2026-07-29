@@ -17,6 +17,8 @@ use App\Models\SchoolCycleGroup;
 use App\Models\SessionActivity;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\Temario;
+use App\Models\TemarioPoint;
 use App\Models\Teacher;
 use App\Models\TeachingAssignment;
 use App\Models\User;
@@ -284,6 +286,7 @@ class TeacherAttendanceFlowTest extends TestCase
             'name' => 'Trabajo en clase',
             'percentage' => 100,
         ]);
+        $temario = $this->temarioPointsForAssignment($scenario['assignment']);
 
         $this->actingAs($scenario['teacherUser'])
             ->withSession(['active_campus_id' => $scenario['campus']->id])
@@ -295,6 +298,11 @@ class TeacherAttendanceFlowTest extends TestCase
             ->assertOk()
             ->assertSee('Actividades masivas')
             ->assertSee('Cuenta para evaluacion')
+            ->assertSee('Unidad')
+            ->assertSee('Tema')
+            ->assertSee('Subtemas')
+            ->assertSee('Cinematica')
+            ->assertSee('Movimiento circular')
             ->assertSee('Trabajo en clase');
 
         $this->actingAs($scenario['teacherUser'])
@@ -306,6 +314,9 @@ class TeacherAttendanceFlowTest extends TestCase
                     $scenario['session']->id => [
                         'title' => 'Movimiento circular y actividad ludica',
                         'description' => 'Discusion grupal y ejercicios',
+                        'temario_unit_id' => '1',
+                        'temario_point_id' => $temario['topic']->id,
+                        'temario_subtopic_ids' => [$temario['subtopic']->id],
                         'is_evaluable' => '1',
                         'evaluation_title' => 'Ejercicios de movimiento circular',
                         'evaluation_criterion_id' => $criterion->id,
@@ -321,6 +332,8 @@ class TeacherAttendanceFlowTest extends TestCase
         $sessionActivity = SessionActivity::query()->where('academic_session_id', $scenario['session']->id)->firstOrFail();
         $this->assertSame('Movimiento circular y actividad ludica', $sessionActivity->title);
         $this->assertSame((int) $criterion->id, (int) $sessionActivity->evaluation_criterion_id);
+        $this->assertSame((int) $temario['topic']->id, (int) $sessionActivity->temario_point_id);
+        $this->assertSame([(int) $temario['subtopic']->id], $sessionActivity->temario_subtopic_ids);
 
         $this->assertDatabaseHas('activities', [
             'session_activity_id' => $sessionActivity->id,
@@ -328,6 +341,42 @@ class TeacherAttendanceFlowTest extends TestCase
             'evaluation_criterion_id' => $criterion->id,
             'title' => 'Ejercicios de movimiento circular',
         ]);
+    }
+
+    public function test_teacher_can_select_unit_topic_and_subtopics_in_session_activity_form(): void
+    {
+        $scenario = $this->attendanceScenario();
+        $temario = $this->temarioPointsForAssignment($scenario['assignment']);
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('session.activities.create', $scenario['session']))
+            ->assertOk()
+            ->assertSee('Unidad del temario')
+            ->assertSee('Tema del temario')
+            ->assertSee('Subtemas vistos')
+            ->assertSee('Cinematica')
+            ->assertSee('Movimiento circular')
+            ->assertSee('Velocidad angular');
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->post(route('session.activities.store', $scenario['session']), [
+                'title' => 'Discusion guiada de movimiento circular',
+                'description' => 'Trabajo con ejemplos en pizarron',
+                'temario_unit_id' => '1',
+                'temario_point_id' => $temario['topic']->id,
+                'temario_subtopic_ids' => [$temario['subtopic']->id],
+            ])
+            ->assertRedirect(route('teacher.classes.sessions.index', $scenario['assignment']));
+
+        $sessionActivity = SessionActivity::query()
+            ->where('academic_session_id', $scenario['session']->id)
+            ->firstOrFail();
+
+        $this->assertSame('Discusion guiada de movimiento circular', $sessionActivity->title);
+        $this->assertSame((int) $temario['topic']->id, (int) $sessionActivity->temario_point_id);
+        $this->assertSame([(int) $temario['subtopic']->id], $sessionActivity->temario_subtopic_ids);
     }
 
     public function test_teacher_attendance_ignores_students_not_enrolled_in_assignment(): void
@@ -696,6 +745,41 @@ class TeacherAttendanceFlowTest extends TestCase
             'session',
             'students'
         );
+    }
+
+    private function temarioPointsForAssignment(TeachingAssignment $assignment): array
+    {
+        $temario = Temario::create([
+            'subject_id' => $assignment->subject_id,
+            'title' => 'Temario de prueba',
+        ]);
+
+        $unit = TemarioPoint::create([
+            'temario_id' => $temario->id,
+            'position' => 1,
+            'label' => '1',
+            'level' => 1,
+            'type' => 'conceptual',
+            'content' => 'Cinematica',
+        ]);
+        $topic = TemarioPoint::create([
+            'temario_id' => $temario->id,
+            'position' => 2,
+            'label' => '1.1',
+            'level' => 2,
+            'type' => 'conceptual',
+            'content' => 'Movimiento circular',
+        ]);
+        $subtopic = TemarioPoint::create([
+            'temario_id' => $temario->id,
+            'position' => 3,
+            'label' => '1.1.1',
+            'level' => 3,
+            'type' => 'conceptual',
+            'content' => 'Velocidad angular',
+        ]);
+
+        return compact('temario', 'unit', 'topic', 'subtopic');
     }
 
     private function teacherUser(Campus $campus): User
