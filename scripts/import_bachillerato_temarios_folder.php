@@ -16,6 +16,14 @@ $force = in_array('--force', $argv, true);
 $dir = 'C:\\Users\\LapOne MX\\Desktop\\TEMARIOS BACHILLERATO';
 
 $imports = [
+    ['file' => 'taller de lectura y redaccion.pdf', 'subject_id' => 711, 'title' => 'Temario Taller de Lectura y Redacción I'],
+    ['file' => 'quimica i.pdf', 'subject_id' => 709, 'title' => 'Temario Química I'],
+    ['file' => 'ingles i.pdf', 'subject_id' => 707, 'title' => 'Temario Inglés I'],
+    ['file' => 'ingles ii.pdf', 'subject_id' => 724, 'title' => 'Temario Inglés II'],
+    ['file' => 'informatica i.pdf', 'subject_id' => 705, 'title' => 'Temario Informática I'],
+    ['file' => 'informatica ii.pdf', 'subject_id' => 723, 'title' => 'Temario Informática II'],
+    ['file' => 'introduccion a las ciencias sociales.pdf', 'subject_id' => 712, 'title' => 'Temario Introducción a las Ciencias Sociales'],
+    ['file' => 'matematicas i.pdf', 'subject_id' => 706, 'title' => 'Temario Matemáticas I'],
     ['file' => '101 TEMARIO PLANEAR ACTIVIDADES Y ASIGNAR RECURSOS.docx', 'subject_id' => 730, 'title' => 'Temario Planear actividades y asignar recursos'],
     ['file' => '102 TEMARIO DIRECCIONAR EL PLAN DE ACCIÓN.docx', 'subject_id' => 734, 'title' => 'Temario Direccionar y evaluar el plan de acción'],
     ['file' => '103 TEMARIO GENERAR LA COMUNICACIÓN CUARTO.docx', 'subject_id' => 745, 'title' => 'Temario Generar la comunicación de la empresa'],
@@ -188,16 +196,119 @@ function extractText(string $path): string
 
     if ($extension === 'pdf') {
         $command = 'pdftotext -layout -nopgbrk ' . escapeshellarg($path) . ' -';
-        return (string) shell_exec($command);
+        $text = (string) shell_exec($command);
+        if (alphabeticCharacterCount($text) >= 200) {
+            return $text;
+        }
+
+        return extractPdfTextWithOcr($path);
     }
 
     return '';
+}
+
+function alphabeticCharacterCount(string $text): int
+{
+    preg_match_all('/\p{L}/u', $text, $matches);
+
+    return count($matches[0] ?? []);
+}
+
+function extractPdfTextWithOcr(string $path): string
+{
+    $tesseract = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe';
+    if (! is_file($tesseract)) {
+        return '';
+    }
+
+    $cacheDir = __DIR__ . '/../storage/app/imports/bachillerato_temarios_ocr';
+    @mkdir($cacheDir, 0777, true);
+
+    $cachePath = $cacheDir . DIRECTORY_SEPARATOR . sha1($path . '|' . filemtime($path)) . '.txt';
+    if (is_file($cachePath)) {
+        return (string) file_get_contents($cachePath);
+    }
+
+    $workDir = $cacheDir . DIRECTORY_SEPARATOR . pathinfo($path, PATHINFO_FILENAME) . '_' . substr(sha1((string) microtime(true)), 0, 8);
+    @mkdir($workDir, 0777, true);
+
+    $prefix = $workDir . DIRECTORY_SEPARATOR . 'page';
+    $renderCommand = 'pdftoppm -r 170 -png ' . escapeshellarg($path) . ' ' . escapeshellarg($prefix);
+    shell_exec($renderCommand);
+
+    $texts = [];
+    $images = glob($workDir . DIRECTORY_SEPARATOR . '*.png') ?: [];
+    sort($images);
+
+    foreach ($images as $image) {
+        $outputBase = $workDir . DIRECTORY_SEPARATOR . pathinfo($image, PATHINFO_FILENAME);
+        $ocrCommand = escapeshellarg($tesseract)
+            . ' '
+            . escapeshellarg($image)
+            . ' '
+            . escapeshellarg($outputBase)
+            . ' -l spa+eng --tessdata-dir '
+            . escapeshellarg(__DIR__ . '/../storage/app/ocr/tessdata')
+            . ' --psm 6 2>NUL';
+        shell_exec($ocrCommand);
+
+        $pageText = $outputBase . '.txt';
+        if (is_file($pageText)) {
+            $texts[] = (string) file_get_contents($pageText);
+        }
+    }
+
+    $text = implode("\n\n", $texts);
+    file_put_contents($cachePath, $text);
+    deleteDirectory($workDir);
+
+    return $text;
+}
+
+function deleteDirectory(string $directory): void
+{
+    if (! is_dir($directory)) {
+        return;
+    }
+
+    $items = array_diff(scandir($directory) ?: [], ['.', '..']);
+    foreach ($items as $item) {
+        $path = $directory . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($path)) {
+            deleteDirectory($path);
+            continue;
+        }
+
+        @unlink($path);
+    }
+
+    @rmdir($directory);
 }
 
 function parseProgram(string $text, string $title): array
 {
     $lines = normalizeLines($text);
     $description = collectDescription($lines, $title);
+    $dgbBlocks = parseDgbLearningBlocks($lines);
+    if ($dgbBlocks) {
+        $points = [];
+        foreach ($dgbBlocks as $index => $blockTitle) {
+            $number = $index + 1;
+            $points[] = [
+                'label' => (string) $number,
+                'level' => 1,
+                'content' => $blockTitle,
+            ];
+            $points[] = [
+                'label' => $number . '.1',
+                'level' => 2,
+                'content' => $blockTitle,
+            ];
+        }
+
+        return compact('description', 'points');
+    }
+
     $points = [];
     $unitNumber = 0;
     $topicNumber = 0;
@@ -271,6 +382,40 @@ function parseProgram(string $text, string $title): array
     $points = deduplicatePoints($points);
 
     return compact('description', 'points');
+}
+
+function parseDgbLearningBlocks(array $lines): array
+{
+    $start = null;
+    foreach ($lines as $index => $line) {
+        if (preg_match('/^Bloques?\s+de\s+aprendizaje\.?$/iu', $line) === 1) {
+            $start = $index + 1;
+            break;
+        }
+    }
+
+    if ($start === null) {
+        return [];
+    }
+
+    $blocks = [];
+    for ($i = $start; $i < count($lines); $i++) {
+        $line = $lines[$i];
+        $upper = mb_strtoupper($line, 'UTF-8');
+
+        if (str_starts_with($upper, 'DGB/DCA') || str_starts_with($upper, 'COMPETENCIAS')) {
+            break;
+        }
+
+        if (preg_match('/^Bloque\s+([IVXLCDM|l]+)\.?\s*(.+)$/iu', $line, $matches) === 1) {
+            $title = cleanContent($matches[2]);
+            if ($title !== '') {
+                $blocks[] = $title;
+            }
+        }
+    }
+
+    return array_values(array_unique($blocks));
 }
 
 function normalizeLines(string $text): array
