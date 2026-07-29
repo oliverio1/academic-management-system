@@ -137,6 +137,9 @@
                                                     <a href="{{ route('attendance.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-dark">
                                                         <i class="fas fa-table mr-1"></i>Hoja semanal
                                                     </a>
+                                                    <a href="{{ route('session.activities.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-edit mr-1"></i>Actividades
+                                                    </a>
 
                                                     @if($class->attendance_closed)
                                                         <span class="btn btn-sm btn-outline-secondary disabled">Actividad</span>

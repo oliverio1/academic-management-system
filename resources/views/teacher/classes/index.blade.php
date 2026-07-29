@@ -47,6 +47,10 @@
                                                     <i class="fas fa-table mr-1"></i>
                                                     Asistencia semanal / mensual
                                                 </a>
+                                                <a href="{{ route('session.activities.massive', ['assignment' => $assignment, 'mode' => 'week']) }}" class="btn btn-outline-warning btn-sm btn-block">
+                                                    <i class="fas fa-edit mr-1"></i>
+                                                    Actividades semanal / mensual
+                                                </a>
 
                                                 <a href="{{ route('teacher.classes.evaluation.index', $assignment) }}"
                                                    class="btn {{ $hasEvaluationCriteria ? 'btn-success' : 'btn-danger' }} btn-sm btn-block">

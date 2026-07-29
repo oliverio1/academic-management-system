@@ -14,6 +14,7 @@ use App\Models\Modality;
 use App\Models\Schedule;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
+use App\Models\SessionActivity;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Teacher;
@@ -269,6 +270,63 @@ class TeacherAttendanceFlowTest extends TestCase
             'academic_session_id' => $scenario['session']->id,
             'student_id' => $secondStudent->id,
             'status' => 'absent',
+        ]);
+    }
+
+    public function test_teacher_can_use_massive_session_activity_sheet_with_evaluation(): void
+    {
+        config(['attendance.editable_cycle_codes_for_testing' => ['26-27']]);
+
+        $scenario = $this->attendanceScenario(['cycle_code' => '26-27']);
+        $criterion = EvaluationCriterion::create([
+            'teaching_assignment_id' => $scenario['assignment']->id,
+            'cycle_partial_id' => $scenario['partial']->id,
+            'name' => 'Trabajo en clase',
+            'percentage' => 100,
+        ]);
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('session.activities.massive', [
+                'assignment' => $scenario['assignment'],
+                'mode' => 'week',
+                'date' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertSee('Actividades masivas')
+            ->assertSee('Cuenta para evaluacion')
+            ->assertSee('Trabajo en clase');
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->post(route('session.activities.massive.store', $scenario['assignment']), [
+                'mode' => 'week',
+                'date' => now()->toDateString(),
+                'activities' => [
+                    $scenario['session']->id => [
+                        'title' => 'Movimiento circular y actividad ludica',
+                        'description' => 'Discusion grupal y ejercicios',
+                        'is_evaluable' => '1',
+                        'evaluation_title' => 'Ejercicios de movimiento circular',
+                        'evaluation_criterion_id' => $criterion->id,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('session.activities.massive', [
+                'assignment' => $scenario['assignment'],
+                'mode' => 'week',
+                'date' => now()->toDateString(),
+            ]));
+
+        $sessionActivity = SessionActivity::query()->where('academic_session_id', $scenario['session']->id)->firstOrFail();
+        $this->assertSame('Movimiento circular y actividad ludica', $sessionActivity->title);
+        $this->assertSame((int) $criterion->id, (int) $sessionActivity->evaluation_criterion_id);
+
+        $this->assertDatabaseHas('activities', [
+            'session_activity_id' => $sessionActivity->id,
+            'teaching_assignment_id' => $scenario['assignment']->id,
+            'evaluation_criterion_id' => $criterion->id,
+            'title' => 'Ejercicios de movimiento circular',
         ]);
     }
 

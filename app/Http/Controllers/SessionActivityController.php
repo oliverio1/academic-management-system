@@ -4,15 +4,189 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\AcademicSession;
+use App\Models\EvaluationCriterion;
 use App\Models\SessionActivity;
 use App\Models\TemarioPoint;
+use App\Models\TeachingAssignment;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Services\EconomicActaLockService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SessionActivityController extends Controller
 {
+    public function massive(
+        Request $request,
+        TeachingAssignment $assignment,
+        EconomicActaLockService $lockService
+    ) {
+        $this->authorizeTeacherAssignment($assignment);
+
+        $assignment->load(['subject', 'group', 'schoolCycleGroup.schoolCycle']);
+        [$mode, $anchorDate, $from, $to] = $this->massiveRange($request);
+        $activePeriodIds = $this->activeCyclePeriodIds();
+
+        $sessions = AcademicSession::query()
+            ->where('teaching_assignment_id', (int) $assignment->id)
+            ->where('is_cancelled', false)
+            ->when(! empty($activePeriodIds), fn ($query) => $query->whereIn('academic_period_id', $activePeriodIds))
+            ->whereBetween('session_date', [$from->toDateString(), $to->toDateString()])
+            ->with([
+                'academicPeriod',
+                'schedule.schoolCycle',
+                'teachingAssignment.schoolCycleGroup.schoolCycle',
+                'sessionActivity.evaluationCriterion',
+                'sessionActivity.evaluableActivity',
+            ])
+            ->orderBy('session_date')
+            ->orderBy('start_time')
+            ->get();
+
+        $criteriaByPeriod = $sessions
+            ->pluck('academic_period_id')
+            ->filter()
+            ->unique()
+            ->mapWithKeys(function ($periodId) use ($assignment) {
+                return [
+                    (int) $periodId => EvaluationCriterion::query()
+                        ->forAssignmentAndPeriod($assignment, (int) $periodId)
+                        ->orderBy('name')
+                        ->get(),
+                ];
+            });
+
+        $sessionLocks = $sessions
+            ->mapWithKeys(fn (AcademicSession $session) => [
+                (int) $session->id => $this->massiveSessionLock($session, $lockService),
+            ])
+            ->all();
+
+        return view('session_activities.massive', [
+            'assignment' => $assignment,
+            'sessions' => $sessions,
+            'criteriaByPeriod' => $criteriaByPeriod,
+            'sessionLocks' => $sessionLocks,
+            'mode' => $mode,
+            'anchorDate' => $anchorDate,
+            'from' => $from,
+            'to' => $to,
+            'testCycleEditing' => $this->assignmentAllowsEditingForTesting($assignment),
+        ]);
+    }
+
+    public function storeMassive(
+        Request $request,
+        TeachingAssignment $assignment,
+        EconomicActaLockService $lockService
+    ) {
+        $this->authorizeTeacherAssignment($assignment);
+
+        $data = $request->validate([
+            'mode' => ['nullable', 'in:week,month'],
+            'date' => ['nullable', 'date'],
+            'activities' => ['required', 'array'],
+            'activities.*.title' => ['nullable', 'string', 'max:255'],
+            'activities.*.description' => ['nullable', 'string'],
+            'activities.*.is_evaluable' => ['nullable', 'boolean'],
+            'activities.*.evaluation_title' => ['nullable', 'string', 'max:255'],
+            'activities.*.evaluation_criterion_id' => ['nullable', 'integer'],
+        ]);
+
+        $sessionIds = collect($data['activities'])
+            ->keys()
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values();
+
+        $sessions = AcademicSession::query()
+            ->whereIn('id', $sessionIds->all())
+            ->where('teaching_assignment_id', (int) $assignment->id)
+            ->with(['academicPeriod', 'schedule.schoolCycle', 'teachingAssignment.schoolCycleGroup.schoolCycle', 'sessionActivity.evaluableActivity'])
+            ->get()
+            ->keyBy('id');
+
+        DB::transaction(function () use ($data, $assignment, $sessions, $lockService) {
+            foreach ($data['activities'] as $sessionId => $row) {
+                $session = $sessions->get((int) $sessionId);
+                if (! $session) {
+                    continue;
+                }
+
+                if (! $this->allowsEditingForTesting($session) && $this->massiveSessionLock($session, $lockService)['locked']) {
+                    continue;
+                }
+
+                $title = trim((string) ($row['title'] ?? ''));
+                $description = trim((string) ($row['description'] ?? ''));
+                $isEvaluable = (bool) ($row['is_evaluable'] ?? false);
+                $criterionId = (int) ($row['evaluation_criterion_id'] ?? 0);
+                $evaluationTitle = trim((string) ($row['evaluation_title'] ?? ''));
+
+                if ($title === '' && ! $isEvaluable) {
+                    continue;
+                }
+
+                if ($title === '') {
+                    $title = $evaluationTitle !== '' ? $evaluationTitle : 'Actividad de clase';
+                }
+
+                $validCriterion = $criterionId > 0
+                    ? EvaluationCriterion::query()
+                        ->forAssignmentAndPeriod($assignment, (int) $session->academic_period_id)
+                        ->whereKey($criterionId)
+                        ->exists()
+                    : false;
+
+                if ($isEvaluable && ! $validCriterion) {
+                    continue;
+                }
+
+                $sessionActivity = SessionActivity::updateOrCreate(
+                    ['academic_session_id' => (int) $session->id],
+                    [
+                        'title' => $title,
+                        'description' => $description !== '' ? $description : null,
+                        'evaluation_criterion_id' => $isEvaluable ? $criterionId : null,
+                    ]
+                );
+
+                $linkedActivity = $sessionActivity->evaluableActivity;
+                if (! $isEvaluable) {
+                    if ($linkedActivity && ! $linkedActivity->grades()->exists() && ! $linkedActivity->teamGrades()->exists()) {
+                        $linkedActivity->delete();
+                    }
+                    continue;
+                }
+
+                Activity::updateOrCreate(
+                    ['session_activity_id' => (int) $sessionActivity->id],
+                    [
+                        'teaching_assignment_id' => (int) $assignment->id,
+                        'evaluation_criterion_id' => $criterionId,
+                        'academic_period_id' => (int) $session->academic_period_id,
+                        'title' => $evaluationTitle !== '' ? $evaluationTitle : $title,
+                        'max_score' => 10,
+                        'due_date' => $session->session_date,
+                        'description' => $description !== '' ? $description : null,
+                        'evaluation_mode' => 'individual',
+                        'is_active' => true,
+                    ]
+                );
+            }
+        });
+
+        return redirect()
+            ->route('session.activities.massive', [
+                'assignment' => $assignment,
+                'mode' => $data['mode'] ?? 'week',
+                'date' => $data['date'] ?? now()->toDateString(),
+            ])
+            ->with('success', 'Actividades masivas guardadas correctamente.');
+    }
+
     public function create(AcademicSession $academicSession, EconomicActaLockService $lockService)
     {
         $teacherId = auth()->user()?->teacher?->id;
@@ -295,5 +469,81 @@ class SessionActivityController extends Controller
         }
 
         return $matches[1];
+    }
+
+    private function massiveRange(Request $request): array
+    {
+        $mode = $request->input('mode') === 'month' ? 'month' : 'week';
+        $anchorDate = Carbon::parse($request->input('date', now()->toDateString()))->startOfDay();
+
+        if ($mode === 'month') {
+            return [$mode, $anchorDate, $anchorDate->copy()->startOfMonth(), $anchorDate->copy()->endOfMonth()];
+        }
+
+        return [$mode, $anchorDate, $anchorDate->copy()->startOfWeek(), $anchorDate->copy()->endOfWeek()];
+    }
+
+    private function massiveSessionLock(AcademicSession $session, EconomicActaLockService $lockService): array
+    {
+        if ($this->allowsEditingForTesting($session)) {
+            return ['locked' => false, 'reason' => null];
+        }
+
+        if ($session->academicPeriod && ! $session->academicPeriod->is_active) {
+            return ['locked' => true, 'reason' => 'Periodo cerrado'];
+        }
+
+        if ($session->isAttendanceClosed()) {
+            return ['locked' => true, 'reason' => 'Semana cerrada'];
+        }
+
+        if ($lockService->isSessionLocked($session)) {
+            return ['locked' => true, 'reason' => 'Acta cerrada'];
+        }
+
+        return ['locked' => false, 'reason' => null];
+    }
+
+    private function allowsEditingForTesting(AcademicSession $session): bool
+    {
+        $cycleCode = (string) (
+            $session->teachingAssignment?->schoolCycleGroup?->schoolCycle?->code
+            ?? $session->schedule?->schoolCycle?->code
+            ?? ''
+        );
+
+        return $cycleCode !== ''
+            && in_array($cycleCode, config('attendance.editable_cycle_codes_for_testing', []), true);
+    }
+
+    private function assignmentAllowsEditingForTesting(TeachingAssignment $assignment): bool
+    {
+        $cycleCode = (string) ($assignment->schoolCycleGroup?->schoolCycle?->code ?? '');
+
+        return $cycleCode !== ''
+            && in_array($cycleCode, config('attendance.editable_cycle_codes_for_testing', []), true);
+    }
+
+    private function activeCyclePeriodIds(): array
+    {
+        $cycle = app(CurrentSchoolCycle::class)->get(auth()->user(), (int) session('active_campus_id', 0));
+
+        if (! $cycle) {
+            return [];
+        }
+
+        return $cycle->partials()
+            ->whereNotNull('academic_period_id')
+            ->pluck('academic_period_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    private function authorizeTeacherAssignment(TeachingAssignment $assignment): void
+    {
+        $teacherId = (int) (auth()->user()?->teacher?->id ?? 0);
+
+        abort_if($teacherId <= 0 || (int) $assignment->teacher_id !== $teacherId, 403);
     }
 }

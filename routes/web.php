@@ -488,6 +488,8 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
 
     Route::get('sessions/{academicSession}/activity',[SessionActivityController::class, 'create'])->name('session.activities.create');
     Route::post('sessions/{academicSession}/activity',[SessionActivityController::class, 'store'])->name('session.activities.store');
+    Route::get('assignments/{assignment}/activities/massive', [SessionActivityController::class, 'massive'])->name('session.activities.massive');
+    Route::post('assignments/{assignment}/activities/massive', [SessionActivityController::class, 'storeMassive'])->name('session.activities.massive.store');
 
     Route::get('assignments/{assignment}/activities',[ActivityController::class, 'index'])->name('activities.index');
     Route::get('assignments/{assignment}/activities/create',[ActivityController::class, 'create'])->name('activities.create');
