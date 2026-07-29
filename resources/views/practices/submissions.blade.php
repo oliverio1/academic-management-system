@@ -9,7 +9,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-start">
                     <div>
-                        <h4 class="mb-0">Entregas</h4>
+                        <h4 class="mb-0">Entregas recibidas</h4>
                         <small class="text-muted">
                             {{ $practice->kind_label }} {{ $practice->number }}: {{ $practice->title }}
                         </small>
@@ -31,26 +31,30 @@
                             <tr>
                                 <th>Alumno/equipo</th>
                                 <th>Estatus</th>
-                                <th>Calificación</th>
-                                <th>Fecha de envío</th>
-                                <th>Revisión</th>
+                                <th>Calificacion</th>
+                                <th>Archivos</th>
+                                <th>Fecha de envio</th>
+                                <th>Revision</th>
                                 <th class="text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($submissions as $submission)
+                            @forelse($rosterRows as $row)
                                 @php
-                                    $students = $submission->team->students
-                                        ->map(fn ($student) => $student->user->name)
-                                        ->join(', ');
+                                    $student = $row['student'];
+                                    $submission = $row['submission'];
                                 @endphp
                                 <tr>
                                     <td>
-                                        <strong>{{ $submission->team->name }}</strong>
-                                        <div class="text-muted small">{{ $students ?: 'Sin alumnos' }}</div>
+                                        <strong>{{ $student->user->name ?? 'Alumno sin usuario' }}</strong>
+                                        <div class="text-muted small">{{ $student->enrollment_number ?? 'Sin matricula' }}</div>
                                     </td>
                                     <td>
-                                        @if($submission->status === 'reviewed')
+                                        @if(! $submission)
+                                            <span class="badge badge-light">Pendiente</span>
+                                        @elseif($submission->status === 'reviewed' && $submission->is_resubmission_allowed)
+                                            <span class="badge badge-warning">Reentrega solicitada</span>
+                                        @elseif($submission->status === 'reviewed')
                                             <span class="badge badge-primary">Revisado</span>
                                         @elseif($submission->status === 'submitted')
                                             <span class="badge badge-success">Enviado</span>
@@ -58,27 +62,32 @@
                                             <span class="badge badge-secondary">Borrador</span>
                                         @endif
                                     </td>
-                                    <td>{{ $submission->score !== null ? number_format((float) $submission->score, 1) : '-' }}</td>
-                                    <td>{{ optional($submission->submitted_at)->format('d/m/Y H:i') ?? '-' }}</td>
-                                    <td>{{ optional($submission->reviewed_at)->format('d/m/Y H:i') ?? '-' }}</td>
+                                    <td>{{ $submission?->score !== null ? number_format((float) $submission->score, 1) : '-' }}</td>
+                                    <td>{{ $submission?->attachments?->count() ?: '-' }}</td>
+                                    <td>{{ optional($submission?->submitted_at)->format('d/m/Y H:i') ?? '-' }}</td>
+                                    <td>{{ optional($submission?->reviewed_at)->format('d/m/Y H:i') ?? '-' }}</td>
                                     <td class="text-right">
-                                        <a href="{{ route('practices.submissions.show', $submission) }}" class="btn btn-sm btn-outline-primary">
-                                            Ver
-                                        </a>
-                                        @if(in_array($submission->status, ['submitted', 'reviewed'], true))
-                                            <a href="{{ route('practices.submissions.review', $submission) }}" class="btn btn-sm btn-success">
-                                                Revisar/calificar
+                                        @if($submission)
+                                            <a href="{{ route('practices.submissions.show', $submission) }}" class="btn btn-sm btn-outline-primary">
+                                                Ver
                                             </a>
+                                            @if(in_array($submission->status, ['submitted', 'reviewed'], true))
+                                                <a href="{{ route('practices.submissions.review', $submission) }}" class="btn btn-sm btn-success">
+                                                    Revisar/calificar
+                                                </a>
+                                            @endif
+                                            <a href="{{ route('practices.submissions.pdf', $submission) }}" class="btn btn-sm btn-outline-danger">
+                                                PDF
+                                            </a>
+                                        @else
+                                            <span class="text-muted small">Sin entrega</span>
                                         @endif
-                                        <a href="{{ route('practices.submissions.pdf', $submission) }}" class="btn btn-sm btn-outline-danger">
-                                            PDF
-                                        </a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">
-                                        Aún no hay entregas para este entregable.
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        Aun no hay entregas para este entregable.
                                     </td>
                                 </tr>
                             @endforelse

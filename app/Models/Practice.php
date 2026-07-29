@@ -7,17 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Practice extends Model
 {
     public const KIND_LABELS = [
-        'practice' => 'Práctica',
+        'practice' => 'Practica',
         'task' => 'Tarea',
         'project' => 'Proyecto',
     ];
 
     public const LEGACY_REPORT_FIELD_LABELS = [
         'objectives' => 'Objetivo',
-        'hypothesis' => 'Hipótesis',
-        'theoretical_framework' => 'Marco teórico',
+        'hypothesis' => 'Hipotesis',
+        'theoretical_framework' => 'Marco teorico',
         'results' => 'Resultados',
-        'discussion' => 'Discusión',
+        'discussion' => 'Discusion',
         'conclusions' => 'Conclusiones',
         'references' => 'Referencias',
     ];

@@ -13,7 +13,7 @@
             <div class="card">
                 <div class="card-header">
                     <h4 class="mb-0">Mis entregables</h4>
-                    <small class="text-muted">Prácticas, tareas y proyectos asignados por tus profesores.</small>
+                    <small class="text-muted">Tareas, practicas y proyectos asignados por tus profesores.</small>
                 </div>
                 <div class="card-body">
                     @forelse($practices as $practice)
@@ -36,59 +36,55 @@
                                 ? $practice->due_date->copy()->endOfDay()->isPast()
                                 : false;
                             $canCapture = ! $isPastDue && $studentSubmission?->status !== 'reviewed';
+                            $status = $studentSubmission?->status ?? 'pending';
                         @endphp
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-md-8">
-                                        <span class="badge badge-info">{{ $practice->kind_label }}</span>
-                                        <h5 class="mt-2 mb-1">{{ $practice->title }}</h5>
-                                        <p class="text-muted mb-1">
-                                            {{ $practice->teachingAssignment->subject->name }}
-                                            · Profesor: {{ $practice->teachingAssignment->teacher->user->name ?? 'Sin profesor' }}
-                                        </p>
-                                        <small>
-                                            Realización:
-                                            {{ optional($practice->realization_date)->format('d/m/Y') ?? '-' }}
-                                            · Entrega:
-                                            <strong>{{ optional($practice->due_date)->format('d/m/Y') ?? '-' }}</strong>
-                                        </small>
-                                        <div class="mt-2">
-                                            @if($studentSubmission?->status === 'reviewed')
-                                                <span class="badge badge-primary">Revisado</span>
-                                                <span class="text-muted small">
-                                                    Calificación: {{ number_format((float) $studentSubmission->score, 1) }}
-                                                    · {{ optional($studentSubmission->reviewed_at)->format('d/m/Y H:i') }}
-                                                </span>
-                                            @elseif($studentSubmission?->status === 'submitted')
-                                                <span class="badge badge-success">Enviado</span>
-                                            @elseif($studentSubmission?->status === 'draft')
-                                                <span class="badge badge-secondary">Borrador</span>
-                                            @else
-                                                <span class="badge badge-warning">Pendiente</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 text-md-right mt-3 mt-md-0">
-                                        @if($canCapture)
-                                            <a href="{{ route('student.practices.show', $practice) }}"
-                                               class="btn btn-primary">
-                                                Capturar reporte
-                                            </a>
-                                        @else
-                                            <button type="button" class="btn btn-secondary" disabled>
-                                                Captura cerrada
-                                            </button>
-                                            <small class="text-muted d-block mt-1">
-                                                {{ $studentSubmission?->status === 'reviewed' ? 'Ya fue revisado.' : 'Fecha de entrega vencida.' }}
-                                            </small>
-                                        @endif
-                                        <a href="{{ route('student.practices.report', $practice) }}"
-                                           class="btn btn-outline-secondary">
-                                            Ver reporte
-                                        </a>
-                                    </div>
+                        <div class="delivery-card mb-3">
+                            <div class="delivery-card__main">
+                                <div>
+                                    <span class="badge badge-info">{{ $practice->kind_label }}</span>
+                                    @if($status === 'reviewed')
+                                        <span class="badge badge-primary">Revisado</span>
+                                    @elseif($status === 'submitted')
+                                        <span class="badge badge-success">Enviado</span>
+                                    @elseif($status === 'draft')
+                                        <span class="badge badge-secondary">Borrador</span>
+                                    @elseif($isPastDue)
+                                        <span class="badge badge-dark">Vencido</span>
+                                    @else
+                                        <span class="badge badge-warning">Pendiente</span>
+                                    @endif
                                 </div>
+
+                                <h5 class="mt-2 mb-1">{{ $practice->title }}</h5>
+                                <p class="text-muted mb-2">
+                                    {{ $practice->teachingAssignment->subject->name }}
+                                    - Profesor: {{ $practice->teachingAssignment->teacher->user->name ?? 'Sin profesor' }}
+                                </p>
+
+                                <div class="delivery-card__dates">
+                                    <span>Realizacion: {{ optional($practice->realization_date)->format('d/m/Y') ?? '-' }}</span>
+                                    <span>Entrega: <strong>{{ optional($practice->due_date)->format('d/m/Y') ?? '-' }}</strong></span>
+                                    @if($studentSubmission?->status === 'reviewed')
+                                        <span>Calificacion: <strong>{{ number_format((float) $studentSubmission->score, 1) }}</strong></span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="delivery-card__actions">
+                                @if($canCapture)
+                                    <a href="{{ route('student.practices.show', $practice) }}"
+                                       class="btn btn-primary">
+                                        Capturar entrega
+                                    </a>
+                                @else
+                                    <button type="button" class="btn btn-secondary" disabled>
+                                        Captura cerrada
+                                    </button>
+                                @endif
+                                <a href="{{ route('student.practices.report', $practice) }}"
+                                   class="btn btn-outline-secondary">
+                                    Ver entrega
+                                </a>
                             </div>
                         </div>
                     @empty
@@ -101,4 +97,47 @@
         </div>
     </div>
 </div>
+
+<style>
+    .delivery-card {
+        align-items: center;
+        border: 1px solid #dbe3ee;
+        border-radius: 6px;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        padding: 1rem;
+    }
+
+    .delivery-card__main {
+        min-width: 0;
+    }
+
+    .delivery-card__dates {
+        color: #6c757d;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: .9rem;
+        gap: .5rem 1rem;
+    }
+
+    .delivery-card__actions {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        gap: .5rem;
+        justify-content: flex-end;
+    }
+
+    @media (max-width: 767.98px) {
+        .delivery-card {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .delivery-card__actions {
+            justify-content: flex-start;
+        }
+    }
+</style>
 @endsection

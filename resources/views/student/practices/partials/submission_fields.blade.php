@@ -17,6 +17,7 @@
         </label>
         <textarea name="custom_field_answers[{{ $fieldId }}]"
                   class="form-control"
-                  rows="4">{{ $value }}</textarea>
+                  rows="6"
+                  placeholder="Escribe aqui tu respuesta">{{ $value }}</textarea>
     </div>
 @endforeach

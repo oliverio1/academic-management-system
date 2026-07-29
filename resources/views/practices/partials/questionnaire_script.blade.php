@@ -127,14 +127,14 @@
                         <button type="button"
                             class="btn btn-sm btn-outline-secondary"
                             onclick="addOption(${index})">
-                            Agregar opción
+                            Agregar opcion
                         </button>
                     </div>
                 `
                 : '';
 
             return `
-                <div class="card mb-2 p-2">
+                <div class="delivery-builder-card">
                     <div class="form-group">
                         <label>Pregunta ${index + 1}</label>
                         <input type="text" class="form-control"
@@ -147,8 +147,8 @@
                         <select class="form-control"
                             onchange="changeType(${index}, this.value)">
                             <option value="text" ${q.type==='text'?'selected':''}>Abierta</option>
-                            <option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Opción múltiple</option>
-                            <option value="boolean" ${q.type==='boolean'?'selected':''}>Sí / No</option>
+                            <option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Opcion multiple</option>
+                            <option value="boolean" ${q.type==='boolean'?'selected':''}>Si / No</option>
                         </select>
                     </div>
 
@@ -169,12 +169,12 @@
     window.renderDeliveryFields = function () {
         const container = document.getElementById('delivery-fields-builder');
         container.innerHTML = window.deliveryFields.map((field, index) => `
-            <div class="card mb-2 p-2">
+            <div class="delivery-builder-card">
                 <div class="form-group mb-2">
                     <label>Nombre del campo ${index + 1}</label>
                     <input type="text"
                            class="form-control"
-                           placeholder="Ej. Objetivo, Cálculos, Evidencia, Reflexión..."
+                           placeholder="Ej. Desarrollo, Evidencia, Reflexion, Conclusiones..."
                            value="${escapeHtml(field.label)}"
                            oninput="updateDeliveryFieldLabel(${index}, this.value)">
                 </div>

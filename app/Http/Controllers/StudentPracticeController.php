@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Practice;
 use App\Models\PracticeSubmission;
+use App\Models\PracticeSubmissionAttachment;
+use App\Models\Grade;
 use App\Models\Student;
 use App\Models\Team;
+use App\Notifications\PracticeSubmittedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class StudentPracticeController extends Controller
@@ -39,6 +43,7 @@ class StudentPracticeController extends Controller
         $this->authorizePracticeForStudent($practice, $student);
 
         [$submission, $team] = $this->submissionForStudent($practice, $student);
+        $submission->loadMissing('attachments');
 
         if (! $this->canStudentEditSubmission($practice, $submission)) {
             return redirect()
@@ -70,9 +75,16 @@ class StudentPracticeController extends Controller
             'references' => 'nullable|string',
             'custom_field_answers' => 'nullable|array',
             'custom_field_answers.*' => 'nullable|string',
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,webp',
+            'delete_attachment_ids' => 'nullable|array',
+            'delete_attachment_ids.*' => 'integer|exists:practice_submission_attachments,id',
         ]);
 
         $data['custom_field_answers'] = $this->validatedCustomFieldAnswers($request, $practice);
+        $attachments = $request->file('attachments', []);
+        $deleteAttachmentIds = collect($data['delete_attachment_ids'] ?? [])->map(fn ($id) => (int) $id)->all();
+        unset($data['attachments'], $data['delete_attachment_ids']);
 
         $status = $data['action'] ?? 'submitted';
         unset($data['action']);
@@ -87,12 +99,49 @@ class StudentPracticeController extends Controller
                 : 'La fecha de entrega ya pasó.'
         );
 
-        $submission->update([
-            ...$data,
-            'submitted_by' => auth()->id(),
-            'submitted_at' => $status === 'submitted' ? now() : $submission->submitted_at,
-            'status' => $status,
-        ]);
+        $isResubmission = $submission->status === 'reviewed'
+            && $this->isResubmissionWindowOpen($submission);
+
+        DB::transaction(function () use ($submission, $data, $status, $attachments, $deleteAttachmentIds, $isResubmission) {
+            $reviewReset = [];
+
+            if ($isResubmission) {
+                $reviewReset = [
+                    'score' => null,
+                    'teacher_corrections' => null,
+                    'teacher_comments' => null,
+                    'teacher_suggestions' => null,
+                    'reviewed_by' => null,
+                    'reviewed_at' => null,
+                    'is_resubmission_allowed' => $status === 'draft',
+                    'resubmission_due_date' => $status === 'draft' ? $submission->resubmission_due_date : null,
+                    'resubmission_note' => $status === 'draft' ? $submission->resubmission_note : null,
+                    'resubmission_requested_at' => $status === 'draft' ? $submission->resubmission_requested_at : null,
+                    'resubmission_requested_by' => $status === 'draft' ? $submission->resubmission_requested_by : null,
+                    'resubmission_count' => $submission->resubmission_count + ($status === 'submitted' ? 1 : 0),
+                ];
+            }
+
+            $submission->update([
+                ...$data,
+                ...$reviewReset,
+                'submitted_by' => auth()->id(),
+                'submitted_at' => $status === 'submitted' ? now() : $submission->submitted_at,
+                'status' => $status,
+            ]);
+
+            $this->deleteAttachments($submission, $deleteAttachmentIds);
+            $this->storeAttachments($submission, $attachments);
+
+            if ($isResubmission) {
+                $this->removeGradesForSubmission($submission);
+            }
+        });
+
+        if ($status === 'submitted') {
+            $submission->loadMissing('practice.teachingAssignment.teacher.user', 'submittedBy');
+            $submission->practice->teachingAssignment->teacher?->user?->notify(new PracticeSubmittedNotification($submission));
+        }
 
         if ($status === 'draft') {
             return redirect()
@@ -111,7 +160,7 @@ class StudentPracticeController extends Controller
         $this->authorizePracticeForStudent($practice, $student);
 
         [$submission, $team] = $this->submissionForStudent($practice, $student);
-        $submission->loadMissing('reviewedBy');
+        $submission->loadMissing('reviewedBy', 'attachments');
         $canCapture = $this->canStudentEditSubmission($practice, $submission);
 
         return view('student.practices.report', compact('practice', 'submission', 'team', 'student', 'canCapture'));
@@ -123,7 +172,7 @@ class StudentPracticeController extends Controller
         $this->authorizePracticeForStudent($practice, $student);
 
         [$submission, $team] = $this->submissionForStudent($practice, $student);
-        $submission->loadMissing('reviewedBy');
+        $submission->loadMissing('reviewedBy', 'attachments');
 
         $filename = Str::slug($practice->kind_label . '-' . $practice->title . '-' . $student->user->name) . '.pdf';
 
@@ -212,6 +261,10 @@ class StudentPracticeController extends Controller
 
     private function canStudentEditSubmission(Practice $practice, PracticeSubmission $submission): bool
     {
+        if ($this->isResubmissionWindowOpen($submission)) {
+            return true;
+        }
+
         if ($submission->status === 'reviewed') {
             return false;
         }
@@ -224,6 +277,64 @@ class StudentPracticeController extends Controller
         return $practice->due_date
             ? $practice->due_date->copy()->endOfDay()->isPast()
             : false;
+    }
+
+    private function isResubmissionWindowOpen(PracticeSubmission $submission): bool
+    {
+        return $submission->is_resubmission_allowed
+            && $submission->resubmission_due_date
+            && ! $submission->resubmission_due_date->copy()->endOfDay()->isPast();
+    }
+
+    private function removeGradesForSubmission(PracticeSubmission $submission): void
+    {
+        $submission->loadMissing('practice.activity', 'team.students');
+        $activity = $submission->practice?->activity;
+
+        if (! $activity) {
+            return;
+        }
+
+        Grade::query()
+            ->where('activity_id', $activity->id)
+            ->whereIn('student_id', $submission->team->students->pluck('id'))
+            ->delete();
+    }
+
+    private function storeAttachments(PracticeSubmission $submission, array $attachments): void
+    {
+        foreach ($attachments as $file) {
+            if (! $file) {
+                continue;
+            }
+
+            $path = $file->store('practice-submissions/' . $submission->id, 'local');
+
+            PracticeSubmissionAttachment::create([
+                'practice_submission_id' => $submission->id,
+                'uploaded_by' => auth()->id(),
+                'disk' => 'local',
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize() ?: 0,
+            ]);
+        }
+    }
+
+    private function deleteAttachments(PracticeSubmission $submission, array $attachmentIds): void
+    {
+        if (empty($attachmentIds)) {
+            return;
+        }
+
+        $submission->attachments()
+            ->whereIn('id', $attachmentIds)
+            ->get()
+            ->each(function (PracticeSubmissionAttachment $attachment) {
+                Storage::disk($attachment->disk)->delete($attachment->path);
+                $attachment->delete();
+            });
     }
 
     private function validatedCustomFieldAnswers(Request $request, Practice $practice): array

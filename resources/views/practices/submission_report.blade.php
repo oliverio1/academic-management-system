@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Reporte de entrega')
+@section('title', 'Entrega')
 
 @section('content')
 <div class="content px-3">
@@ -17,7 +17,7 @@
         <div class="col-md-12 mt-3">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Reporte de entrega</h4>
+                    <h4 class="mb-0">Entrega del alumno</h4>
                     <div>
                         <a href="{{ route('practices.submissions', $practice) }}" class="btn btn-outline-secondary btn-sm">
                             Volver
@@ -37,7 +37,7 @@
             <div class="col-md-12 mt-3">
                 <div class="card border-primary">
                     <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">Revisión del profesor</h4>
+                        <h4 class="mb-0">Retroalimentacion del profesor</h4>
                     </div>
                     <div class="card-body">
                         @include('student.practices.partials.teacher_review_content')

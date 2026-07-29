@@ -10,15 +10,15 @@
 @if($hasTeacherReview)
     <table class="meta">
         <tr>
-            <td><strong>Calificación:</strong></td>
+            <td><strong>Calificacion:</strong></td>
             <td>{{ $submission->score !== null ? number_format((float) $submission->score, 1) : '-' }}</td>
         </tr>
         <tr>
-            <td><strong>Fecha de revisión:</strong></td>
+            <td><strong>Fecha de revision:</strong></td>
             <td>{{ optional($submission->reviewed_at)->format('d/m/Y H:i') ?? '-' }}</td>
         </tr>
         <tr>
-            <td><strong>Revisó:</strong></td>
+            <td><strong>Reviso:</strong></td>
             <td>{{ $submission->reviewedBy->name ?? $practice->teachingAssignment->teacher->user->name ?? '-' }}</td>
         </tr>
     </table>

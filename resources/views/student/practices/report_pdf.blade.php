@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Reporte de entregable</title>
+    <title>Entrega</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #222; }
         h1 { font-size: 20px; margin-bottom: 4px; }
@@ -23,7 +23,7 @@
             || filled($submission->teacher_suggestions);
     @endphp
     @if($hasTeacherReview)
-        <h2>Revisión del profesor</h2>
+        <h2>Retroalimentacion del profesor</h2>
         @include('student.practices.partials.teacher_review_content')
     @endif
 </body>

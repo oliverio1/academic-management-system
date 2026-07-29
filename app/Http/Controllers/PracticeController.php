@@ -9,6 +9,8 @@ use App\Models\TeachingAssignment;
 use App\Models\Grade;
 use App\Models\AcademicPeriod;
 use App\Models\Activity;
+use App\Notifications\PracticePublishedNotification;
+use App\Notifications\PracticeReviewedNotification;
 use App\Services\PracticeActivityService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -22,7 +24,14 @@ class PracticeController extends Controller
     {
         $this->authorizeAssignment($assignment);
 
-        $practices = $assignment->practices()->orderBy('number')->get();
+        $practices = $assignment->practices()
+            ->with('activity.evaluationCriterion')
+            ->withCount([
+                'submissions as submitted_submissions_count' => fn ($query) => $query->whereIn('status', ['submitted', 'reviewed']),
+                'submissions as reviewed_submissions_count' => fn ($query) => $query->where('status', 'reviewed'),
+            ])
+            ->orderBy('number')
+            ->get();
 
         return view('practices.index', compact('assignment', 'practices'));
     }
@@ -42,7 +51,8 @@ class PracticeController extends Controller
     {
         $this->authorizeAssignment($assignment);
 
-        $service->createForAssignment($assignment, $this->validatedData($request, $assignment));
+        $practice = $service->createForAssignment($assignment, $this->validatedData($request, $assignment));
+        $this->notifyStudentsAbout($practice);
 
         return redirect()
             ->route('practices.index', $assignment)
@@ -111,16 +121,32 @@ class PracticeController extends Controller
         $this->authorizeAssignment($assignment);
 
         $submissions = $practice->submissions()
-            ->with(['team.students.user', 'submittedBy.student.user'])
+            ->with(['team.students.user', 'submittedBy.student.user', 'attachments'])
             ->orderByDesc('submitted_at')
             ->get();
 
-        return view('practices.submissions', compact('practice', 'assignment', 'submissions'));
+        $students = $this->studentsForAssignment($assignment);
+        $submissionsByStudent = collect();
+        foreach ($submissions as $submission) {
+            foreach ($submission->team->students as $student) {
+                $submissionsByStudent->put($student->id, $submission);
+            }
+        }
+
+        $rosterRows = $students
+            ->map(fn (Student $student) => [
+                'student' => $student,
+                'submission' => $submissionsByStudent->get($student->id),
+            ])
+            ->sortBy(fn (array $row) => $row['student']->user->name ?? '')
+            ->values();
+
+        return view('practices.submissions', compact('practice', 'assignment', 'submissions', 'rosterRows'));
     }
 
     public function submissionReport(PracticeSubmission $submission)
     {
-        $submission->load(['practice.teachingAssignment.subject', 'practice.teachingAssignment.teacher.user', 'team.students.user', 'submittedBy.student.user', 'reviewedBy']);
+        $submission->load(['practice.teachingAssignment.subject', 'practice.teachingAssignment.teacher.user', 'team.students.user', 'submittedBy.student.user', 'reviewedBy', 'attachments']);
         $practice = $submission->practice;
         $assignment = $practice->teachingAssignment;
         $this->authorizeAssignment($assignment);
@@ -142,6 +168,7 @@ class PracticeController extends Controller
             'team.students.user',
             'submittedBy.student.user',
             'reviewedBy',
+            'attachments',
         ]);
 
         $practice = $submission->practice;
@@ -177,9 +204,14 @@ class PracticeController extends Controller
             'teacher_corrections' => ['nullable', 'string'],
             'teacher_comments' => ['nullable', 'string'],
             'teacher_suggestions' => ['nullable', 'string'],
+            'allow_resubmission' => ['nullable', 'boolean'],
+            'resubmission_due_date' => ['nullable', 'required_if:allow_resubmission,1', 'date', 'after_or_equal:today'],
+            'resubmission_note' => ['nullable', 'string'],
         ]);
 
         DB::transaction(function () use ($submission, $activity, $data) {
+            $allowResubmission = (bool) ($data['allow_resubmission'] ?? false);
+
             $studentIds = $submission->team->students
                 ->pluck('id')
                 ->map(fn ($id) => (int) $id)
@@ -206,8 +238,19 @@ class PracticeController extends Controller
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now(),
                 'status' => 'reviewed',
+                'is_resubmission_allowed' => $allowResubmission,
+                'resubmission_due_date' => $allowResubmission ? $data['resubmission_due_date'] : null,
+                'resubmission_note' => $allowResubmission ? ($data['resubmission_note'] ?? null) : null,
+                'resubmission_requested_at' => $allowResubmission ? now() : null,
+                'resubmission_requested_by' => $allowResubmission ? auth()->id() : null,
             ]);
         });
+
+        $submission->loadMissing('practice', 'team.students.user');
+        $submission->team->students
+            ->pluck('user')
+            ->filter()
+            ->each(fn ($user) => $user->notify(new PracticeReviewedNotification($submission)));
 
         return redirect()
             ->route('practices.submissions', $practice)
@@ -216,7 +259,7 @@ class PracticeController extends Controller
 
     public function submissionPdf(PracticeSubmission $submission)
     {
-        $submission->load(['practice.teachingAssignment.subject', 'practice.teachingAssignment.teacher.user', 'team.students.user', 'submittedBy.student.user', 'reviewedBy']);
+        $submission->load(['practice.teachingAssignment.subject', 'practice.teachingAssignment.teacher.user', 'team.students.user', 'submittedBy.student.user', 'reviewedBy', 'attachments']);
         $practice = $submission->practice;
         $assignment = $practice->teachingAssignment;
         $this->authorizeAssignment($assignment);
@@ -444,5 +487,37 @@ class PracticeController extends Controller
             ->where('activity_id', $activity->id)
             ->where('student_id', $studentId)
             ->first();
+    }
+
+    private function notifyStudentsAbout(Practice $practice): void
+    {
+        $practice->loadMissing('teachingAssignment.students.user', 'teachingAssignment.group');
+        $assignment = $practice->teachingAssignment;
+        $students = $assignment->students;
+
+        if ($students->isEmpty() && $assignment->group) {
+            $students = $assignment->group->students()->where('is_active', true)->with('user')->get();
+        }
+
+        $students
+            ->pluck('user')
+            ->filter()
+            ->unique('id')
+            ->each(fn ($user) => $user->notify(new PracticePublishedNotification($practice)));
+    }
+
+    private function studentsForAssignment(TeachingAssignment $assignment)
+    {
+        $assignment->loadMissing('students.user', 'group.students.user');
+
+        if ($assignment->students->isNotEmpty()) {
+            return $assignment->students
+                ->where('is_active', true)
+                ->values();
+        }
+
+        return $assignment->group
+            ? $assignment->group->students->where('is_active', true)->values()
+            : collect();
     }
 }

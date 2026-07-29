@@ -27,6 +27,12 @@ class PracticeSubmission extends Model
         'reviewed_by',
         'reviewed_at',
         'status',
+        'is_resubmission_allowed',
+        'resubmission_due_date',
+        'resubmission_note',
+        'resubmission_requested_at',
+        'resubmission_requested_by',
+        'resubmission_count',
         'submitted_at',
     ];
 
@@ -34,6 +40,9 @@ class PracticeSubmission extends Model
         'questionnaire_answers' => 'array',
         'custom_field_answers' => 'array',
         'reviewed_at' => 'datetime',
+        'is_resubmission_allowed' => 'boolean',
+        'resubmission_due_date' => 'date',
+        'resubmission_requested_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 
@@ -51,5 +60,13 @@ class PracticeSubmission extends Model
 
     public function reviewedBy() {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function resubmissionRequestedBy() {
+        return $this->belongsTo(User::class, 'resubmission_requested_by');
+    }
+
+    public function attachments() {
+        return $this->hasMany(PracticeSubmissionAttachment::class);
     }
 }

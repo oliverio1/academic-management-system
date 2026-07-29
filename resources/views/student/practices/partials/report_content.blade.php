@@ -6,7 +6,7 @@
         <td>{{ $student?->user?->name ?? $team->students->map(fn ($student) => $student->user->name)->join(', ') ?? '-' }}</td>
     </tr>
     <tr>
-        <td><strong>Matrícula:</strong></td>
+        <td><strong>Matricula:</strong></td>
         <td>{{ $student?->enrollment_number ?? '-' }}</td>
     </tr>
     <tr>
@@ -22,7 +22,7 @@
         <td>{{ $practice->teachingAssignment->teacher->user->name ?? '-' }}</td>
     </tr>
     <tr>
-        <td><strong>Fecha de realización:</strong></td>
+        <td><strong>Fecha de realizacion:</strong></td>
         <td>{{ optional($practice->realization_date)->format('d/m/Y') ?? '-' }}</td>
     </tr>
     <tr>
@@ -30,6 +30,16 @@
         <td>{{ optional($practice->due_date)->format('d/m/Y') ?? '-' }}</td>
     </tr>
 </table>
+
+@if($submission->is_resubmission_allowed)
+    <h2>Reentrega solicitada</h2>
+    <div class="section">
+        Fecha limite: {{ optional($submission->resubmission_due_date)->format('d/m/Y') ?? '-' }}
+        @if($submission->resubmission_note)
+            <br>{{ $submission->resubmission_note }}
+        @endif
+    </div>
+@endif
 
 @foreach($practice->delivery_field_definitions as $field)
     @php
@@ -54,4 +64,22 @@
             {{ $questionnaireAnswers[$key] ?? 'Sin respuesta' }}
         </p>
     @endforeach
+@endif
+
+@if($submission->attachments->isNotEmpty())
+    <h2>Evidencias y archivos</h2>
+    <ul>
+        @foreach($submission->attachments as $attachment)
+            <li>
+                @if(request()->routeIs('*.pdf') || app()->runningInConsole())
+                    {{ $attachment->original_name }}
+                @else
+                    <a href="{{ route('practice-submission-attachments.download', $attachment) }}">
+                        {{ $attachment->original_name }}
+                    </a>
+                @endif
+                <span>({{ number_format($attachment->size / 1024, 1) }} KB)</span>
+            </li>
+        @endforeach
+    </ul>
 @endif
