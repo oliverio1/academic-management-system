@@ -134,6 +134,10 @@
                                                         </a>
                                                     @endif
 
+                                                    <a href="{{ route('attendance.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-dark">
+                                                        <i class="fas fa-table mr-1"></i>Hoja semanal
+                                                    </a>
+
                                                     @if($class->attendance_closed)
                                                         <span class="btn btn-sm btn-outline-secondary disabled">Actividad</span>
                                                     @elseif($class->activity_assigned)

@@ -525,6 +525,7 @@ class DashboardController extends Controller
             ->map(function ($session) {
                 return (object) [
                     'session_id' => $session->id,
+                    'assignment_id' => $session->teaching_assignment_id,
                     'subject' => $session->teachingAssignment->subject->name,
                     'group' => $session->teachingAssignment->group->name,
                     'time' => $session->start_time . ' - ' . $session->end_time,
