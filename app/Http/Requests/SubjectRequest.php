@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Subject;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,7 +25,14 @@ class SubjectRequest extends FormRequest
                     ->where(fn ($q) => $q->where('level_id', $this->input('level_id'))),
             ],
             'hours_per_week' => 'required|integer|min:1|max:10',
-            'type' => 'required|string|max:50',
+            'weekly_theory_hours' => 'nullable|integer|min:0|max:10',
+            'weekly_practice_hours' => 'nullable|integer|min:0|max:10',
+            'annual_hours' => 'nullable|integer|min:0|max:2000',
+            'annual_theory_hours' => 'nullable|integer|min:0|max:2000',
+            'annual_practice_hours' => 'nullable|integer|min:0|max:2000',
+            'type' => ['required', Rule::in(array_keys(Subject::dgireTypeOptions()))],
+            'subject_character' => 'nullable|string|max:100',
+            'subject_key' => 'nullable|string|max:50',
         ];
     }
 
@@ -41,6 +49,7 @@ class SubjectRequest extends FormRequest
             'hours_per_week.min' => 'Las horas por semana deben ser al menos 1.',
             'hours_per_week.max' => 'Las horas por semana no pueden ser mayores a 10.',
             'type.required' => 'Debes seleccionar el tipo de materia.',
+            'type.in' => 'El tipo DGIRE de la materia no es valido.',
         ];
     }
 }

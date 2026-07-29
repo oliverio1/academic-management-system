@@ -100,6 +100,13 @@ return new class extends Migration
 
     private function indexExists(string $table, string $index): bool
     {
+        if (DB::getDriverName() !== 'mysql') {
+            $safeTable = str_replace("'", "''", $table);
+
+            return collect(DB::select("PRAGMA index_list('{$safeTable}')"))
+                ->contains(fn ($item) => ($item->name ?? null) === $index);
+        }
+
         $database = DB::getDatabaseName();
 
         return DB::table('information_schema.statistics')

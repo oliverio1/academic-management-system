@@ -3,12 +3,12 @@
 @section('title', 'Importar horario maestro')
 
 @section('content')
-<div class="container-fluid">
+<div class="content px-3">
     <div class="row">
-        <div class="col-lg-9">
-            <div class="card card-primary">
+        <div class="col-md-12 mt-3">
+            <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Importar horario maestro</h3>
+                    <h3 class="mb-0">Importar horario maestro</h3>
                 </div>
 
                 <form method="POST" action="{{ route('imports.master-schedule.preview') }}" enctype="multipart/form-data">

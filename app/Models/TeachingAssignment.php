@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Services\TeacherDocumentChecklistService;
 use Illuminate\Database\Eloquent\Model;
 
 class TeachingAssignment extends Model
@@ -21,6 +22,17 @@ class TeachingAssignment extends Model
         'nrc',
         'is_active',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function (TeachingAssignment $assignment) {
+            if (! $assignment->is_active || ! $assignment->teacher_id || ! $assignment->school_cycle_group_id) {
+                return;
+            }
+
+            app(TeacherDocumentChecklistService::class)->ensureForAssignment($assignment);
+        });
+    }
 
     public function getSectionDisplayAttribute(): string
     {

@@ -70,11 +70,16 @@ class SubjectSeeder extends Seeder
         ];
 
         foreach($subjects as $subject) {
+            $rawType = mb_strtoupper((string) $subject['type'], 'UTF-8');
+            $type = str_contains($rawType, 'PRACT') || str_contains($rawType, 'PRÃCT')
+                ? Subject::TYPE_THEORETICAL_PRACTICAL
+                : Subject::TYPE_THEORETICAL;
+
             Subject::create([
                 'name' => mb_strtoupper($subject['name']),
                 'hours_per_week' => $subject['hours_per_week'],
                 'level_id' => $subject['level_id'],
-                'type' => $subject['type'],
+                'type' => $type,
                 'is_active' => true,
             ]);
         }

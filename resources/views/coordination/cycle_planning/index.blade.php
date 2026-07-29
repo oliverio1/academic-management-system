@@ -27,7 +27,7 @@
                                     @foreach($cycles as $cycle)
                                         <option value="{{ $cycle->id }}"
                                                 data-modalities='@json($cycle->modalities->map(fn($modality) => ["id" => $modality->id, "name" => $modality->name])->values())'
-                                                {{ (string) request('school_cycle_id') === (string) $cycle->id ? 'selected' : '' }}>
+                                                {{ (int) optional($selectedCycle)->id === (int) $cycle->id ? 'selected' : '' }}>
                                             {{ $cycle->name }} ({{ $cycle->code }})
                                         </option>
                                     @endforeach

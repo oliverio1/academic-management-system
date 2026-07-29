@@ -113,6 +113,16 @@ return new class extends Migration
 
     private function backfillTeachingAssignmentsTenantId(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            DB::table('teaching_assignments')
+                ->whereNull('tenant_id')
+                ->update([
+                    'tenant_id' => DB::raw('(SELECT tenant_id FROM school_cycle_groups WHERE school_cycle_groups.id = teaching_assignments.school_cycle_group_id)'),
+                ]);
+
+            return;
+        }
+
         DB::statement(
             'UPDATE teaching_assignments ta
              INNER JOIN school_cycle_groups scg ON scg.id = ta.school_cycle_group_id
@@ -123,6 +133,16 @@ return new class extends Migration
 
     private function backfillSchedulesTenantId(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            DB::table('schedules')
+                ->whereNull('tenant_id')
+                ->update([
+                    'tenant_id' => DB::raw('(SELECT tenant_id FROM teaching_assignments WHERE teaching_assignments.id = schedules.teaching_assignment_id)'),
+                ]);
+
+            return;
+        }
+
         DB::statement(
             'UPDATE schedules s
              INNER JOIN teaching_assignments ta ON ta.id = s.teaching_assignment_id
@@ -131,4 +151,3 @@ return new class extends Migration
         );
     }
 };
-

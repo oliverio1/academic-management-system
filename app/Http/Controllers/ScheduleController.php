@@ -7,6 +7,7 @@ use App\Models\Schedule;
 use App\Models\SchoolCycle;
 use App\Models\TeachingAssignment;
 use App\Services\AcademicSessionGeneratorService;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
@@ -33,7 +34,7 @@ class ScheduleController extends Controller
         ]);
         $schedule = Schedule::create([
             'teaching_assignment_id' => $assignment->id,
-            'school_cycle_id' => SchoolCycle::query()->where('is_active', true)->orderByDesc('start_date')->value('id'),
+            'school_cycle_id' => (int) ($assignment->schoolCycleGroup?->school_cycle_id ?: app(CurrentSchoolCycle::class)->id($request->user())),
             'day_of_week' => $request->day_of_week,
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,

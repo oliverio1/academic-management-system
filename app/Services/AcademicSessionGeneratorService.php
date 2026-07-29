@@ -109,20 +109,21 @@ class AcademicSessionGeneratorService
             }
 
             while ($current->lte($end)) {
-                $session = AcademicSession::firstOrCreate(
-                    [
+                $sessionDate = $current->toDateString();
+                $session = AcademicSession::query()
+                    ->where('schedule_id', $schedule->id)
+                    ->whereDate('session_date', $sessionDate)
+                    ->first();
+
+                if (! $session) {
+                    $session = AcademicSession::create([
                         'schedule_id' => $schedule->id,
-                        'session_date' => $current->toDateString(),
-                    ],
-                    [
+                        'session_date' => $sessionDate,
                         'teaching_assignment_id' => $schedule->teaching_assignment_id,
                         'academic_period_id' => $period->id,
                         'start_time' => $schedule->start_time,
                         'end_time' => $schedule->end_time,
-                    ]
-                );
-
-                if ($session->wasRecentlyCreated) {
+                    ]);
                     $created++;
                 }
 

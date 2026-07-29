@@ -3,12 +3,12 @@
 @section('title', 'Resultado importacion alumnos')
 
 @section('content')
-<div class="container-fluid">
+<div class="content px-3">
     <div class="row">
-        <div class="col-lg-10">
-            <div class="card {{ $summary['has_warnings'] ? 'card-warning' : 'card-success' }}">
+        <div class="col-md-12 mt-3">
+            <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Resultado de importacion de alumnos</h3>
+                    <h3 class="mb-0">Resultado de importacion de alumnos</h3>
                 </div>
                 <div class="card-body">
                     <div class="alert {{ $summary['has_warnings'] ? 'alert-warning' : 'alert-success' }}">

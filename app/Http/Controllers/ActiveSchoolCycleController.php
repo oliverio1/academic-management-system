@@ -2,33 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Services\CurrentSchoolCycle;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-class ActiveCampusController extends Controller
+class ActiveSchoolCycleController extends Controller
 {
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, CurrentSchoolCycle $cycles): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user, 403);
 
         $data = $request->validate([
-            'campus_id' => ['required', 'integer'],
+            'school_cycle_id' => ['required', 'integer'],
         ]);
 
-        $allowed = $user->campuses()->where('campuses.id', (int) $data['campus_id'])->exists();
-        if (! $allowed) {
-            return $this->safeRedirect($request)->with('error', 'No tienes acceso a ese campus.');
+        $cycle = $cycles->set((int) $data['school_cycle_id'], $user);
+        if (! $cycle) {
+            return $this->safeRedirect($request)->with('error', 'No tienes acceso a ese ciclo.');
         }
 
-        $request->session()->put('active_campus_id', (int) $data['campus_id']);
-        app(CurrentSchoolCycle::class)->forget();
-
-        return $this->safeRedirect($request)->with('info', 'Campus activo actualizado.');
+        return $this->safeRedirect($request)->with('info', 'Ciclo de trabajo actualizado.');
     }
 
     private function safeRedirect(Request $request): RedirectResponse

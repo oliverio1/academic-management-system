@@ -38,6 +38,13 @@ return new class extends Migration
 
     private function indexExists(string $table, string $indexName): bool
     {
+        if (DB::getDriverName() !== 'mysql') {
+            $safeTable = str_replace("'", "''", $table);
+
+            return collect(DB::select("PRAGMA index_list('{$safeTable}')"))
+                ->contains(fn ($item) => ($item->name ?? null) === $indexName);
+        }
+
         $database = DB::getDatabaseName();
 
         $result = DB::selectOne(

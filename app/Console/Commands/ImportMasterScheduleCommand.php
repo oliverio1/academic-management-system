@@ -215,6 +215,7 @@ class ImportMasterScheduleCommand extends Command
         $levelName = trim((string) $this->rowValue($row, 'grado'));
         $groupName = trim((string) $this->rowValue($row, 'grupo'));
         $subjectName = trim((string) $this->rowValue($row, 'materia'));
+        $subjectType = $this->subjectTypeFromMaster((string) $this->rowValue($row, 'tipo'));
         $teacherName = trim((string) $this->rowValue($row, 'docente'));
         $day = $this->dayKey((string) $this->rowValue($row, 'dia'));
         $time = $this->parseTimeRange((string) $this->rowValue($row, 'hora'));
@@ -245,14 +246,14 @@ class ImportMasterScheduleCommand extends Command
             return;
         }
 
-        $group = $this->findGroup($groupName);
+        $group = $this->findGroup($groupName, $cycle);
         if (! $group) {
             if (! (bool) $this->option('create-missing-groups')) {
                 $this->skip($rowNumber, "no existe el grupo {$groupName}. Usa --create-missing-groups si debe crearse desde el maestro.");
                 return;
             }
 
-            $level = $this->findLevel($levelName);
+            $level = $this->findLevel($levelName, $cycle);
             if (! $level) {
                 $this->skip($rowNumber, "no existe el grado {$levelName} para crear el grupo {$groupName}.");
                 return;
@@ -268,7 +269,9 @@ class ImportMasterScheduleCommand extends Command
                 return;
             }
 
-            $subject = $this->createOrReactivateSubject($subjectName, $group->level);
+            $subject = $this->createOrReactivateSubject($subjectName, $group->level, $subjectType);
+        } else {
+            $this->syncSubjectType($subject, $subjectType);
         }
 
         $teacher = $this->findTeacher($teacherName);
@@ -434,19 +437,21 @@ class ImportMasterScheduleCommand extends Command
         return $hours;
     }
 
-    private function findGroup(string $groupName): ?Group
+    private function findGroup(string $groupName, SchoolCycle $cycle): ?Group
     {
         return Group::query()
             ->with('level')
             ->where('name', $groupName)
+            ->whereHas('level', fn ($query) => $query->where('modality_id', $cycle->modality_id))
             ->first();
     }
 
-    private function findLevel(string $levelName): ?Level
+    private function findLevel(string $levelName, SchoolCycle $cycle): ?Level
     {
         $target = $this->normalizeKey($levelName);
 
         return Level::query()
+            ->where('modality_id', $cycle->modality_id)
             ->where('is_active', true)
             ->get()
             ->first(fn (Level $level) => $this->normalizeKey($level->name) === $target);
@@ -486,7 +491,7 @@ class ImportMasterScheduleCommand extends Command
             ->first(fn (Subject $subject) => $this->normalizeKey($subject->name) === $target);
     }
 
-    private function createOrReactivateSubject(string $subjectName, Level $level): Subject
+    private function createOrReactivateSubject(string $subjectName, Level $level, string $subjectType): Subject
     {
         $weeklyHours = $this->subjectHours[$this->normalizeKey($level->name)][$this->normalizeKey($subjectName)] ?? 1;
 
@@ -497,7 +502,7 @@ class ImportMasterScheduleCommand extends Command
             ],
             [
                 'hours_per_week' => $weeklyHours,
-                'type' => 'Teórica',
+                'type' => $subjectType,
                 'is_active' => true,
             ]
         );
@@ -509,8 +514,8 @@ class ImportMasterScheduleCommand extends Command
         if ((int) $subject->hours_per_week !== (int) $weeklyHours && $weeklyHours > 0) {
             $updates['hours_per_week'] = $weeklyHours;
         }
-        if (empty($subject->type)) {
-            $updates['type'] = 'Teórica';
+        if ($subject->type !== $subjectType) {
+            $updates['type'] = $subjectType;
         }
         if (! empty($updates)) {
             $subject->update($updates);
@@ -519,6 +524,24 @@ class ImportMasterScheduleCommand extends Command
         $this->stats['subjects']++;
 
         return $subject;
+    }
+
+    private function syncSubjectType(Subject $subject, string $subjectType): void
+    {
+        if ($subject->type !== $subjectType) {
+            $subject->update(['type' => $subjectType]);
+        }
+    }
+
+    private function subjectTypeFromMaster(string $value): string
+    {
+        $key = $this->normalizeKey($value);
+
+        if (str_contains($key, 'practica')) {
+            return Subject::TYPE_THEORETICAL_PRACTICAL;
+        }
+
+        return Subject::TYPE_THEORETICAL;
     }
 
     private function findTeacher(string $teacherName): ?Teacher
@@ -710,6 +733,7 @@ class ImportMasterScheduleCommand extends Command
             'seccion' => 'seccion',
             'docente' => 'docente',
             'horas' => 'horas',
+            'tipo' => 'tipo',
             default => $key,
         };
     }

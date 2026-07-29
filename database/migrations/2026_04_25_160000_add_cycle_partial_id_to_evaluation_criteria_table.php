@@ -72,6 +72,13 @@ return new class extends Migration
 
     private function indexExists(string $table, string $index): bool
     {
+        if (DB::getDriverName() !== 'mysql') {
+            $safeTable = str_replace("'", "''", $table);
+
+            return collect(DB::select("PRAGMA index_list('{$safeTable}')"))
+                ->contains(fn ($item) => ($item->name ?? null) === $index);
+        }
+
         $database = DB::getDatabaseName();
 
         return DB::table('information_schema.statistics')
@@ -83,6 +90,10 @@ return new class extends Migration
 
     private function foreignKeyExists(string $table, string $foreignKey): bool
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return false;
+        }
+
         $database = DB::getDatabaseName();
 
         return DB::table('information_schema.table_constraints')
@@ -96,8 +107,12 @@ return new class extends Migration
     private function dropIndexIfExists(string $table, string $index): void
     {
         if ($this->indexExists($table, $index)) {
-            DB::statement(sprintf('ALTER TABLE `%s` DROP INDEX `%s`', $table, $index));
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement(sprintf('ALTER TABLE `%s` DROP INDEX `%s`', $table, $index));
+                return;
+            }
+
+            Schema::table($table, fn (Blueprint $blueprint) => $blueprint->dropIndex($index));
         }
     }
 };
-

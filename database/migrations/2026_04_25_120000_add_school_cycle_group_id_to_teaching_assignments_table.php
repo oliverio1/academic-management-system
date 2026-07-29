@@ -51,9 +51,9 @@ return new class extends Migration
             }
         }
 
-        $hasLegacyUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'teaching_assignments_teacher_id_group_id_subject_id_unique'"))->isNotEmpty();
-        $hasCycleUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'uniq_teaching_assignments_cycle_group_subject'"))->isNotEmpty();
-        $hasTeacherIdx = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'idx_teaching_assignments_teacher_id'"))->isNotEmpty();
+        $hasLegacyUnique = $this->indexExists('teaching_assignments', 'teaching_assignments_teacher_id_group_id_subject_id_unique');
+        $hasCycleUnique = $this->indexExists('teaching_assignments', 'uniq_teaching_assignments_cycle_group_subject');
+        $hasTeacherIdx = $this->indexExists('teaching_assignments', 'idx_teaching_assignments_teacher_id');
 
         if (! $hasTeacherIdx) {
             Schema::table('teaching_assignments', function (Blueprint $table) {
@@ -79,9 +79,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        $hasCycleUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'uniq_teaching_assignments_cycle_group_subject'"))->isNotEmpty();
-        $hasLegacyUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'teaching_assignments_teacher_id_group_id_subject_id_unique'"))->isNotEmpty();
-        $hasTeacherIdx = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'idx_teaching_assignments_teacher_id'"))->isNotEmpty();
+        $hasCycleUnique = $this->indexExists('teaching_assignments', 'uniq_teaching_assignments_cycle_group_subject');
+        $hasLegacyUnique = $this->indexExists('teaching_assignments', 'teaching_assignments_teacher_id_group_id_subject_id_unique');
+        $hasTeacherIdx = $this->indexExists('teaching_assignments', 'idx_teaching_assignments_teacher_id');
 
         if ($hasCycleUnique) {
             Schema::table('teaching_assignments', function (Blueprint $table) {
@@ -109,5 +109,17 @@ return new class extends Migration
                 $table->dropConstrainedForeignId('school_cycle_group_id');
             });
         }
+    }
+
+    private function indexExists(string $table, string $name): bool
+    {
+        if (DB::getDriverName() === 'mysql') {
+            return collect(DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$name]))->isNotEmpty();
+        }
+
+        $safeTable = str_replace("'", "''", $table);
+
+        return collect(DB::select("PRAGMA index_list('{$safeTable}')"))
+            ->contains(fn ($index) => ($index->name ?? null) === $name);
     }
 };

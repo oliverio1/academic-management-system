@@ -3,12 +3,12 @@
 @section('title', 'Cargar alumnos a ciclo')
 
 @section('content')
-<div class="container-fluid">
+<div class="content px-3">
     <div class="row">
-        <div class="col-lg-10">
-            <div class="card card-primary">
+        <div class="col-md-12 mt-3">
+            <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Cargar alumnos a ciclo</h3>
+                    <h3 class="mb-0">Cargar alumnos a ciclo</h3>
                 </div>
 
                 <form method="GET" action="{{ route('imports.cycle-students.template') }}">
@@ -72,9 +72,9 @@
                 </form>
             </div>
 
-            <div class="card card-success">
+            <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Importar archivo completado</h3>
+                    <h3 class="mb-0">Importar archivo completado</h3>
                 </div>
 
                 <form method="POST" action="{{ route('imports.cycle-students.preview') }}" enctype="multipart/form-data">

@@ -67,12 +67,21 @@ return new class extends Migration
                     ]);
             });
 
-        DB::table('schedules')
-            ->join('teaching_assignments', 'teaching_assignments.id', '=', 'schedules.teaching_assignment_id')
-            ->update([
-                'schedules.section_type' => DB::raw('teaching_assignments.section_type'),
-                'schedules.section_label' => DB::raw('teaching_assignments.section_label'),
-            ]);
+        if (DB::getDriverName() === 'mysql') {
+            DB::table('schedules')
+                ->join('teaching_assignments', 'teaching_assignments.id', '=', 'schedules.teaching_assignment_id')
+                ->update([
+                    'schedules.section_type' => DB::raw('teaching_assignments.section_type'),
+                    'schedules.section_label' => DB::raw('teaching_assignments.section_label'),
+                ]);
+
+            return;
+        }
+
+        DB::table('schedules')->update([
+            'section_type' => DB::raw('(SELECT section_type FROM teaching_assignments WHERE teaching_assignments.id = schedules.teaching_assignment_id)'),
+            'section_label' => DB::raw('(SELECT section_label FROM teaching_assignments WHERE teaching_assignments.id = schedules.teaching_assignment_id)'),
+        ]);
     }
 
     private function sectionDescriptor(int $sectionNumber, string $subjectName, string $scheduleType): array

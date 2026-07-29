@@ -7,6 +7,7 @@ use App\Models\Level;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
 use App\Models\Subject;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -20,7 +21,11 @@ class CoordinationCyclePlanningController extends Controller
             ->when($activeCampusId > 0, fn ($q) => $q->whereHas('campuses', fn ($campusQuery) => $campusQuery->where('campuses.id', $activeCampusId)))
             ->orderByDesc('start_date')
             ->get();
-        $selectedCycleId = (int) $request->query('school_cycle_id');
+        $currentCycle = app(CurrentSchoolCycle::class)->get($request->user(), $activeCampusId);
+        $defaultCycleId = $currentCycle && $cycles->contains(fn ($cycle) => (int) $cycle->id === (int) $currentCycle->id)
+            ? (int) $currentCycle->id
+            : 0;
+        $selectedCycleId = (int) $request->query('school_cycle_id', $defaultCycleId);
         $selectedModalityId = (int) $request->query('modality_id');
         $selectedCycle = $selectedCycleId
             ? SchoolCycle::with(['modality', 'modalities'])

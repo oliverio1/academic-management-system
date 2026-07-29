@@ -18,15 +18,34 @@ return new class extends Migration
             }
         });
 
-        DB::statement("
-            UPDATE school_cycle_groups scg
-            JOIN school_cycles sc ON sc.id = scg.school_cycle_id
-            JOIN `groups` g ON g.id = scg.group_id
-            JOIN levels l ON l.id = g.level_id
-            SET scg.campus_id = COALESCE(scg.campus_id, sc.campus_id),
-                scg.modality_id = COALESCE(scg.modality_id, l.modality_id)
-            WHERE scg.campus_id IS NULL OR scg.modality_id IS NULL
-        ");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("
+                UPDATE school_cycle_groups scg
+                JOIN school_cycles sc ON sc.id = scg.school_cycle_id
+                JOIN `groups` g ON g.id = scg.group_id
+                JOIN levels l ON l.id = g.level_id
+                SET scg.campus_id = COALESCE(scg.campus_id, sc.campus_id),
+                    scg.modality_id = COALESCE(scg.modality_id, l.modality_id)
+                WHERE scg.campus_id IS NULL OR scg.modality_id IS NULL
+            ");
+        } else {
+            DB::table('school_cycle_groups')
+                ->whereNull('campus_id')
+                ->update([
+                    'campus_id' => DB::raw('(SELECT campus_id FROM school_cycles WHERE school_cycles.id = school_cycle_groups.school_cycle_id)'),
+                ]);
+
+            DB::table('school_cycle_groups')
+                ->whereNull('modality_id')
+                ->update([
+                    'modality_id' => DB::raw('(
+                        SELECT levels.modality_id
+                        FROM groups
+                        JOIN levels ON levels.id = groups.level_id
+                        WHERE groups.id = school_cycle_groups.group_id
+                    )'),
+                ]);
+        }
 
         Schema::table('school_cycle_groups', function (Blueprint $table) {
             $table->dropUnique(['school_cycle_id', 'group_id']);
@@ -46,4 +65,3 @@ return new class extends Migration
         });
     }
 };
-

@@ -31,6 +31,9 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Nombre</th>
+                                    <th>Tipo DGIRE</th>
+                                    <th>Clave</th>
+                                    <th>Horas</th>
                                     <th>Estatus</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -40,6 +43,9 @@
                                     <tr>
                                         <td>{{ $subject->id }}</td>
                                         <td>{{ $subject->name }}</td>
+                                        <td>{{ \App\Models\Subject::dgireTypeOptions()[$subject->type] ?? $subject->type }}</td>
+                                        <td>{{ $subject->subject_key ?: '-' }}</td>
+                                        <td>{{ $subject->annual_hours ?: '-' }} anuales / {{ $subject->hours_per_week ?: '-' }} sem.</td>
                                         <td>{{ $subject->is_active ? 'Activo' : 'Baja' }}</td>
 
                                         <td class="text-nowrap">

@@ -3,12 +3,12 @@
 @section('title', 'Validacion de horario maestro')
 
 @section('content')
-<div class="container-fluid">
+<div class="content px-3">
     <div class="row">
-        <div class="col-lg-10">
-            <div class="card {{ $exitCode === 0 ? 'card-primary' : 'card-danger' }}">
+        <div class="col-md-12 mt-3">
+            <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Validacion del libro maestro</h3>
+                    <h3 class="mb-0">Validacion del libro maestro</h3>
                 </div>
                 <div class="card-body">
                     <div class="alert {{ $exitCode === 0 ? 'alert-info' : 'alert-danger' }}">

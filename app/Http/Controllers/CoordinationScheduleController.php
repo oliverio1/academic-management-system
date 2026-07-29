@@ -11,6 +11,7 @@ use App\Models\TeachingAssignment;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
 use App\Services\AcademicSessionGeneratorService;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -161,8 +162,12 @@ class CoordinationScheduleController extends Controller
                 'activeCampus' => $activeCampus,
                 'dayOptions' => self::DAY_OPTIONS,
                 'groupCalendars' => collect(),
+                'cycleGroups' => collect(),
+                'selectedGroupId' => null,
             ]);
         }
+
+        $selectedGroupId = (int) $request->query('group_id', 0);
 
         $cycleGroups = SchoolCycleGroup::query()
             ->with('group.level.modality')
@@ -172,7 +177,15 @@ class CoordinationScheduleController extends Controller
             ->get()
             ->sortBy(fn (SchoolCycleGroup $cg) => mb_strtolower((string) ($cg->group->name ?? '')));
 
-        $groupIds = $cycleGroups->pluck('group_id')->map(fn ($id) => (int) $id)->all();
+        if ($selectedGroupId > 0 && ! $cycleGroups->contains(fn (SchoolCycleGroup $cg) => (int) $cg->group_id === $selectedGroupId)) {
+            abort(404);
+        }
+
+        $calendarCycleGroups = $selectedGroupId > 0
+            ? $cycleGroups->filter(fn (SchoolCycleGroup $cg) => (int) $cg->group_id === $selectedGroupId)->values()
+            : $cycleGroups->values();
+
+        $groupIds = $calendarCycleGroups->pluck('group_id')->map(fn ($id) => (int) $id)->all();
 
         $schedules = Schedule::query()
             ->with(['assignment.group', 'assignment.subject', 'assignment.teacher.user'])
@@ -183,7 +196,7 @@ class CoordinationScheduleController extends Controller
 
         $dayOrder = array_keys(self::DAY_OPTIONS);
 
-        $groupCalendars = $cycleGroups->map(function (SchoolCycleGroup $cycleGroup) use ($schedules, $dayOrder) {
+        $groupCalendars = $calendarCycleGroups->map(function (SchoolCycleGroup $cycleGroup) use ($schedules, $dayOrder) {
             $groupSchedules = $schedules
                 ->filter(fn (Schedule $s) => (int) ($s->assignment->group_id ?? 0) === (int) $cycleGroup->group_id)
                 ->values();
@@ -233,6 +246,8 @@ class CoordinationScheduleController extends Controller
             'activeCampus' => $activeCampus,
             'dayOptions' => self::DAY_OPTIONS,
             'groupCalendars' => $groupCalendars,
+            'cycleGroups' => $cycleGroups->values(),
+            'selectedGroupId' => $selectedGroupId,
         ]);
     }
 
@@ -867,12 +882,12 @@ class CoordinationScheduleController extends Controller
 
     private function resolveDefaultCycle($cycles): ?SchoolCycle
     {
-        $active = $cycles->firstWhere('is_active', true);
-        if ($active) {
-            return $active;
+        $current = app(CurrentSchoolCycle::class)->get(auth()->user(), $this->activeCampusId());
+        if ($current && $cycles->contains(fn ($cycle) => (int) $cycle->id === (int) $current->id)) {
+            return $current;
         }
 
-        return $cycles->first();
+        return $cycles->firstWhere('is_active', true) ?: $cycles->first();
     }
 
     private function tenantId(): string

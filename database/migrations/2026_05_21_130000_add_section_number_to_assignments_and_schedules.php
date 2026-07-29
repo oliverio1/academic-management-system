@@ -19,9 +19,9 @@ return new class extends Migration
             ->whereNull('section_number')
             ->update(['section_number' => 1]);
 
-        $hasLegacyUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'uniq_teaching_assignments_cycle_group_subject'"))->isNotEmpty();
-        $hasSectionUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'uniq_teaching_assignments_cycle_group_subject_section'"))->isNotEmpty();
-        $hasCycleGroupIdx = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'idx_teaching_assignments_cycle_group_id'"))->isNotEmpty();
+        $hasLegacyUnique = $this->indexExists('teaching_assignments', 'uniq_teaching_assignments_cycle_group_subject');
+        $hasSectionUnique = $this->indexExists('teaching_assignments', 'uniq_teaching_assignments_cycle_group_subject_section');
+        $hasCycleGroupIdx = $this->indexExists('teaching_assignments', 'idx_teaching_assignments_cycle_group_id');
 
         if (! $hasCycleGroupIdx) {
             Schema::table('teaching_assignments', function (Blueprint $table) {
@@ -57,8 +57,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        $hasSectionUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'uniq_teaching_assignments_cycle_group_subject_section'"))->isNotEmpty();
-        $hasLegacyUnique = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'uniq_teaching_assignments_cycle_group_subject'"))->isNotEmpty();
+        $hasSectionUnique = $this->indexExists('teaching_assignments', 'uniq_teaching_assignments_cycle_group_subject_section');
+        $hasLegacyUnique = $this->indexExists('teaching_assignments', 'uniq_teaching_assignments_cycle_group_subject');
 
         if ($hasSectionUnique) {
             Schema::table('teaching_assignments', function (Blueprint $table) {
@@ -87,11 +87,23 @@ return new class extends Migration
             });
         }
 
-        $hasCycleGroupIdx = collect(DB::select("SHOW INDEX FROM teaching_assignments WHERE Key_name = 'idx_teaching_assignments_cycle_group_id'"))->isNotEmpty();
+        $hasCycleGroupIdx = $this->indexExists('teaching_assignments', 'idx_teaching_assignments_cycle_group_id');
         if ($hasCycleGroupIdx) {
             Schema::table('teaching_assignments', function (Blueprint $table) {
                 $table->dropIndex('idx_teaching_assignments_cycle_group_id');
             });
         }
+    }
+
+    private function indexExists(string $table, string $name): bool
+    {
+        if (DB::getDriverName() === 'mysql') {
+            return collect(DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$name]))->isNotEmpty();
+        }
+
+        $safeTable = str_replace("'", "''", $table);
+
+        return collect(DB::select("PRAGMA index_list('{$safeTable}')"))
+            ->contains(fn ($index) => ($index->name ?? null) === $name);
     }
 };

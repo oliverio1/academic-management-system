@@ -64,7 +64,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('coordination.schedules.groups-calendar') }}" class="mb-3">
+                    <form method="GET" action="{{ route('coordination.schedules.groups-calendar') }}" class="mb-3" id="groupCalendarFilterForm">
                         <div class="row align-items-end">
                             <div class="col-md-5">
                                 <label for="school_cycle_id" class="form-label">Ciclo escolar</label>
@@ -76,8 +76,22 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col-md-4 mt-2 mt-md-0">
+                                <label for="group_id" class="form-label">Grupo</label>
+                                <select name="group_id" id="group_id" class="form-control" {{ ($cycleGroups ?? collect())->isEmpty() ? 'disabled' : '' }}>
+                                    <option value="">Todos los grupos</option>
+                                    @foreach(($cycleGroups ?? collect()) as $cycleGroup)
+                                        <option value="{{ $cycleGroup->group_id }}" {{ (string) ($selectedGroupId ?? '') === (string) $cycleGroup->group_id ? 'selected' : '' }}>
+                                            {{ $cycleGroup->group->name ?? 'Grupo sin nombre' }}
+                                            @if($cycleGroup->group?->level?->name)
+                                                - {{ $cycleGroup->group->level->name }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="col-md-2 mt-2 mt-md-0">
-                                <button type="submit" class="btn btn-primary btn-block">Ver ciclo</button>
+                                <button type="submit" class="btn btn-primary btn-block">Ver horario</button>
                             </div>
                         </div>
                     </form>
@@ -210,13 +224,23 @@
 <script>
     (function () {
         const cycleSelect = document.getElementById('school_cycle_id');
+        const groupSelect = document.getElementById('group_id');
         if (!cycleSelect) {
             return;
         }
 
         cycleSelect.addEventListener('change', function () {
+            if (groupSelect) {
+                groupSelect.value = '';
+            }
             this.form.submit();
         });
+
+        if (groupSelect) {
+            groupSelect.addEventListener('change', function () {
+                this.form.submit();
+            });
+        }
     })();
 </script>
 @endsection
