@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Services\AttendanceService;
 use App\Services\AcademicCalendarService;
+use App\Services\CurrentSchoolCycle;
 use App\Services\EconomicActaLockService;
 use Illuminate\Support\Facades\DB;
 
@@ -230,25 +231,165 @@ class AttendanceController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function massive(TeachingAssignment $assignment, AttendanceService $attendanceService, AcademicCalendarService $calendar) {
-        $period = AcademicPeriod::where('is_active', true)->firstOrFail();
-        $assignment->load(['academicSessions.attendances']);
+    public function massive(
+        Request $request,
+        TeachingAssignment $assignment,
+        EconomicActaLockService $lockService
+    ) {
+        $this->authorizeTeacherAssignment($assignment);
+
+        $assignment->load(['subject', 'group', 'schoolCycleGroup.schoolCycle']);
+
+        [$mode, $anchorDate, $from, $to] = $this->massiveRange($request);
+        $activePeriodIds = $this->activeCyclePeriodIds();
+
+        $sessions = AcademicSession::query()
+            ->where('teaching_assignment_id', (int) $assignment->id)
+            ->where('is_cancelled', false)
+            ->when(! empty($activePeriodIds), fn ($query) => $query->whereIn('academic_period_id', $activePeriodIds))
+            ->whereBetween('session_date', [$from->toDateString(), $to->toDateString()])
+            ->with(['academicPeriod', 'schedule.schoolCycle', 'teachingAssignment.schoolCycleGroup.schoolCycle', 'sessionActivity'])
+            ->withCount('attendances')
+            ->orderBy('session_date')
+            ->orderBy('start_time')
+            ->get();
+
         $students = $this->studentsForAssignment($assignment)->get();
-        $sessions = $assignment->academicSessions
-            ->filter(function ($session) use ($period) {
-                return !$session->is_cancelled
-                    && $session->session_date >= $period->start_date
-                    && $session->session_date <= $period->end_date;
-            })
-            ->map(fn ($session) => [
-                'academic_session_id' => $session->id,
-                'schedule_id' => $session->schedule_id,
-                'class_date' => $session->session_date->toDateString(),
+        $attendance = Attendance::query()
+            ->whereIn('academic_session_id', $sessions->pluck('id')->all())
+            ->whereIn('student_id', $students->pluck('id')->all())
+            ->get()
+            ->keyBy(fn (Attendance $row) => (int) $row->academic_session_id.'|'.(int) $row->student_id);
+
+        $testCycleEditing = $sessions->contains(fn (AcademicSession $session) => $this->allowsAttendanceEditingForTesting($session))
+            || $this->assignmentAllowsAttendanceEditingForTesting($assignment);
+
+        $sessionLocks = $sessions
+            ->mapWithKeys(fn (AcademicSession $session) => [
+                (int) $session->id => $this->massiveSessionLock($session, $lockService),
             ])
+            ->all();
+
+        return view('attendance.massive', [
+            'assignment' => $assignment,
+            'students' => $students,
+            'sessions' => $sessions,
+            'attendance' => $attendance,
+            'sessionLocks' => $sessionLocks,
+            'mode' => $mode,
+            'anchorDate' => $anchorDate,
+            'from' => $from,
+            'to' => $to,
+            'testCycleEditing' => $testCycleEditing,
+        ]);
+    }
+
+    public function storeMassive(
+        Request $request,
+        TeachingAssignment $assignment,
+        EconomicActaLockService $lockService
+    ) {
+        $this->authorizeTeacherAssignment($assignment);
+
+        $data = $request->validate([
+            'mode' => ['nullable', 'in:week,month'],
+            'date' => ['nullable', 'date'],
+            'attendance' => ['required', 'array'],
+            'attendance.*' => ['array'],
+            'attendance.*.*' => ['required', 'in:present,absent,late,justified'],
+        ]);
+
+        $allowedStudentIds = $this->studentsForAssignment($assignment)
+            ->pluck('students.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $allowedStudentMap = array_flip($allowedStudentIds);
+
+        $sessionIds = collect($data['attendance'])
+            ->keys()
+            ->map(fn ($id) => (int) $id)
+            ->filter()
             ->values();
 
-        $this->ensureDefaultAttendances($students, $sessions);
-        return view('attendance.massive', ['assignment' => $assignment,'students' => $students,'sessions' => $sessions,]);
+        $sessions = AcademicSession::query()
+            ->whereIn('id', $sessionIds->all())
+            ->where('teaching_assignment_id', (int) $assignment->id)
+            ->with(['academicPeriod', 'schedule.schoolCycle', 'teachingAssignment.schoolCycleGroup.schoolCycle'])
+            ->get()
+            ->keyBy('id');
+
+        $existing = Attendance::query()
+            ->whereIn('academic_session_id', $sessions->keys()->all())
+            ->whereIn('student_id', $allowedStudentIds)
+            ->get()
+            ->keyBy(fn (Attendance $row) => (int) $row->academic_session_id.'|'.(int) $row->student_id);
+
+        DB::transaction(function () use ($data, $sessions, $existing, $allowedStudentMap, $lockService) {
+            $now = now();
+            $rows = [];
+
+            foreach ($data['attendance'] as $sessionId => $studentRows) {
+                $session = $sessions->get((int) $sessionId);
+                if (! $session) {
+                    continue;
+                }
+
+                $testCycleEditing = $this->allowsAttendanceEditingForTesting($session);
+                if (! $testCycleEditing && $this->massiveSessionLock($session, $lockService)['locked']) {
+                    continue;
+                }
+
+                foreach ($studentRows as $studentId => $status) {
+                    $studentId = (int) $studentId;
+                    if (! isset($allowedStudentMap[$studentId])) {
+                        continue;
+                    }
+
+                    $attendance = $existing->get((int) $session->id.'|'.$studentId);
+                    if (! $testCycleEditing && $attendance && $attendance->status === 'justified') {
+                        continue;
+                    }
+
+                    if (! $testCycleEditing && $attendance && (bool) $attendance->is_suspension_locked) {
+                        continue;
+                    }
+
+                    $mustUnlockTestRow = $testCycleEditing
+                        && $attendance
+                        && ((bool) $attendance->is_suspension_locked || $attendance->student_suspension_id !== null);
+
+                    if ($attendance && $attendance->status === $status && ! $mustUnlockTestRow) {
+                        continue;
+                    }
+
+                    $rows[] = [
+                        'academic_session_id' => (int) $session->id,
+                        'student_id' => $studentId,
+                        'status' => $status,
+                        'student_suspension_id' => $testCycleEditing ? null : $attendance?->student_suspension_id,
+                        'is_suspension_locked' => $testCycleEditing ? false : (bool) ($attendance?->is_suspension_locked ?? false),
+                        'created_at' => $attendance?->created_at ?? $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+
+            if ($rows !== []) {
+                Attendance::upsert(
+                    $rows,
+                    ['academic_session_id', 'student_id'],
+                    ['status', 'student_suspension_id', 'is_suspension_locked', 'updated_at']
+                );
+            }
+        });
+
+        return redirect()
+            ->route('attendance.massive', [
+                'assignment' => $assignment,
+                'mode' => $data['mode'] ?? 'week',
+                'date' => $data['date'] ?? now()->toDateString(),
+            ])
+            ->with('success', 'Asistencia masiva guardada correctamente.');
     }
 
     public function storeInline(Request $request, EconomicActaLockService $lockService) {
@@ -407,6 +548,87 @@ class AttendanceController extends Controller
 
         return $cycleCode !== ''
             && in_array($cycleCode, config('attendance.editable_cycle_codes_for_testing', []), true);
+    }
+
+    private function assignmentAllowsAttendanceEditingForTesting(TeachingAssignment $assignment): bool
+    {
+        $cycleCode = (string) (
+            $assignment->schoolCycleGroup?->schoolCycle?->code
+            ?? ''
+        );
+
+        return $cycleCode !== ''
+            && in_array($cycleCode, config('attendance.editable_cycle_codes_for_testing', []), true);
+    }
+
+    private function massiveRange(Request $request): array
+    {
+        $mode = $request->input('mode') === 'month' ? 'month' : 'week';
+        $anchorDate = Carbon::parse($request->input('date', now()->toDateString()))->startOfDay();
+
+        if ($mode === 'month') {
+            return [
+                $mode,
+                $anchorDate,
+                $anchorDate->copy()->startOfMonth(),
+                $anchorDate->copy()->endOfMonth(),
+            ];
+        }
+
+        return [
+            $mode,
+            $anchorDate,
+            $anchorDate->copy()->startOfWeek(),
+            $anchorDate->copy()->endOfWeek(),
+        ];
+    }
+
+    private function massiveSessionLock(AcademicSession $session, EconomicActaLockService $lockService): array
+    {
+        if ($this->allowsAttendanceEditingForTesting($session)) {
+            return ['locked' => false, 'reason' => null];
+        }
+
+        if ($session->academicPeriod && ! $session->academicPeriod->is_active) {
+            return ['locked' => true, 'reason' => 'Periodo cerrado'];
+        }
+
+        if ($session->isAttendanceClosed()) {
+            return ['locked' => true, 'reason' => 'Asistencia cerrada'];
+        }
+
+        if ($lockService->isSessionLocked($session)) {
+            return ['locked' => true, 'reason' => 'Acta cerrada'];
+        }
+
+        if (! $this->canCaptureAttendanceNow($session)) {
+            return ['locked' => true, 'reason' => 'Fuera de ventana'];
+        }
+
+        return ['locked' => false, 'reason' => null];
+    }
+
+    private function activeCyclePeriodIds(): array
+    {
+        $cycle = app(CurrentSchoolCycle::class)->get(auth()->user(), (int) session('active_campus_id', 0));
+
+        if (! $cycle) {
+            return [];
+        }
+
+        return $cycle->partials()
+            ->whereNotNull('academic_period_id')
+            ->pluck('academic_period_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    private function authorizeTeacherAssignment(TeachingAssignment $assignment): void
+    {
+        $teacher = auth()->user()?->teacher;
+
+        abort_if(! $teacher || (int) $assignment->teacher_id !== (int) $teacher->id, 403);
     }
 
     private function attendanceLockedMessage(AcademicSession $academicSession): string

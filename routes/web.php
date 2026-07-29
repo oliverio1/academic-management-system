@@ -478,6 +478,7 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('/teacher/students/{student}', [TeacherStudentController::class, 'show'])->name('teacher.students.show');
 
     Route::get('assignments/{assignment}/attendance/massive',[AttendanceController::class, 'massive'])->name('attendance.massive');
+    Route::post('assignments/{assignment}/attendance/massive',[AttendanceController::class, 'storeMassive'])->name('attendance.massive.store');
     Route::post('/attendance/inline', [AttendanceController::class, 'storeInline'])->name('attendance.inline');
     Route::post('/attendance/adjust-inline', [AttendanceController::class, 'adjustScoreInline'])->name('attendance.adjustInline');
 

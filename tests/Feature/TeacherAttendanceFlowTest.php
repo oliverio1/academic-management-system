@@ -221,6 +221,57 @@ class TeacherAttendanceFlowTest extends TestCase
         ]);
     }
 
+    public function test_teacher_can_use_massive_attendance_sheet_for_editable_test_cycle(): void
+    {
+        config(['attendance.editable_cycle_codes_for_testing' => ['26-27']]);
+
+        $scenario = $this->attendanceScenario(['cycle_code' => '26-27']);
+        [$firstStudent, $secondStudent] = $scenario['students'];
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('attendance.massive', [
+                'assignment' => $scenario['assignment'],
+                'mode' => 'week',
+                'date' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertSee('Asistencia masiva')
+            ->assertSee('Ciclo de prueba')
+            ->assertSee($firstStudent->user->name)
+            ->assertSee('1/A', false)
+            ->assertSee('0/F', false);
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->post(route('attendance.massive.store', $scenario['assignment']), [
+                'mode' => 'week',
+                'date' => now()->toDateString(),
+                'attendance' => [
+                    $scenario['session']->id => [
+                        $firstStudent->id => 'present',
+                        $secondStudent->id => 'absent',
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('attendance.massive', [
+                'assignment' => $scenario['assignment'],
+                'mode' => 'week',
+                'date' => now()->toDateString(),
+            ]));
+
+        $this->assertDatabaseHas('attendances', [
+            'academic_session_id' => $scenario['session']->id,
+            'student_id' => $firstStudent->id,
+            'status' => 'present',
+        ]);
+        $this->assertDatabaseHas('attendances', [
+            'academic_session_id' => $scenario['session']->id,
+            'student_id' => $secondStudent->id,
+            'status' => 'absent',
+        ]);
+    }
+
     public function test_teacher_attendance_ignores_students_not_enrolled_in_assignment(): void
     {
         $scenario = $this->attendanceScenario();
