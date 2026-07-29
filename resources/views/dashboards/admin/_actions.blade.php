@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Acciones de coordinacion</h5>
+            <h5 class="mb-0">Acciones de coordinación</h5>
             <span class="text-muted small">Atajos a pantallas operativas disponibles para coordinacion</span>
         </div>
     </div>

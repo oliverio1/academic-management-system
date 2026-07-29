@@ -1,7 +1,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Pulso academico</h5>
+            <h5 class="mb-0">Pulso académico</h5>
             <span class="text-muted small">Indicadores para seguimiento semanal</span>
         </div>
     </div>

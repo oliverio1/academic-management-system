@@ -1,12 +1,22 @@
 <nav class="main-header navbar navbar-expand navbar-white navbar-light">
     @php
         $currentUser = auth()->user();
-        $unreadNotifications = $currentUser
-            ? $currentUser->unreadNotifications()->latest()->take(8)->get()
+        $notificationSummary = $currentUser
+            ? app(\App\Services\NotificationCenterService::class)->navbar($currentUser)
+            : ['unread_count' => 0, 'items' => []];
+        $unreadNotifications = collect($notificationSummary['items'] ?? []);
+        $unreadCount = (int) ($notificationSummary['unread_count'] ?? 0);
+        $availableCampuses = $currentUser
+            ? \Illuminate\Support\Facades\Cache::remember(
+                'navbar:user:'.$currentUser->id.':campuses:'.optional($currentUser->updated_at)->timestamp,
+                now()->addMinutes(30),
+                fn () => $currentUser->campuses()->orderBy('name')->get()
+            )
             : collect();
-        $unreadCount = $unreadNotifications->count();
-        $availableCampuses = $currentUser ? $currentUser->campuses()->orderBy('name')->get() : collect();
         $activeCampusId = (int) session('active_campus_id', (int) ($currentUser->default_campus_id ?? 0));
+        $cycleContext = $currentUser ? app(\App\Services\CurrentSchoolCycle::class) : null;
+        $availableSchoolCycles = $cycleContext ? $cycleContext->available($currentUser, $activeCampusId) : collect();
+        $activeSchoolCycle = $cycleContext ? $cycleContext->get($currentUser, $activeCampusId) : null;
     @endphp
 
     {{-- Izquierda --}}
@@ -26,28 +36,19 @@
 
     {{-- Derecha --}}
     <ul class="navbar-nav ml-auto">
-        @if($availableCampuses->isNotEmpty())
+        @if($currentUser?->hasAnyRole(['coordinator', 'admin', 'teacher']) && $availableSchoolCycles->isNotEmpty())
             <li class="nav-item mr-2 d-flex align-items-center">
-                <form action="{{ route('active-campus.update') }}" method="POST" class="form-inline campus-switcher">
+                <form action="{{ route('active-school-cycle.update') }}" method="POST" class="form-inline cycle-switcher">
                     @csrf
-                    <label class="campus-switcher__label mb-0 mr-2 d-none d-lg-inline">Campus</label>
-                    <select name="campus_id" class="form-control form-control-sm campus-switcher__select" onchange="this.form.submit()">
-                        @foreach($availableCampuses as $campus)
-                            <option value="{{ $campus->id }}" {{ $activeCampusId === (int) $campus->id ? 'selected' : '' }}>
-                                {{ $campus->name }}
+                    <label class="cycle-switcher__label mb-0 mr-2 d-none d-lg-inline">Ciclo</label>
+                    <select name="school_cycle_id" class="form-control form-control-sm cycle-switcher__select" onchange="this.form.submit()">
+                        @foreach($availableSchoolCycles as $cycle)
+                            <option value="{{ $cycle->id }}" {{ optional($activeSchoolCycle)->id === $cycle->id ? 'selected' : '' }}>
+                                {{ $cycle->name }}{{ $cycle->code ? ' ('.$cycle->code.')' : '' }}
                             </option>
                         @endforeach
                     </select>
                 </form>
-            </li>
-            @php
-                $activeCampusName = optional($availableCampuses->firstWhere('id', $activeCampusId))->name;
-            @endphp
-            <li class="nav-item d-none d-md-flex align-items-center mr-2">
-                <span class="campus-active-chip">
-                    <i class="fas fa-map-marker-alt mr-1"></i>
-                    {{ $activeCampusName ?: 'Campus no definido' }}
-                </span>
             </li>
         @endif
         <li class="nav-item dropdown">
@@ -62,19 +63,14 @@
                 <div class="dropdown-divider"></div>
 
                 @forelse($unreadNotifications as $notification)
-                    @php
-                        $title = $notification->data['title'] ?? 'Notificacion';
-                        $message = $notification->data['message'] ?? ($notification->data['excerpt'] ?? 'Tienes una nueva notificacion.');
-                    @endphp
-
                     <button
                         type="button"
                         class="dropdown-item text-wrap js-mark-notification"
-                        data-read-url="{{ route('notifications.read', $notification) }}">
-                        <i class="fas fa-bell mr-2"></i> {{ $title }}
-                        <span class="float-right text-muted text-sm">{{ $notification->created_at->diffForHumans() }}</span>
+                        data-read-url="{{ $notification['read_url'] }}">
+                        <i class="fas fa-bell mr-2"></i> {{ $notification['title'] }}
+                        <span class="float-right text-muted text-sm">{{ $notification['created_at_human'] }}</span>
                         <br>
-                        <small class="text-muted">{{ \Illuminate\Support\Str::limit($message, 90) }}</small>
+                        <small class="text-muted">{{ $notification['message'] }}</small>
                     </button>
                     <div class="dropdown-divider"></div>
                 @empty
@@ -120,19 +116,19 @@
 </nav>
 
 <style>
-    .campus-switcher {
+    .cycle-switcher {
         background: #f8fafc;
         border: 1px solid #e5e7eb;
         border-radius: 10px;
         padding: 0.2rem 0.45rem;
     }
-    .campus-switcher__label {
+    .cycle-switcher__label {
         font-size: 0.78rem;
         font-weight: 600;
         color: #4b5563;
         letter-spacing: .01em;
     }
-    .campus-switcher__select {
+    .cycle-switcher__select {
         min-width: 180px;
         border: 0;
         background: transparent;
@@ -141,26 +137,28 @@
         padding-left: .2rem;
         box-shadow: none !important;
     }
-    .campus-switcher__select:focus {
-        outline: none;
+    .cycle-switcher__select {
+        min-width: 210px;
     }
-    .campus-active-chip {
-        display: inline-flex;
-        align-items: center;
-        background: #eef2ff;
-        color: #1e3a8a;
-        border: 1px solid #c7d2fe;
-        border-radius: 999px;
-        padding: .28rem .65rem;
-        font-size: .78rem;
-        font-weight: 600;
-        line-height: 1;
+    .cycle-switcher__select:focus {
+        outline: none;
     }
 </style>
 
 <script>
     (function () {
         const csrf = '{{ csrf_token() }}';
+        const summaryUrl = @json(route('notifications.summary'));
+        const dashboardUrl = @json(route('dashboard'));
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         function refreshCount(newCount) {
             const badge = document.getElementById('navbar-notification-count');
@@ -200,6 +198,75 @@
             }
         }
 
+        function renderItems(items) {
+            const menu = document.getElementById('navbar-notification-menu');
+            if (!menu) return;
+
+            const header = document.getElementById('navbar-notification-header');
+            const footer = menu.querySelector('.dropdown-item.dropdown-footer');
+            menu.innerHTML = '';
+            if (header) {
+                menu.appendChild(header);
+            } else {
+                const fallbackHeader = document.createElement('span');
+                fallbackHeader.id = 'navbar-notification-header';
+                fallbackHeader.className = 'dropdown-item dropdown-header';
+                menu.appendChild(fallbackHeader);
+            }
+            const firstDivider = document.createElement('div');
+            firstDivider.className = 'dropdown-divider';
+            menu.appendChild(firstDivider);
+
+            if (!items || items.length === 0) {
+                const empty = document.createElement('span');
+                empty.id = 'navbar-empty-notification';
+                empty.className = 'dropdown-item text-muted';
+                empty.textContent = 'Sin notificaciones nuevas.';
+                menu.appendChild(empty);
+                const divider = document.createElement('div');
+                divider.className = 'dropdown-divider';
+                menu.appendChild(divider);
+            } else {
+                items.forEach(item => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'dropdown-item text-wrap js-mark-notification';
+                    button.dataset.readUrl = item.read_url || '';
+                    button.innerHTML = `
+                        <i class="fas fa-bell mr-2"></i> ${escapeHtml(item.title || 'Notificacion')}
+                        <span class="float-right text-muted text-sm">${escapeHtml(item.created_at_human || '')}</span>
+                        <br>
+                        <small class="text-muted">${escapeHtml(item.message || '')}</small>
+                    `;
+                    menu.appendChild(button);
+
+                    const divider = document.createElement('div');
+                    divider.className = 'dropdown-divider';
+                    menu.appendChild(divider);
+                });
+            }
+
+            const footerLink = footer || document.createElement('a');
+            footerLink.href = dashboardUrl;
+            footerLink.className = 'dropdown-item dropdown-footer';
+            footerLink.textContent = 'Ver dashboard';
+            menu.appendChild(footerLink);
+        }
+
+        async function refreshNotifications() {
+            try {
+                const res = await fetch(summaryUrl, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const payload = await res.json();
+                refreshCount(Number(payload.unread_count ?? 0));
+                renderItems(payload.items || []);
+            } catch (err) {
+                // silencioso para no romper UX
+            }
+        }
+
         document.addEventListener('click', async function (e) {
             const btn = e.target.closest('.js-mark-notification');
             if (!btn) return;
@@ -223,17 +290,13 @@
                 if (!res.ok) return;
                 const payload = await res.json();
 
-                const divider = btn.nextElementSibling && btn.nextElementSibling.classList.contains('dropdown-divider')
-                    ? btn.nextElementSibling
-                    : null;
-
-                btn.remove();
-                if (divider) divider.remove();
-
                 refreshCount(Number(payload.unread_count ?? 0));
+                renderItems(payload.items || []);
             } catch (err) {
                 // silencioso para no romper UX
             }
         });
+
+        setInterval(refreshNotifications, 60000);
     })();
 </script>

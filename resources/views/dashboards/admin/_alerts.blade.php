@@ -1,17 +1,17 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Semaforo operativo</h5>
-            <span class="text-muted small">Casos que requieren revision de coordinacion</span>
+            <h5 class="mb-0">Semáforo operativo</h5>
+            <span class="text-muted small">Casos que requieren revisión de coordinación</span>
         </div>
     </div>
 
     <div class="col-xl col-md-4 mb-3">
         <div class="card border-danger h-100">
             <div class="card-body">
-                <h6 class="text-danger">Seguimientos criticos</h6>
+                <h6 class="text-danger">Seguimientos críticos</h6>
                 <h3 class="mb-0">{{ $alerts['critical_followups'] }}</h3>
-                <small class="text-muted">Sin respuesta docente por mas de 7 dias</small>
+                <small class="text-muted">Sin respuesta docente por mas de 7 días</small>
             </div>
             <div class="card-footer bg-transparent border-0">
                 <a href="{{ route('coordination.follow-ups.critical') }}" class="text-danger">Ver casos</a>

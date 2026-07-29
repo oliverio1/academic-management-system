@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use App\Services\NotificationCenterService;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\ModalityController;
 use App\Http\Controllers\LevelController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\GradeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CourseWeightController;
 use App\Http\Controllers\PracticeController;
+use App\Http\Controllers\PracticeSubmissionAttachmentController;
 use App\Http\Controllers\StudentPracticeController;
 use App\Http\Controllers\AcademicCalendarDayController;
 use App\Http\Controllers\EvaluationCriterionController;
@@ -54,6 +56,7 @@ use App\Http\Controllers\CyclePartialController;
 use App\Http\Controllers\CoordinationScheduleController;
 use App\Http\Controllers\CoordinationClassSkipController;
 use App\Http\Controllers\TeacherStudentReportController;
+use App\Http\Controllers\CoordinationReportController;
 use App\Http\Controllers\StudentPortalController;
 use App\Http\Controllers\StudentIncidentReportController;
 use App\Http\Controllers\PrefectGroupAttendanceController;
@@ -65,6 +68,7 @@ use App\Http\Controllers\TeacherKardexController;
 use App\Http\Controllers\CoordinationStudentSuspensionController;
 use App\Http\Controllers\CoordinationCyclePromotionController;
 use App\Http\Controllers\CoordinationCyclePlanningController;
+use App\Http\Controllers\CoordinationCycleSubjectController;
 use App\Http\Controllers\CoordinationEconomicActaController;
 use App\Http\Controllers\CoordinationTeacherAttendanceController;
 use App\Http\Controllers\TemarioController;
@@ -72,6 +76,7 @@ use App\Http\Controllers\TeacherDidacticPlanController;
 use App\Http\Controllers\TeacherPlanningDocumentController;
 use App\Http\Controllers\EconomicActaReopenRequestController;
 use App\Http\Controllers\ActiveCampusController;
+use App\Http\Controllers\ActiveSchoolCycleController;
 use App\Http\Controllers\TeacherCampusAttendanceController;
 use App\Http\Controllers\CoordinationTeacherDocumentRequestController;
 use App\Http\Controllers\TeacherDocumentRequestController;
@@ -81,6 +86,8 @@ use App\Http\Controllers\StudentOnlineExamController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\TeacherPaperExamController;
 use App\Http\Controllers\CoordinationQualityController;
+use App\Http\Controllers\CoordinationSchoolCaseController;
+use App\Http\Controllers\CoordinationTeacherPerformanceController;
 use App\Http\Controllers\Finance\FinanceDashboardController;
 use App\Http\Controllers\Finance\FinanceConceptController;
 use App\Http\Controllers\Finance\FinanceChargeController;
@@ -121,16 +128,20 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::middleware(['auth'])->get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::middleware(['auth'])->post('/notifications/{notification}/read', function (
     \Illuminate\Notifications\DatabaseNotification $notification,
-    Request $request
+    Request $request,
+    NotificationCenterService $notifications
 ) {
     abort_if($notification->notifiable_id !== auth()->id(), 403);
 
     $notification->markAsRead();
+    $notifications->forget(auth()->id());
+    $navbar = $notifications->navbar(auth()->user());
 
     if ($request->expectsJson()) {
         return response()->json([
             'ok' => true,
-            'unread_count' => auth()->user()->unreadNotifications()->count(),
+            'unread_count' => $navbar['unread_count'],
+            'items' => $navbar['items'],
         ]);
     }
 
@@ -141,7 +152,17 @@ Route::middleware(['auth'])->post('/notifications/{notification}/read', function
 
     return back();
 })->name('notifications.read');
+
+Route::middleware(['auth'])->get('/notifications/summary', function (NotificationCenterService $notifications) {
+    return response()->json($notifications->navbar(auth()->user()));
+})->name('notifications.summary');
+
+Route::middleware(['auth', 'campus.access'])->get(
+    'practice-submission-attachments/{attachment}/download',
+    [PracticeSubmissionAttachmentController::class, 'download']
+)->name('practice-submission-attachments.download');
 Route::middleware(['auth'])->post('/active-campus', [ActiveCampusController::class, 'update'])->name('active-campus.update');
+Route::middleware(['auth'])->post('/active-school-cycle', [ActiveSchoolCycleController::class, 'update'])->name('active-school-cycle.update');
 Route::middleware(['auth', 'role:coordinator|teacher|student|prefect|guardian|tutor|admin', 'campus.access'])
     ->prefix('chat')
     ->name('chat.')
@@ -182,6 +203,7 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
         Route::get('groups', [CoordinationScheduleController::class, 'groupsCalendar'])->name('schedules.groups-calendar');
         Route::resource('suspensions', CoordinationStudentSuspensionController::class)->except(['show']);
         Route::get('cycle-planning', [CoordinationCyclePlanningController::class, 'index'])->name('cycle-planning.index');
+        Route::get('cycle-subjects', [CoordinationCycleSubjectController::class, 'index'])->name('cycle-subjects.index');
         Route::post('cycle-planning/groups', [CoordinationCyclePlanningController::class, 'storeGroup'])->name('cycle-planning.groups.store');
         Route::post('cycle-planning/groups/new', [CoordinationCyclePlanningController::class, 'storeNewGroup'])->name('cycle-planning.groups.new');
         Route::put('cycle-planning/groups/{cycleGroup}', [CoordinationCyclePlanningController::class, 'updateGroup'])->name('cycle-planning.groups.update');
@@ -213,11 +235,22 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
         Route::get('follow-ups/{followUp}', [StudentFollowUpController::class, 'show'])->name('follow-ups.show');
         Route::get('follow-ups/responses/{assignment}',[StudentFollowUpResponseController::class, 'show'])->name('follow-ups.responses.show');
         Route::get('reports', [TeacherStudentReportController::class, 'coordinationIndex'])->name('reports.index');
+        Route::get('reports/create', [CoordinationReportController::class, 'create'])->name('reports.create');
+        Route::post('reports', [CoordinationReportController::class, 'store'])->name('reports.store');
         Route::patch('reports/{report}/review', [TeacherStudentReportController::class, 'markReviewed'])->name('reports.review');
+        Route::patch('coordination-reports/{report}/status', [CoordinationReportController::class, 'updateStatus'])->name('coordination-reports.update-status');
         Route::get('student-incident-reports', [StudentIncidentReportController::class, 'coordinationIndex'])->name('student-incident-reports.index');
         Route::patch('student-incident-reports/{incidentReport}/status', [StudentIncidentReportController::class, 'updateStatus'])->name('student-incident-reports.update-status');
         Route::get('prefect-reports', [PrefectIncidentReportController::class, 'coordinationIndex'])->name('prefect-reports.index');
         Route::patch('prefect-reports/{report}/status', [PrefectIncidentReportController::class, 'updateStatus'])->name('prefect-reports.update-status');
+        Route::get('school-cases', [CoordinationSchoolCaseController::class, 'index'])->name('school-cases.index');
+        Route::get('school-cases/create', [CoordinationSchoolCaseController::class, 'create'])->name('school-cases.create');
+        Route::post('school-cases', [CoordinationSchoolCaseController::class, 'store'])->name('school-cases.store');
+        Route::get('school-cases/{schoolCase}', [CoordinationSchoolCaseController::class, 'show'])->name('school-cases.show');
+        Route::patch('school-cases/{schoolCase}/status', [CoordinationSchoolCaseController::class, 'updateStatus'])->name('school-cases.status');
+        Route::post('school-cases/{schoolCase}/entries', [CoordinationSchoolCaseController::class, 'storeEntry'])->name('school-cases.entries.store');
+        Route::post('school-cases/{schoolCase}/actions', [CoordinationSchoolCaseController::class, 'storeAction'])->name('school-cases.actions.store');
+        Route::patch('school-case-actions/{action}/complete', [CoordinationSchoolCaseController::class, 'completeAction'])->name('school-cases.actions.complete');
         Route::resource('students', CoordinationStudentController::class)->only(['index', 'show']);
         Route::get('paper-exams', [CoordinationPaperExamController::class, 'index'])->name('paper-exams.index');
         Route::get('paper-exams/create', [CoordinationPaperExamController::class, 'create'])->name('paper-exams.create');
@@ -231,7 +264,12 @@ Route::middleware(['auth', 'role:coordinator|admin', 'tenant.domain', 'tenant.pr
         Route::get('teacher-documents/tracking', [CoordinationTeacherDocumentRequestController::class, 'tracking'])->name('teacher-documents.tracking');
         Route::get('teacher-documents/create', [CoordinationTeacherDocumentRequestController::class, 'create'])->name('teacher-documents.create');
         Route::post('teacher-documents', [CoordinationTeacherDocumentRequestController::class, 'store'])->name('teacher-documents.store');
+        Route::get('teacher-documents/teachers/{teacher}', [CoordinationTeacherDocumentRequestController::class, 'showTeacher'])->name('teacher-documents.teachers.show');
+        Route::get('teacher-documents/items/{item}/pdf', [CoordinationTeacherDocumentRequestController::class, 'documentPdf'])->name('teacher-documents.items.pdf');
+        Route::get('teacher-documents/plans/{plan}/pdf', [TeacherDidacticPlanController::class, 'pdf'])->name('teacher-documents.plans.pdf');
         Route::patch('teacher-documents/items/{item}/visibility', [CoordinationTeacherDocumentRequestController::class, 'updateItemVisibility'])->name('teacher-documents.items.visibility');
+        Route::get('teacher-performance', [CoordinationTeacherPerformanceController::class, 'index'])->name('teacher-performance.index');
+        Route::get('teacher-performance/{teacher}', [CoordinationTeacherPerformanceController::class, 'show'])->name('teacher-performance.show');
         Route::get('quality', [CoordinationQualityController::class, 'index'])->name('quality.index');
         Route::post('quality/bootstrap-iso-base', [CoordinationQualityController::class, 'bootstrapIsoBase'])->name('quality.bootstrap-iso-base');
         Route::get('quality/processes/create', [CoordinationQualityController::class, 'createProcess'])->name('quality.processes.create');
@@ -364,8 +402,12 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('teacher/question-banks/create', [TeacherQuestionBankController::class, 'create'])->name('teacher.question-banks.create');
     Route::post('teacher/question-banks', [TeacherQuestionBankController::class, 'store'])->name('teacher.question-banks.store');
     Route::get('teacher/question-banks/template/download', [TeacherQuestionBankController::class, 'downloadTemplate'])->name('teacher.question-banks.template.download');
+    Route::get('teacher/question-banks/{questionBank}/template/download', [TeacherQuestionBankController::class, 'downloadTemplate'])->name('teacher.question-banks.template.download-for-bank');
     Route::get('teacher/question-banks/{questionBank}/configure-exam', [TeacherQuestionBankController::class, 'configureExam'])->name('teacher.question-banks.exam.configure');
     Route::put('teacher/question-banks/{questionBank}/configure-exam', [TeacherQuestionBankController::class, 'updateExamConfiguration'])->name('teacher.question-banks.exam.update');
+    Route::get('teacher/question-banks/{questionBank}/edit', [TeacherQuestionBankController::class, 'edit'])->name('teacher.question-banks.edit');
+    Route::put('teacher/question-banks/{questionBank}', [TeacherQuestionBankController::class, 'update'])->name('teacher.question-banks.update');
+    Route::delete('teacher/question-banks/{questionBank}', [TeacherQuestionBankController::class, 'destroy'])->name('teacher.question-banks.destroy');
     Route::get('teacher/question-banks/{questionBank}', [TeacherQuestionBankController::class, 'show'])->name('teacher.question-banks.show');
     Route::post('teacher/question-banks/{questionBank}/import', [TeacherQuestionBankController::class, 'importQuestions'])->name('teacher.question-banks.import');
     Route::post('teacher/question-banks/{questionBank}/questions', [TeacherQuestionBankController::class, 'storeQuestion'])->name('teacher.question-banks.questions.store');
@@ -376,6 +418,8 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('teacher/paper-exams', [TeacherPaperExamController::class, 'index'])->name('teacher.paper-exams.index');
     Route::get('teacher/paper-exams/{paperExam}/questions', [TeacherPaperExamController::class, 'editQuestions'])->name('teacher.paper-exams.questions.edit');
     Route::put('teacher/paper-exams/{paperExam}/questions', [TeacherPaperExamController::class, 'updateQuestions'])->name('teacher.paper-exams.questions.update');
+    Route::get('teacher/paper-exams/{paperExam}/preview', [TeacherPaperExamController::class, 'previewAsStudent'])->name('teacher.paper-exams.preview');
+    Route::post('teacher/paper-exams/{paperExam}/preview', [TeacherPaperExamController::class, 'submitPreview'])->name('teacher.paper-exams.preview.submit');
     Route::get('teacher/paper-exams/{paperExam}', [TeacherPaperExamController::class, 'show'])->name('teacher.paper-exams.show');
     Route::get('teacher/paper-exams/{paperExam}/attempts/{attempt}', [TeacherPaperExamController::class, 'reviewAttempt'])->name('teacher.paper-exams.attempts.review');
     Route::put('teacher/paper-exams/{paperExam}/attempts/{attempt}', [TeacherPaperExamController::class, 'gradeAttempt'])->name('teacher.paper-exams.attempts.grade');
@@ -383,10 +427,15 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('teacher/attendance', [TeacherCampusAttendanceController::class, 'index'])->name('teacher.attendance.index');
     Route::post('teacher/attendance/clock', [TeacherCampusAttendanceController::class, 'clock'])->name('teacher.attendance.clock');
     Route::get('teacher/didactic-plans', [TeacherDidacticPlanController::class, 'index'])->name('teacher.didactic-plans.index');
+    Route::get('teacher/didactic-plans/{assignment}/template', [TeacherDidacticPlanController::class, 'downloadTemplate'])->name('teacher.didactic-plans.template');
+    Route::get('teacher/didactic-plans/{assignment}/import', [TeacherDidacticPlanController::class, 'importForm'])->name('teacher.didactic-plans.import');
+    Route::post('teacher/didactic-plans/{assignment}/import', [TeacherDidacticPlanController::class, 'import'])->name('teacher.didactic-plans.import.store');
     Route::get('teacher/didactic-plans/{assignment}', [TeacherDidacticPlanController::class, 'plans'])->name('teacher.didactic-plans.plans');
     Route::get('teacher/didactic-plans/{assignment}/create', [TeacherDidacticPlanController::class, 'create'])->name('teacher.didactic-plans.create');
     Route::post('teacher/didactic-plans/{assignment}', [TeacherDidacticPlanController::class, 'store'])->name('teacher.didactic-plans.store');
     Route::post('teacher/didactic-plans/{assignment}/clone-from-peer', [TeacherDidacticPlanController::class, 'cloneFromPeer'])->name('teacher.didactic-plans.clone-from-peer');
+    Route::post('teacher/didactic-plan/{plan}/clone-to-peer-groups', [TeacherDidacticPlanController::class, 'cloneToPeerGroups'])->name('teacher.didactic-plans.clone-to-peer-groups');
+    Route::patch('teacher/didactic-plan/{plan}/confirm-final', [TeacherDidacticPlanController::class, 'confirmFinal'])->name('teacher.didactic-plans.confirm-final');
     Route::get('teacher/didactic-plan/{plan}/pdf', [TeacherDidacticPlanController::class, 'pdf'])->name('teacher.didactic-plans.pdf');
     Route::get('teacher/didactic-plan/{plan}/edit', [TeacherDidacticPlanController::class, 'edit'])->name('teacher.didactic-plans.edit');
     Route::put('teacher/didactic-plan/{plan}', [TeacherDidacticPlanController::class, 'update'])->name('teacher.didactic-plans.update');
@@ -474,10 +523,12 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('teacher/classes/{assignment}/configuration/evaluation',[EvaluationCriterionController::class, 'index'])->name('teacher.classes.evaluation.index');
     Route::post('teacher/classes/{assignment}/configuration/evaluation',[EvaluationCriterionController::class, 'store'])->name('teacher.classes.evaluation.store');
     Route::put('teacher/classes/{assignment}/configuration/evaluation',[EvaluationCriterionController::class, 'update'])->name('teacher.classes.evaluation.update');
+    Route::post('teacher/classes/{assignment}/configuration/evaluation/clone',[EvaluationCriterionController::class, 'cloneFromSameSubject'])->name('teacher.classes.evaluation.clone');
     Route::delete('teacher/classes/{assignment}/configuration/evaluation/{criterion}',[EvaluationCriterionController::class, 'destroy'])->name('teacher.classes.evaluation.destroy');
 
     Route::post('assignments/{teachingAssignment}/clone-evaluation',[EvaluationSchemeCloneController::class, 'clone'])->name('teacher.evaluation.clone');
     Route::post('assignments/{assignment}/activities/clone', [ActivityCloneController::class, 'clone'])->name('activities.clone');
+    Route::post('teacher/evaluation/{assignment}/activities/clone-same-subject', [ActivityCloneController::class, 'cloneToSameSubject'])->name('teacher.evaluation.activities.clone-same-subject');
 
     Route::get('teacher/justifications',[TeacherJustificationController::class, 'index'])->name('teacher.justifications.index');
 
@@ -489,13 +540,19 @@ Route::middleware(['auth', 'role:teacher', 'campus.access'])->group(function () 
     Route::get('teacher/follow-ups/{followUpTeacher}', [TeacherFollowUpController::class, 'show'])->name('teacher.follow-ups.show');
     Route::post('teacher/follow-ups/{followUpTeacher}/respond', [TeacherFollowUpController::class, 'respond'])->name('teacher.follow-ups.respond');
     Route::get('teacher/document-requests', [TeacherDocumentRequestController::class, 'index'])->name('teacher.document-requests.index');
+    Route::get('teacher/document-requests/submissions/{submission}/pdf', [TeacherDocumentRequestController::class, 'showPdf'])->name('teacher.document-requests.submissions.pdf');
+    Route::get('teacher/document-requests/{item}/content/pdf', [TeacherDocumentRequestController::class, 'showContentPdf'])->name('teacher.document-requests.content.pdf');
+    Route::get('teacher/document-requests/{item}/content', [TeacherDocumentRequestController::class, 'editContent'])->name('teacher.document-requests.content.edit');
+    Route::put('teacher/document-requests/{item}/content', [TeacherDocumentRequestController::class, 'updateContent'])->name('teacher.document-requests.content.update');
+    Route::post('teacher/document-requests/{item}/generate', [TeacherDocumentRequestController::class, 'generate'])->name('teacher.document-requests.generate');
     Route::post('teacher/document-requests/{item}/upload', [TeacherDocumentRequestController::class, 'upload'])->name('teacher.document-requests.upload');
     Route::post('teacher/document-requests/{item}/clone-reglamento', [TeacherDocumentRequestController::class, 'cloneReglamento'])->name('teacher.document-requests.clone-reglamento');
+    Route::post('teacher/document-requests/{item}/clone-criteria', [TeacherDocumentRequestController::class, 'cloneCriteria'])->name('teacher.document-requests.clone-criteria');
     
 });
 
 Route::middleware(['auth','role:student', 'campus.access'])->group(function () {
-    Route::get('student/grades', [GradeController::class, 'myGrades'])->name('student.grades');
+    Route::get('student/grades', [StudentPortalController::class, 'academicPerformance'])->name('student.grades');
     Route::get('student/subjects', [StudentPortalController::class, 'subjects'])->name('student.subjects');
     Route::get('student/subjects/{assignment}', [StudentPortalController::class, 'subjectShow'])->name('student.subjects.show');
     Route::get('student/reports', [StudentPortalController::class, 'reports'])->name('student.reports');
@@ -513,6 +570,8 @@ Route::middleware(['auth','role:student', 'campus.access'])->group(function () {
     Route::get('student/exams/{paperExam}', [StudentOnlineExamController::class, 'show'])->name('student.exams.show');
     Route::post('student/exams/{paperExam}/start', [StudentOnlineExamController::class, 'start'])->name('student.exams.start');
     Route::post('student/exams/{paperExam}/attempts/{attempt}/submit', [StudentOnlineExamController::class, 'submit'])->name('student.exams.submit');
+    Route::post('student/exams/{paperExam}/attempts/{attempt}/autosave', [StudentOnlineExamController::class, 'autosave'])->name('student.exams.autosave');
+    Route::post('student/exams/{paperExam}/attempts/{attempt}/events', [StudentOnlineExamController::class, 'event'])->name('student.exams.event');
     Route::post('student/exams/{paperExam}/attempts/{attempt}/lock', [StudentOnlineExamController::class, 'lock'])->name('student.exams.lock');
 });
 
@@ -529,6 +588,7 @@ Route::middleware(['auth', 'role:prefect', 'campus.access'])->prefix('prefect')-
     Route::get('groups/{group}/attendance', [PrefectGroupAttendanceController::class, 'attendance'])->name('groups.attendance');
     Route::get('groups/{group}/attendance/{date}', [PrefectGroupAttendanceController::class, 'attendanceDay'])->name('groups.attendance.day');
     Route::post('groups/{group}/attendance', [PrefectGroupAttendanceController::class, 'store'])->name('groups.attendance.store');
+    Route::get('class-skips', [CoordinationClassSkipController::class, 'index'])->name('class-skips.index');
 
     Route::get('reports', [PrefectIncidentReportController::class, 'index'])->name('reports.index');
     Route::get('reports/create', [PrefectIncidentReportController::class, 'create'])->name('reports.create');

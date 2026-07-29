@@ -19,8 +19,8 @@
                 </div>
 
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped mb-0">
+                    <div class="table-responsive p-3">
+                        <table data-datatable="true" class="table table-hover mb-0">
                             <thead>
                                 <tr>
                                     <th>Título</th>
@@ -70,7 +70,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">No hay avisos registrados.</td>
+                                        <td colspan="5" class="text-center text-muted py-4">No hay avisos registrados.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
