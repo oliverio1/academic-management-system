@@ -33,7 +33,7 @@
                                 <a href="{{ route('teacher.classes.kardex', $assignment) }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="btn btn-outline-danger float-right ml-2">
+                                   class="btn btn-danger float-right ml-2">
                                     Ver Kardex
                                 </a>
                                 <a href="{{ route('teacher.classes.index') }}" class="btn btn-secondary float-right">
@@ -119,16 +119,16 @@
                                                     <td>{{ substr($session->start_time, 0, 5) }} - {{ substr($session->end_time, 0, 5) }}</td>
                                                     <td class="text-center">
                                                         @if($periodDisabled)
-                                                            <a href="{{ route('attendance.take', $session->id) }}" class="btn btn-outline-secondary btn-sm">Consultar</a>
+                                                            <a href="{{ route('attendance.take', $session->id) }}" class="btn btn-secondary btn-sm">Consultar</a>
                                                         @elseif($session->attendance_closed_at && $attendanceEditingOpenForTesting)
                                                             <a href="{{ route('attendance.edit', $session->id) }}" class="btn btn-success btn-sm">Editar</a>
                                                             <div class="small text-muted mt-1">Ciclo de prueba</div>
                                                         @elseif($session->attendance_closed_at)
                                                             <span class="text-muted">Cerrada</span>
                                                         @elseif($session->attendances_count > 0)
-                                                            <a href="{{ route('attendance.edit', $session->id) }}" class="btn btn-outline-success btn-sm">Registrada</a>
+                                                            <a href="{{ route('attendance.edit', $session->id) }}" class="btn btn-success btn-sm">Registrada</a>
                                                         @elseif(! $attendanceWindowOpen)
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Disponible desde {{ $attendanceAllowedFrom->format('d/m/Y H:i') }}">Tomar</button>
+                                                            <button type="button" class="btn btn-secondary btn-sm" disabled title="Disponible desde {{ $attendanceAllowedFrom->format('d/m/Y H:i') }}">Tomar</button>
                                                             <div class="small text-muted mt-1">Disponible desde {{ $attendanceAllowedFrom->format('H:i') }}</div>
                                                         @else
                                                             <a href="{{ route('attendance.take', $session->id) }}" class="btn btn-warning btn-sm">Tomar</a>
@@ -136,15 +136,15 @@
                                                     </td>
                                                     <td class="text-center">
                                                         @if($periodDisabled)
-                                                            <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-outline-secondary btn-sm">Consultar</a>
+                                                            <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-secondary btn-sm">Consultar</a>
                                                         @elseif($session->attendance_closed_at)
                                                             <span class="text-muted">Cerrada</span>
                                                         @elseif($session->session_activity_count > 0)
-                                                            <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-outline-success btn-sm">Editar</a>
+                                                            <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-success btn-sm">Editar</a>
                                                         @elseif(! $hasCriteriaForPeriod)
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Asignar</button>
+                                                            <button type="button" class="btn btn-secondary btn-sm" disabled>Asignar</button>
                                                         @else
-                                                            <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-outline-primary btn-sm">Asignar</a>
+                                                            <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-primary btn-sm">Asignar</a>
                                                         @endif
                                                     </td>
                                                     <td>
@@ -194,7 +194,7 @@
                                                         <td>{{ optional($activity->academicPeriod)->name ?? '-' }}</td>
                                                         <td>{{ $activity->due_date ? $activity->due_date->format('Y-m-d') : '-' }}</td>
                                                         <td class="text-center">
-                                                            <a href="{{ route('activities.grade', $activity) }}" class="btn btn-outline-primary btn-sm">
+                                                            <a href="{{ route('activities.grade', $activity) }}" class="btn btn-primary btn-sm">
                                                                 Evaluar
                                                             </a>
                                                         </td>

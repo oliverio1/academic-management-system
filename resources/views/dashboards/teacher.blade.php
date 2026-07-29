@@ -78,7 +78,7 @@
                     <section class="teacher-section mb-3">
                         <div class="teacher-section-header">
                             <h5 class="mb-0">Hoy</h5>
-                            <a href="{{ route('teacher.classes.index') }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('teacher.classes.index') }}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-calendar-alt mr-1"></i>Ver semana
                             </a>
                         </div>
@@ -123,9 +123,9 @@
                                                 </td>
                                                 <td class="text-right teacher-actions">
                                                     @if($class->attendance_closed)
-                                                        <span class="btn btn-sm btn-outline-secondary disabled">Asistencia</span>
+                                                        <span class="btn btn-sm btn-secondary disabled">Asistencia</span>
                                                     @elseif($class->attendance_registered)
-                                                        <a href="{{ route('attendance.edit', $class->session_id) }}" class="btn btn-sm btn-outline-success">
+                                                        <a href="{{ route('attendance.edit', $class->session_id) }}" class="btn btn-sm btn-success">
                                                             <i class="fas fa-clipboard-check mr-1"></i>Editar lista
                                                         </a>
                                                     @else
@@ -134,17 +134,17 @@
                                                         </a>
                                                     @endif
 
-                                                    <a href="{{ route('attendance.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-dark">
+                                                    <a href="{{ route('attendance.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-dark">
                                                         <i class="fas fa-table mr-1"></i>Hoja semanal
                                                     </a>
-                                                    <a href="{{ route('session.activities.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-warning">
+                                                    <a href="{{ route('session.activities.massive', ['assignment' => $class->assignment_id, 'mode' => 'week', 'date' => now()->toDateString()]) }}" class="btn btn-sm btn-warning">
                                                         <i class="fas fa-edit mr-1"></i>Actividades
                                                     </a>
 
                                                     @if($class->attendance_closed)
-                                                        <span class="btn btn-sm btn-outline-secondary disabled">Actividad</span>
+                                                        <span class="btn btn-sm btn-secondary disabled">Actividad</span>
                                                     @elseif($class->activity_assigned)
-                                                        <a href="{{ route('session.activities.create', $class->session_id) }}" class="btn btn-sm btn-outline-primary">
+                                                        <a href="{{ route('session.activities.create', $class->session_id) }}" class="btn btn-sm btn-primary">
                                                             <i class="fas fa-tasks mr-1"></i>Editar actividad
                                                         </a>
                                                     @else
@@ -167,22 +167,22 @@
                         </div>
                         <div class="row">
                             <div class="col-md-3 col-sm-6 mb-2">
-                                <a href="{{ route('teacher.classes.index') }}" class="btn btn-outline-primary btn-block">
+                                <a href="{{ route('teacher.classes.index') }}" class="btn btn-primary btn-block">
                                     <i class="fas fa-chalkboard-teacher mr-1"></i>Mis clases
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-2">
-                                <a href="{{ route('teacher.evaluation.index') }}" class="btn btn-outline-success btn-block">
+                                <a href="{{ route('teacher.evaluation.index') }}" class="btn btn-success btn-block">
                                     <i class="fas fa-tasks mr-1"></i>Evaluacion
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-2">
-                                <a href="{{ route('teacher.didactic-plans.index') }}" class="btn btn-outline-info btn-block">
+                                <a href="{{ route('teacher.didactic-plans.index') }}" class="btn btn-info btn-block">
                                     <i class="fas fa-file-alt mr-1"></i>Planeaciones
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-2">
-                                <a href="{{ route('teacher.follow-ups.index') }}" class="btn btn-outline-warning btn-block">
+                                <a href="{{ route('teacher.follow-ups.index') }}" class="btn btn-warning btn-block">
                                     <i class="fas fa-bullhorn mr-1"></i>Avisos
                                 </a>
                             </div>

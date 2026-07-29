@@ -43,11 +43,11 @@
                                                     <i class="fas fa-calendar-alt mr-1"></i>
                                                     Ver sesiones ({{ $classCard['assigned_sessions'] }} de {{ $classCard['total_sessions'] }})
                                                 </a>
-                                                <a href="{{ route('attendance.massive', ['assignment' => $assignment, 'mode' => 'week']) }}" class="btn btn-outline-primary btn-sm btn-block">
+                                                <a href="{{ route('attendance.massive', ['assignment' => $assignment, 'mode' => 'week']) }}" class="btn btn-primary btn-sm btn-block">
                                                     <i class="fas fa-table mr-1"></i>
                                                     Asistencia semanal / mensual
                                                 </a>
-                                                <a href="{{ route('session.activities.massive', ['assignment' => $assignment, 'mode' => 'week']) }}" class="btn btn-outline-warning btn-sm btn-block">
+                                                <a href="{{ route('session.activities.massive', ['assignment' => $assignment, 'mode' => 'week']) }}" class="btn btn-warning btn-sm btn-block">
                                                     <i class="fas fa-edit mr-1"></i>
                                                     Actividades semanal / mensual
                                                 </a>

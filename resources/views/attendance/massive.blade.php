@@ -24,7 +24,7 @@
                         {{ $assignment->subject->name }} | Grupo {{ $assignment->group->name }}
                     </div>
                 </div>
-                <a href="{{ route('teacher.classes.sessions.index', $assignment) }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('teacher.classes.sessions.index', $assignment) }}" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-left mr-1"></i>Sesiones
                 </a>
             </div>
