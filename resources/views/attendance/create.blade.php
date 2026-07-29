@@ -7,6 +7,7 @@
     @php
         $isReadOnly = $isReadOnly ?? $session->isAttendanceClosed();
         $periodDisabled = $periodDisabled ?? false;
+        $testCycleEditing = $testCycleEditing ?? false;
     @endphp
     @if(session('warning'))
         <div class="alert alert-warning">
@@ -64,7 +65,18 @@
                             <div class="alert alert-warning">
                                 Hay alumnos con <strong>suspension activa</strong> para esta fecha.
                                 <br>
-                                <small>Esos registros quedan en falta y no se pueden editar desde esta vista.</small>
+                                <small>
+                                    @if($testCycleEditing)
+                                        En este ciclo de prueba tambien puedes editarlos.
+                                    @else
+                                        Esos registros quedan en falta y no se pueden editar desde esta vista.
+                                    @endif
+                                </small>
+                            </div>
+                        @endif
+                        @if($testCycleEditing)
+                            <div class="alert alert-info">
+                                Ciclo de prueba: la asistencia esta abierta para captura y edicion sin candados.
                             </div>
                         @endif
 
@@ -102,7 +114,7 @@
                                                 $status = $record->status ?? ($isReadOnly ? null : 'present');
                                                 $isSuspensionLocked = (bool) optional($record)->is_suspension_locked;
                                                 $isJustifiedLocked = optional($record)->status === 'justified';
-                                                $disabled = $isReadOnly || $isSuspensionLocked || $isJustifiedLocked;
+                                                $disabled = $isReadOnly || (! $testCycleEditing && ($isSuspensionLocked || $isJustifiedLocked));
                                             @endphp
                                             <tr>
                                                 <td class="text-left">
@@ -214,7 +226,7 @@
                                                     $status = $record->status ?? ($isReadOnly ? null : 'present');
                                                     $isSuspensionLocked = (bool) optional($record)->is_suspension_locked;
                                                     $isJustifiedLocked = optional($record)->status === 'justified';
-                                                    $disabled = $isReadOnly || $isSuspensionLocked || $isJustifiedLocked;
+                                                    $disabled = $isReadOnly || (! $testCycleEditing && ($isSuspensionLocked || $isJustifiedLocked));
                                                 @endphp
                                                 <tr>
                                                     <td class="text-center text-muted">{{ $loop->iteration }}</td>

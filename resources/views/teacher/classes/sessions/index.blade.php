@@ -92,9 +92,6 @@
                                                     $classStart = \Carbon\Carbon::parse(
                                                         $session->session_date->toDateString().' '.substr((string) $session->start_time, 0, 8)
                                                     );
-                                                    $attendanceAllowedFrom = $classStart->copy()->subMinutes(10);
-                                                    $attendanceWindowOpen = ($allowFutureAttendanceCapture ?? false)
-                                                        || now()->greaterThanOrEqualTo($attendanceAllowedFrom);
                                                     $sessionCycleCode = (string) (
                                                         $session->teachingAssignment?->schoolCycleGroup?->schoolCycle?->code
                                                         ?? $session->schedule?->schoolCycle?->code
@@ -102,6 +99,10 @@
                                                     );
                                                     $attendanceEditingOpenForTesting = $sessionCycleCode !== ''
                                                         && in_array($sessionCycleCode, $editableAttendanceCycleCodes ?? [], true);
+                                                    $attendanceAllowedFrom = $classStart->copy()->subMinutes(10);
+                                                    $attendanceWindowOpen = $attendanceEditingOpenForTesting
+                                                        || ($allowFutureAttendanceCapture ?? false)
+                                                        || now()->greaterThanOrEqualTo($attendanceAllowedFrom);
                                                     $criteriaKey = (int) $session->teaching_assignment_id.'|'.(int) $session->academic_period_id;
                                                     $hasCriteriaForPeriod = (bool) ($periodHasCriteria[$criteriaKey] ?? false);
                                                 @endphp

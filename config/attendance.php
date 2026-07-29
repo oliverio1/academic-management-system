@@ -23,6 +23,6 @@ return [
     */
     'editable_cycle_codes_for_testing' => array_filter(array_map(
         'trim',
-        explode(',', env('ATTENDANCE_EDITABLE_TEST_CYCLES', '26-3'))
+        explode(',', env('ATTENDANCE_EDITABLE_TEST_CYCLES', '26-3,26-27'))
     )),
 ];

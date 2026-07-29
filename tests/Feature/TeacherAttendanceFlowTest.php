@@ -287,6 +287,61 @@ class TeacherAttendanceFlowTest extends TestCase
         ]);
     }
 
+    public function test_teacher_can_override_all_attendance_locks_for_editable_test_cycle(): void
+    {
+        config(['attendance.editable_cycle_codes_for_testing' => ['26-27']]);
+
+        $scenario = $this->attendanceScenario([
+            'cycle_code' => '26-27',
+            'session_date' => now()->addWeeks(2)->toDateString(),
+            'start_time' => '23:00:00',
+        ]);
+        [$justifiedStudent, $suspendedStudent] = $scenario['students'];
+        $scenario['period']->update(['is_active' => false]);
+        $scenario['session']->update(['attendance_closed_at' => now()]);
+
+        Attendance::create([
+            'academic_session_id' => $scenario['session']->id,
+            'student_id' => $justifiedStudent->id,
+            'status' => 'justified',
+        ]);
+        Attendance::create([
+            'academic_session_id' => $scenario['session']->id,
+            'student_id' => $suspendedStudent->id,
+            'status' => 'absent',
+            'is_suspension_locked' => true,
+        ]);
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('attendance.edit', $scenario['session']))
+            ->assertOk()
+            ->assertSee('Ciclo de prueba');
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->post(route('attendance.store', $scenario['session']), [
+                'attendance' => [
+                    $justifiedStudent->id => 'present',
+                    $suspendedStudent->id => 'present',
+                ],
+            ])
+            ->assertRedirect(route('teacher.classes.sessions.index', $scenario['assignment']));
+
+        $this->assertDatabaseHas('attendances', [
+            'academic_session_id' => $scenario['session']->id,
+            'student_id' => $justifiedStudent->id,
+            'status' => 'present',
+        ]);
+        $this->assertDatabaseHas('attendances', [
+            'academic_session_id' => $scenario['session']->id,
+            'student_id' => $suspendedStudent->id,
+            'status' => 'present',
+            'student_suspension_id' => null,
+            'is_suspension_locked' => false,
+        ]);
+    }
+
     public function test_teacher_cannot_store_attendance_before_capture_window(): void
     {
         $scenario = $this->attendanceScenario([
@@ -437,7 +492,7 @@ class TeacherAttendanceFlowTest extends TestCase
             'campus_id' => $campus->id,
             'modality_id' => $modality->id,
             'name' => 'Preparatoria 2026-2027',
-            'code' => 'PREPA-'.uniqid(),
+            'code' => $overrides['cycle_code'] ?? 'PREPA-'.uniqid(),
             'start_date' => now()->subMonth()->toDateString(),
             'end_date' => now()->addMonths(10)->toDateString(),
             'is_active' => true,

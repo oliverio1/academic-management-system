@@ -71,6 +71,7 @@ class AttendanceController extends Controller
             'attendance' => $attendance,
             'isReadOnly' => $isReadOnly,
             'periodDisabled' => $periodDisabled,
+            'testCycleEditing' => $testCycleEditing,
         ]);
     }
 
@@ -119,7 +120,7 @@ class AttendanceController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
     
-        DB::transaction(function () use ($data, $academicSession, $allowedStudentIds) {
+        DB::transaction(function () use ($data, $academicSession, $allowedStudentIds, $testCycleEditing) {
             $allowedStudentMap = array_flip($allowedStudentIds);
             $existing = Attendance::query()
                 ->where('academic_session_id', $academicSession->id)
@@ -135,17 +136,20 @@ class AttendanceController extends Controller
                     continue;
                 }
 
-                // Un status justificado no puede sobreescribirse manualmente.
                 $attendance = $existing->get($studentId);
-                if ($attendance && $attendance->status === 'justified') {
+                if (! $testCycleEditing && $attendance && $attendance->status === 'justified') {
                     continue;
                 }
 
-                if ($attendance && (bool) $attendance->is_suspension_locked) {
+                if (! $testCycleEditing && $attendance && (bool) $attendance->is_suspension_locked) {
                     continue;
                 }
 
-                if ($attendance && $attendance->status === $status) {
+                $mustUnlockTestRow = $testCycleEditing
+                    && $attendance
+                    && ((bool) $attendance->is_suspension_locked || $attendance->student_suspension_id !== null);
+
+                if ($attendance && $attendance->status === $status && ! $mustUnlockTestRow) {
                     continue;
                 }
 
@@ -153,6 +157,8 @@ class AttendanceController extends Controller
                     'academic_session_id' => $academicSession->id,
                     'student_id' => $studentId,
                     'status' => $status,
+                    'student_suspension_id' => $testCycleEditing ? null : $attendance?->student_suspension_id,
+                    'is_suspension_locked' => $testCycleEditing ? false : (bool) ($attendance?->is_suspension_locked ?? false),
                     'created_at' => $attendance?->created_at ?? $now,
                     'updated_at' => $now,
                 ];
@@ -162,7 +168,7 @@ class AttendanceController extends Controller
                 Attendance::upsert(
                     $rows,
                     ['academic_session_id', 'student_id'],
-                    ['status', 'updated_at']
+                    ['status', 'student_suspension_id', 'is_suspension_locked', 'updated_at']
                 );
             }
         });
@@ -199,6 +205,7 @@ class AttendanceController extends Controller
             'attendance' => $attendance,
             'isReadOnly' => $isReadOnly,
             'periodDisabled' => $periodDisabled,
+            'testCycleEditing' => $testCycleEditing,
         ]);
     }    
 
@@ -263,8 +270,10 @@ class AttendanceController extends Controller
             ->all();
         abort_if(! in_array((int) $request->student_id, $allowedStudentIds, true), 403);
 
+        $testCycleEditing = $this->allowsAttendanceEditingForTesting($session);
+
         abort_if(
-            $lockService->isSessionLocked($session),
+            $lockService->isSessionLocked($session) && ! $testCycleEditing,
             403,
             'El parcial de esta sesion ya tiene acta economica cerrada o enviada. Solo consulta.'
         );
@@ -275,11 +284,18 @@ class AttendanceController extends Controller
         ]);
 
         if (
-            !($attendance->exists && $attendance->status === 'justified')
-            && !($attendance->exists && (bool) $attendance->is_suspension_locked)
-            && $attendance->status !== $request->status
+            $testCycleEditing
+            || (
+                !($attendance->exists && $attendance->status === 'justified')
+                && !($attendance->exists && (bool) $attendance->is_suspension_locked)
+                && $attendance->status !== $request->status
+            )
         ) {
             $attendance->status = $request->status;
+            if ($testCycleEditing) {
+                $attendance->student_suspension_id = null;
+                $attendance->is_suspension_locked = false;
+            }
             $attendance->save();
         }
 
@@ -291,14 +307,22 @@ class AttendanceController extends Controller
             ->with('academicSession.schedule')
             ->findOrFail($request->attendance_id);
 
+        $testCycleEditing = $this->allowsAttendanceEditingForTesting($attendance->academicSession);
+
         abort_if(
-            $lockService->isSessionLocked($attendance->academicSession),
+            $lockService->isSessionLocked($attendance->academicSession) && ! $testCycleEditing,
             403,
             'El parcial de esta sesion ya tiene acta economica cerrada o enviada. Solo consulta.'
         );
 
-        if ($attendance->status !== 'justified' && !(bool) $attendance->is_suspension_locked) {
-            $attendance->update(['status' => $request->status]);
+        if ($testCycleEditing || ($attendance->status !== 'justified' && !(bool) $attendance->is_suspension_locked)) {
+            $payload = ['status' => $request->status];
+            if ($testCycleEditing) {
+                $payload['student_suspension_id'] = null;
+                $payload['is_suspension_locked'] = false;
+            }
+
+            $attendance->update($payload);
         }
 
         return response()->json(['ok' => true]);
