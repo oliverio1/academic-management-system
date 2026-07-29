@@ -12,6 +12,7 @@ use App\Models\Student;
 use App\Models\StudentSuspension;
 use App\Models\User;
 use App\Notifications\StudentSuspensionNotification;
+use App\Services\CurrentSchoolCycle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -99,11 +100,7 @@ class CoordinationStudentSuspensionController extends Controller
     private function formData(?int $forceIncludeGroupId = null): array
     {
         $activeCampusId = (int) session('active_campus_id', 0);
-        $activeCycle = SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, fn ($q) => $q->where('campus_id', $activeCampusId))
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
 
         $activeGroupIds = collect();
         if ($activeCycle) {
@@ -170,10 +167,8 @@ class CoordinationStudentSuspensionController extends Controller
         $sessions = AcademicSession::query()
             ->whereHas('teachingAssignment', fn ($q) => $q->where('group_id', $suspension->group_id))
             ->where('is_cancelled', false)
-            ->whereBetween('session_date', [
-                Carbon::parse($suspension->start_date)->toDateString(),
-                Carbon::parse($suspension->end_date)->toDateString(),
-            ])
+            ->whereDate('session_date', '>=', Carbon::parse($suspension->start_date)->toDateString())
+            ->whereDate('session_date', '<=', Carbon::parse($suspension->end_date)->toDateString())
             ->get(['id']);
 
         foreach ($sessions as $session) {
@@ -291,11 +286,7 @@ class CoordinationStudentSuspensionController extends Controller
             return [0];
         }
 
-        $activeCycleId = SchoolCycle::query()
-            ->where('is_active', true)
-            ->where('campus_id', $activeCampusId)
-            ->orderByDesc('start_date')
-            ->value('id');
+        $activeCycleId = app(CurrentSchoolCycle::class)->id(auth()->user(), $activeCampusId);
 
         if (! $activeCycleId) {
             return [0];

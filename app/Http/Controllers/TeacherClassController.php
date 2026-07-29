@@ -7,6 +7,7 @@ use App\Models\TeachingAssignment;
 use App\Models\AcademicSession;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Support\Collection;
 
 class TeacherClassController extends Controller
@@ -100,9 +101,11 @@ class TeacherClassController extends Controller
         }
 
         $scheduleBlocks = $this->buildScheduleBlocks($schedules);
+        $classCards = $this->buildClassCards($assignments, $schedules);
 
         return view('teacher.classes.index', [
             'assignments' => $assignments,
+            'classCards' => $classCards,
             'schedules' => $schedules,
             'scheduleBlocks' => $scheduleBlocks,
         ]);
@@ -201,16 +204,7 @@ class TeacherClassController extends Controller
     {
         $activeCampusId = (int) session('active_campus_id', 0);
 
-        return SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
-                $q->where(function ($nested) use ($activeCampusId) {
-                    $nested->where('campus_id', $activeCampusId)
-                        ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
-                });
-            })
-            ->orderByDesc('start_date')
-            ->first();
+        return app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
     }
 
     private function buildScheduleBlocks(Collection $schedules): Collection
@@ -246,5 +240,83 @@ class TeacherClassController extends Controller
                 ];
             })
             ->values();
+    }
+
+    private function buildClassCards(Collection $assignments, Collection $schedules): Collection
+    {
+        $schedulesByAssignment = $schedules->groupBy('teaching_assignment_id');
+
+        return $assignments
+            ->groupBy(fn (TeachingAssignment $assignment) => implode('|', [
+                (int) $assignment->school_cycle_group_id,
+                (int) $assignment->group_id,
+                (int) $assignment->subject_id,
+            ]))
+            ->map(function (Collection $groupedAssignments) use ($schedulesByAssignment) {
+                $primary = $groupedAssignments
+                    ->first(fn (TeachingAssignment $assignment) => (int) ($assignment->evaluation_criteria_count ?? 0) > 0)
+                    ?: $groupedAssignments->first(function (TeachingAssignment $assignment) use ($schedulesByAssignment) {
+                        return $schedulesByAssignment
+                            ->get($assignment->id, collect())
+                            ->contains(fn ($schedule) => ($schedule->type ?? null) === 'theory');
+                    })
+                    ?: $groupedAssignments->first();
+
+                $components = $groupedAssignments
+                    ->sortBy([
+                        fn (TeachingAssignment $assignment) => $schedulesByAssignment
+                            ->get($assignment->id, collect())
+                            ->contains(fn ($schedule) => ($schedule->type ?? null) === 'theory') ? 0 : 1,
+                        fn (TeachingAssignment $assignment) => (int) ($assignment->section_number ?? 0),
+                        fn (TeachingAssignment $assignment) => (int) $assignment->id,
+                    ])
+                    ->map(function (TeachingAssignment $assignment) use ($schedulesByAssignment) {
+                        $assignmentSchedules = $schedulesByAssignment->get($assignment->id, collect());
+                        $types = $assignmentSchedules
+                            ->pluck('type')
+                            ->filter()
+                            ->unique()
+                            ->map(fn ($type) => $this->scheduleTypeLabel((string) $type))
+                            ->values();
+
+                        return [
+                            'assignment' => $assignment,
+                            'label' => $types->isNotEmpty()
+                                ? $types->join(' / ')
+                                : 'Sesiones',
+                            'section' => $assignment->section_label
+                                ?: ($assignment->section_number ? 'Sección '.(int) $assignment->section_number : null),
+                            'assigned_sessions' => (int) ($assignment->assigned_sessions_in_period ?? 0),
+                            'total_sessions' => (int) ($assignment->total_sessions_in_period ?? 0),
+                        ];
+                    })
+                    ->values();
+
+                return [
+                    'assignment' => $primary,
+                    'assignments' => $groupedAssignments->values(),
+                    'components' => $components,
+                    'subject' => $primary->subject,
+                    'group' => $primary->group,
+                    'assigned_sessions' => (int) $groupedAssignments->sum('assigned_sessions_in_period'),
+                    'total_sessions' => (int) $groupedAssignments->sum('total_sessions_in_period'),
+                    'has_evaluation_criteria' => $groupedAssignments->contains(fn (TeachingAssignment $assignment) => (int) ($assignment->evaluation_criteria_count ?? 0) > 0),
+                ];
+            })
+            ->sortBy([
+                fn (array $card) => $card['subject']->name ?? '',
+                fn (array $card) => $card['group']->name ?? '',
+            ])
+            ->values();
+    }
+
+    private function scheduleTypeLabel(string $type): string
+    {
+        return match ($type) {
+            'theory' => 'Teoría',
+            'laboratory' => 'Laboratorio',
+            'workshop' => 'Taller',
+            default => ucfirst($type),
+        };
     }
 }

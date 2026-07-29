@@ -11,6 +11,7 @@ use App\Models\SchoolCycleGroup;
 use App\Models\TeachingAssignment;
 use App\Notifications\CoordinatorReviewNotification;
 use App\Services\AttendanceService;
+use App\Services\CurrentSchoolCycle;
 use App\Services\GradeService;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Carbon\Carbon;
@@ -30,7 +31,10 @@ class CoordinationEconomicActaController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
-        $defaultCycle = $cycles->firstWhere('is_active', true) ?? $cycles->first();
+        $currentCycle = app(CurrentSchoolCycle::class)->get($request->user(), (int) $request->session()->get('active_campus_id', 0));
+        $defaultCycle = $currentCycle && $cycles->contains(fn ($cycle) => (int) $cycle->id === (int) $currentCycle->id)
+            ? $currentCycle
+            : ($cycles->firstWhere('is_active', true) ?? $cycles->first());
         $selectedCycleId = (int) ($request->query('school_cycle_id') ?: optional($defaultCycle)->id);
         $selectedCycle = $selectedCycleId > 0 ? $cycles->firstWhere('id', $selectedCycleId) : null;
 

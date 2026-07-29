@@ -29,7 +29,7 @@
                     </div>
                     <a href="{{ route('prefect.groups.attendance', $group) }}" class="btn btn-outline-secondary">Volver</a>
                 </div>
-                <form method="POST" action="{{ route('prefect.groups.attendance.store', $group) }}">
+                <form method="POST" action="{{ route('prefect.groups.attendance.store', $group) }}" id="prefectAttendanceForm">
                     @csrf
                     <input type="hidden" name="attendance_date" value="{{ $date }}">
 
@@ -85,7 +85,7 @@
                     </div>
 
                     <div class="card-footer">
-                        <button class="btn btn-primary">Guardar asistencia global</button>
+                        <button class="btn btn-primary" id="prefectAttendanceSubmitButton">Guardar asistencia global</button>
                     </div>
                 </form>
             </div>
@@ -146,3 +146,17 @@
 </style>
 @endsection
 
+@section('page_scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('prefectAttendanceForm');
+        const button = document.getElementById('prefectAttendanceSubmitButton');
+        if (!form || !button) return;
+
+        form.addEventListener('submit', function () {
+            button.disabled = true;
+            button.textContent = 'Guardando...';
+        });
+    });
+</script>
+@endsection

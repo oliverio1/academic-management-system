@@ -10,6 +10,7 @@ use App\Models\Attendance;
 use App\Models\Activity;
 use App\Models\Grade;
 use App\Models\SchoolCycle;
+use App\Services\CurrentSchoolCycle;
 
 class TeacherStudentController extends Controller
 {
@@ -288,15 +289,6 @@ class TeacherStudentController extends Controller
     {
         $activeCampusId = (int) session('active_campus_id', 0);
 
-        return SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
-                $q->where(function ($nested) use ($activeCampusId) {
-                    $nested->where('campus_id', $activeCampusId)
-                        ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
-                });
-            })
-            ->orderByDesc('start_date')
-            ->first();
+        return app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
     }
 }

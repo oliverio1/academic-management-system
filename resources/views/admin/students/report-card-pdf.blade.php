@@ -13,12 +13,12 @@
         }
 
         .header-wrap { width: 100%; margin-bottom: 8px; }
-        .logo-box { float: left; width: 35%; }
-        .title-box { float: right; width: 65%; text-align: right; font-weight: 700; margin-top: 8px; }
+        .logo-box { width: 100%; text-align: left; }
+        .title-box { width: 100%; text-align: left; font-weight: 700; margin-top: 8px; }
         .clear { clear: both; }
 
         .logo-box img {
-            max-width: 120px;
+            max-width: 84px;
             height: auto;
         }
 
@@ -96,7 +96,7 @@
 <body>
     <div class="header-wrap">
         <div class="logo-box">
-            @php $logoPath = public_path('logo.png'); @endphp
+            @php $logoPath = public_path('images/ula-logo.png'); @endphp
             @if(file_exists($logoPath))
                 <img src="{{ $logoPath }}" alt="ULA">
             @else

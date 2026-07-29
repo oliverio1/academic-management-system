@@ -8,6 +8,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Attendance;
 use App\Models\AcademicSession;
 use App\Models\SchoolCycle;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -24,11 +25,10 @@ class StudentReportCardController extends Controller
         ]);
         $subjects = $student->group->subjects;
         $modalityId = $student->group->level->modality_id;
-        $activeCycle = SchoolCycle::query()
-            ->where('modality_id', $modalityId)
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), (int) session('active_campus_id', 0));
+        if ($activeCycle && (int) $activeCycle->modality_id !== (int) $modalityId) {
+            $activeCycle = null;
+        }
 
         $cycleStart = null;
         $cycleEnd = null;

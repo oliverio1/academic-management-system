@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SchoolCycle;
 use App\Models\Schedule;
 use App\Models\TeacherCampusAttendance;
+use App\Services\CurrentSchoolCycle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -118,11 +119,7 @@ class TeacherCampusAttendanceController extends Controller
 
     private function firstClassStartTime(int $teacherId, int $campusId, Carbon $date): ?Carbon
     {
-        $cycle = SchoolCycle::query()
-            ->where('campus_id', $campusId)
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $cycle = app(CurrentSchoolCycle::class)->get(auth()->user(), $campusId);
 
         if (! $cycle) {
             return null;

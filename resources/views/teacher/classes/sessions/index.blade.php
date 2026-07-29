@@ -46,6 +46,16 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <h6 class="mb-2">Sesiones</h6>
+                                @php
+                                    $hasSessionsWithoutCriteria = $sessions->contains(
+                                        fn ($session) => ! (bool) ($periodHasCriteria[(int) $session->teaching_assignment_id.'|'.(int) $session->academic_period_id] ?? false)
+                                    );
+                                @endphp
+                                @if($hasSessionsWithoutCriteria)
+                                    <div class="activity-rubric-warning mb-2">
+                                        Configura los rubros de evaluacion para registrar actividades.
+                                    </div>
+                                @endif
                                 <div class="table-responsive">
                                     <table data-datatable="true" class="table table-sm table-hover">
                                         <thead class="thead-light">
@@ -61,19 +71,57 @@
                                         <tbody>
                                             @foreach($sessions as $session)
                                                 @php
+                                                    $scheduleType = (string) ($session->schedule?->type ?? '');
+                                                    $normalizedScheduleType = mb_strtolower(trim($scheduleType));
+                                                    $sectionNumber = (int) ($session->schedule?->section_number ?? $session->teachingAssignment?->section_number ?? 0);
+                                                    $sectionLabel = $sectionNumber > 0 && $sectionNumber <= 26
+                                                        ? 'Sección '.chr(64 + $sectionNumber)
+                                                        : ($sectionNumber > 0 ? 'Sección '.$sectionNumber : null);
+                                                    $typeLabel = match ($normalizedScheduleType) {
+                                                        'laboratory' => 'Laboratorio',
+                                                        'workshop' => 'Taller',
+                                                        'dividida' => 'Clase dividida',
+                                                        'dividido' => 'Clase dividida',
+                                                        'theory' => 'Teoría',
+                                                        'grupo completo' => 'Grupo completo',
+                                                        default => $scheduleType ? ucfirst($scheduleType) : null,
+                                                    };
+                                                    $isSectionedSession = in_array($normalizedScheduleType, ['laboratory', 'workshop', 'dividida', 'dividido'], true)
+                                                        || ($sectionNumber > 1 && ($relatedAssignments ?? collect())->count() > 1);
                                                     $periodDisabled = $session->academicPeriod && ! $session->academicPeriod->is_active;
                                                     $classStart = \Carbon\Carbon::parse(
                                                         $session->session_date->toDateString().' '.substr((string) $session->start_time, 0, 8)
                                                     );
                                                     $attendanceAllowedFrom = $classStart->copy()->subMinutes(10);
-                                                    $attendanceWindowOpen = now()->greaterThanOrEqualTo($attendanceAllowedFrom);
+                                                    $attendanceWindowOpen = ($allowFutureAttendanceCapture ?? false)
+                                                        || now()->greaterThanOrEqualTo($attendanceAllowedFrom);
+                                                    $sessionCycleCode = (string) (
+                                                        $session->teachingAssignment?->schoolCycleGroup?->schoolCycle?->code
+                                                        ?? $session->schedule?->schoolCycle?->code
+                                                        ?? ''
+                                                    );
+                                                    $attendanceEditingOpenForTesting = $sessionCycleCode !== ''
+                                                        && in_array($sessionCycleCode, $editableAttendanceCycleCodes ?? [], true);
+                                                    $criteriaKey = (int) $session->teaching_assignment_id.'|'.(int) $session->academic_period_id;
+                                                    $hasCriteriaForPeriod = (bool) ($periodHasCriteria[$criteriaKey] ?? false);
                                                 @endphp
-                                                <tr>
-                                                    <td>{{ $session->session_date->translatedFormat('l j \\d\\e F') }}</td>
+                                                <tr class="{{ $isSectionedSession ? 'session-row-sectioned' : '' }}">
+                                                    <td>
+                                                        {{ $session->session_date->translatedFormat('l j \\d\\e F') }}
+                                                        @if($isSectionedSession && $sectionLabel)
+                                                            <span class="session-section-badge">{{ $sectionLabel }}</span>
+                                                        @endif
+                                                        @if($isSectionedSession && $typeLabel)
+                                                            <div class="small text-muted mt-1">{{ $typeLabel }}</div>
+                                                        @endif
+                                                    </td>
                                                     <td>{{ substr($session->start_time, 0, 5) }} - {{ substr($session->end_time, 0, 5) }}</td>
                                                     <td class="text-center">
                                                         @if($periodDisabled)
                                                             <a href="{{ route('attendance.take', $session->id) }}" class="btn btn-outline-secondary btn-sm">Consultar</a>
+                                                        @elseif($session->attendance_closed_at && $attendanceEditingOpenForTesting)
+                                                            <a href="{{ route('attendance.edit', $session->id) }}" class="btn btn-success btn-sm">Editar</a>
+                                                            <div class="small text-muted mt-1">Ciclo de prueba</div>
                                                         @elseif($session->attendance_closed_at)
                                                             <span class="text-muted">Cerrada</span>
                                                         @elseif($session->attendances_count > 0)
@@ -92,6 +140,8 @@
                                                             <span class="text-muted">Cerrada</span>
                                                         @elseif($session->session_activity_count > 0)
                                                             <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-outline-success btn-sm">Editar</a>
+                                                        @elseif(! $hasCriteriaForPeriod)
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Asignar</button>
                                                         @else
                                                             <a href="{{ route('session.activities.create', $session->id) }}" class="btn btn-outline-primary btn-sm">Asignar</a>
                                                         @endif
@@ -163,6 +213,37 @@
 @endsection
 
 @section('page_css')
+<style>
+    .activity-rubric-warning {
+        background: #fff3cd;
+        border: 1px solid #ffec99;
+        border-left: 4px solid #f59f00;
+        border-radius: 4px;
+        color: #7a4d00;
+        font-size: 0.86rem;
+        font-weight: 700;
+        line-height: 1.2;
+        padding: 0.55rem 0.7rem;
+    }
+    .session-row-sectioned {
+        background-color: #eef7ff;
+    }
+    .session-row-sectioned:hover {
+        background-color: #e1f0ff;
+    }
+    .session-section-badge {
+        background: #0070C0;
+        border-radius: 3px;
+        color: #fff;
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-left: 0.35rem;
+        padding: 0.22rem 0.35rem;
+        white-space: nowrap;
+    }
+</style>
 @endsection
 
 @section('page_scripts')

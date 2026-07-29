@@ -14,13 +14,17 @@ return new class extends Migration
             $table->timestamp('submitted_at')->nullable()->after('submitted_by');
         });
 
-        DB::statement("ALTER TABLE economic_actas MODIFY status ENUM('submitted','draft','closed','sent') NOT NULL DEFAULT 'submitted'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE economic_actas MODIFY status ENUM('submitted','draft','closed','sent') NOT NULL DEFAULT 'submitted'");
+        }
     }
 
     public function down(): void
     {
         DB::statement("UPDATE economic_actas SET status = 'draft' WHERE status = 'submitted'");
-        DB::statement("ALTER TABLE economic_actas MODIFY status ENUM('draft','closed','sent') NOT NULL DEFAULT 'draft'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE economic_actas MODIFY status ENUM('draft','closed','sent') NOT NULL DEFAULT 'draft'");
+        }
 
         Schema::table('economic_actas', function (Blueprint $table) {
             $table->dropConstrainedForeignId('submitted_by');
@@ -28,4 +32,3 @@ return new class extends Migration
         });
     }
 };
-

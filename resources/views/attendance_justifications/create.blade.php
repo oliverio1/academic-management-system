@@ -37,7 +37,7 @@
                                         <option value="">Seleccione un grupo</option>
                                         @foreach($groups as $group)
                                             <option value="{{ $group->id }}" {{ (string) old('group_id') === (string) $group->id ? 'selected' : '' }}>
-                                                {{ $group->name }}
+                                                {{ trim(optional($group->level)->name . ' ' . $group->name) }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -57,6 +57,9 @@
                                             @endforeach
                                         @endforeach
                                     </select>
+                                    <small id="student_empty_message" class="form-text text-muted d-none">
+                                        Este grupo aun no tiene alumnos activos cargados.
+                                    </small>
                                 </div>
                             </div>
 
@@ -108,7 +111,7 @@
                                             <th>Motivo</th>
                                             <th>Evidencia</th>
                                             <th>Emitido por</th>
-                                            <th>Fecha de emision</th>
+                                            <th>Fecha de emisión</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -148,6 +151,7 @@
     (function () {
         const groupSelect = document.getElementById('group_id');
         const studentSelect = document.getElementById('student_id');
+        const emptyMessage = document.getElementById('student_empty_message');
         const oldStudentId = '{{ old('student_id') }}';
 
         function filterStudents() {
@@ -166,6 +170,9 @@
             if (!groupId) {
                 studentSelect.value = '';
                 studentSelect.disabled = true;
+                if (emptyMessage) {
+                    emptyMessage.classList.add('d-none');
+                }
                 return;
             }
 
@@ -187,6 +194,14 @@
                 if (oldOption) {
                     studentSelect.value = oldStudentId;
                 }
+            }
+
+            const hasVisibleStudents = Array.from(studentSelect.options).some(
+                (opt, index) => index > 0 && !opt.hidden
+            );
+
+            if (emptyMessage) {
+                emptyMessage.classList.toggle('d-none', hasVisibleStudents);
             }
         }
 

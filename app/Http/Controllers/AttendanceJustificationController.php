@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Group;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
+use App\Services\CurrentSchoolCycle;
 use App\Models\Student;
 use App\Models\AttendanceJustification;
 use App\Services\AttendanceJustificationService;
@@ -21,10 +22,8 @@ class AttendanceJustificationController extends Controller
         $groups = Group::query()
             ->where('is_active', true)
             ->when(!empty($allowedGroupIds), fn ($q) => $q->whereIn('id', $allowedGroupIds), fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereHas('students', function ($q) {
-                $q->where('is_active', true);
-            })
             ->with([
+                'level:id,name',
                 'students' => function ($q) {
                     $q->where('is_active', true)
                         ->orderBy('enrollment_number')
@@ -113,15 +112,7 @@ class AttendanceJustificationController extends Controller
             return [];
         }
 
-        $activeCycleId = SchoolCycle::query()
-            ->where('is_active', true)
-            ->where(function ($q) use ($activeCampusId) {
-                $q->whereHas('campuses', function ($campusQuery) use ($activeCampusId) {
-                    $campusQuery->where('campuses.id', $activeCampusId);
-                })->orWhere('campus_id', $activeCampusId);
-            })
-            ->orderByDesc('start_date')
-            ->value('id');
+        $activeCycleId = app(CurrentSchoolCycle::class)->id(auth()->user(), $activeCampusId);
 
         if (! $activeCycleId) {
             return [];

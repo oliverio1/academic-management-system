@@ -16,6 +16,7 @@ use App\Models\EvaluationCriterion;
 use App\Models\SchoolCycleGroup;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Services\CurrentSchoolCycle;
 use App\Models\User;
 use App\Services\AcademicPerformanceService;
 use App\Services\EconomicActaLockService;
@@ -652,11 +653,7 @@ class TeachingAssignmentController extends Controller
     {
         $activeCampusId = (int) session('active_campus_id', 0);
 
-        return SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, fn ($q) => $q->whereHas('campuses', fn ($campusQ) => $campusQ->where('campuses.id', $activeCampusId)))
-            ->orderByDesc('start_date')
-            ->first();
+        return app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
     }
 
     public function editSections(Group $group, Subject $subject)

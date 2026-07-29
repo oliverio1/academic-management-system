@@ -189,24 +189,51 @@ class PrefectGroupAttendanceController extends Controller
         $validStudentIds = $group->students()
             ->where('is_active', true)
             ->pluck('id')
+            ->map(fn ($id) => (int) $id)
             ->all();
 
         DB::transaction(function () use ($data, $group, $date, $validStudentIds) {
+            $validStudentMap = array_flip($validStudentIds);
+            $existing = PrefectDailyAttendance::query()
+                ->whereDate('attendance_date', $date)
+                ->whereIn('student_id', $validStudentIds)
+                ->get()
+                ->keyBy('student_id');
+            $now = now();
+            $rows = [];
+
             foreach ($data['attendance'] as $studentId => $status) {
-                if (! in_array((int) $studentId, $validStudentIds, true)) {
+                $studentId = (int) $studentId;
+                if (! isset($validStudentMap[$studentId])) {
                     continue;
                 }
 
-                PrefectDailyAttendance::updateOrCreate(
-                    [
-                        'group_id' => $group->id,
-                        'student_id' => $studentId,
-                        'attendance_date' => $date,
-                    ],
-                    [
-                        'status' => $status,
-                        'recorded_by' => auth()->id(),
-                    ]
+                $attendance = $existing->get($studentId);
+                if (
+                    $attendance
+                    && (int) $attendance->group_id === (int) $group->id
+                    && $attendance->status === $status
+                    && (int) $attendance->recorded_by === (int) auth()->id()
+                ) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'group_id' => $group->id,
+                    'student_id' => $studentId,
+                    'attendance_date' => $date,
+                    'status' => $status,
+                    'recorded_by' => auth()->id(),
+                    'created_at' => $attendance?->created_at ?? $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            if ($rows !== []) {
+                PrefectDailyAttendance::upsert(
+                    $rows,
+                    ['student_id', 'attendance_date'],
+                    ['group_id', 'status', 'recorded_by', 'updated_at']
                 );
             }
         });

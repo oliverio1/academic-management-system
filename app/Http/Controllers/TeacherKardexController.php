@@ -7,6 +7,7 @@ use App\Models\AcademicSession;
 use App\Models\SchoolCycle;
 use App\Models\TeachingAssignment;
 use App\Models\TemarioPoint;
+use App\Services\CurrentSchoolCycle;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 
 class TeacherKardexController extends Controller
@@ -20,14 +21,12 @@ class TeacherKardexController extends Controller
             403
         );
 
-        $teachingAssignment->load(['teacher.user', 'group.level.modality', 'subject', 'schedules']);
+        $teachingAssignment->load(['teacher.user', 'group.level.modality', 'subject', 'schedules', 'schoolCycleGroup']);
 
-        $schoolCycle = SchoolCycle::query()
-            ->where('modality_id', $teachingAssignment->group->level->modality_id)
-            ->where('is_active', true)
-            ->when((int) session('active_campus_id', 0) > 0, fn ($q) => $q->where('campus_id', (int) session('active_campus_id')))
-            ->orderByDesc('start_date')
-            ->first();
+        $schoolCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), (int) session('active_campus_id', 0));
+        if ($schoolCycle && (int) ($teachingAssignment->schoolCycleGroup?->school_cycle_id ?? 0) !== (int) $schoolCycle->id) {
+            $schoolCycle = null;
+        }
 
         $period = AcademicPeriod::activeForModality(
             $teachingAssignment->group->level->modality_id

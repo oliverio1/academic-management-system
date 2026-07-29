@@ -22,34 +22,45 @@
                         <h4 class="mb-3">Mis clases</h4>
                     </div>
                     <div class="card-body">
-                        @if($assignments->isEmpty())
+                        @if(($classCards ?? collect())->isEmpty())
                             <div class="alert alert-info">
                                 No tienes clases asignadas actualmente.
                             </div>
                         @else
                             <div class="row">
-                                @foreach($assignments as $assignment)
+                                @foreach($classCards as $classCard)
+                                    @php
+                                        $assignment = $classCard['assignment'];
+                                        $hasEvaluationCriteria = (bool) $classCard['has_evaluation_criteria'];
+                                    @endphp
                                     <div class="col-md-4 mt-3 mb-3">
                                         <div class="card mb-3 h-100">
                                             <div class="card-body">
-                                                <h5 class="card-title mb-1">{{ $assignment->subject->name }}</h5>
-                                                <p class="text-muted mb-3"> ({{ $assignment->group->name }})</p>
+                                                <h5 class="card-title mb-1">{{ $classCard['subject']->name }}</h5>
+                                                <p class="text-muted mb-2">Grupo {{ $classCard['group']->name }}</p>
+
                                                 <a href="{{ route('teacher.classes.sessions.index', $assignment) }}" class="btn btn-primary btn-sm btn-block">
                                                     <i class="fas fa-calendar-alt mr-1"></i>
-                                                    Ver sesiones ({{ $assignment->assigned_sessions_in_period }} de {{ $assignment->total_sessions_in_period }})
+                                                    Ver sesiones ({{ $classCard['assigned_sessions'] }} de {{ $classCard['total_sessions'] }})
                                                 </a>
+
                                                 <a href="{{ route('teacher.classes.evaluation.index', $assignment) }}"
-                                                   class="btn {{ $assignment->has_evaluation_criteria ? 'btn-warning' : 'btn-danger' }} btn-sm btn-block">
+                                                   class="btn {{ $hasEvaluationCriteria ? 'btn-success' : 'btn-danger' }} btn-sm btn-block">
                                                     <i class="fas fa-sliders-h mr-1"></i>
-                                                    Configurar rubros
+                                                    {{ $hasEvaluationCriteria ? 'Rubros configurados' : 'Configurar rubros' }}
                                                 </a>
                                                 <a href="{{ route('teacher.paper-exams.index', ['assignment_id' => $assignment->id]) }}"
-                                                   class="btn btn-outline-info btn-sm btn-block">
+                                                   class="btn btn-info btn-sm btn-block">
                                                     <i class="fas fa-file-signature mr-1"></i>
                                                     Exámenes
                                                 </a>
+                                                <a href="{{ route('teacher.evaluation.activities', $assignment) }}"
+                                                   class="btn btn-warning btn-sm btn-block">
+                                                    <i class="fas fa-tasks mr-1"></i>
+                                                    Actividades
+                                                </a>
                                                 <a href="{{ route('practices.index', $assignment) }}"
-                                                   class="btn btn-outline-success btn-sm btn-block">
+                                                   class="btn btn-secondary btn-sm btn-block">
                                                     <i class="fas fa-flask mr-1"></i>
                                                     Entregables
                                                 </a>

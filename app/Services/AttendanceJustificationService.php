@@ -49,10 +49,8 @@ class AttendanceJustificationService
             ]);
     
             // 2️⃣ Obtener sesiones reales del periodo
-            $sessions = AcademicSession::whereBetween(
-                    'session_date',
-                    [$from->toDateString(), $to->toDateString()]
-                )
+            $sessions = AcademicSession::whereDate('session_date', '>=', $from->toDateString())
+                ->whereDate('session_date', '<=', $to->toDateString())
                 ->where('is_cancelled', false)
                 ->with('teachingAssignment')
                 ->get();
@@ -109,10 +107,8 @@ class AttendanceJustificationService
         // -------------------------------------------------
         // 2️⃣ NOTIFICAR A PROFESORES (FUERA DE LA TX)
         // -------------------------------------------------
-        $teacherIds = AcademicSession::whereBetween(
-                'session_date',
-                [$from->toDateString(), $to->toDateString()]
-            )
+        $teacherIds = AcademicSession::whereDate('session_date', '>=', $from->toDateString())
+            ->whereDate('session_date', '<=', $to->toDateString())
             ->where('is_cancelled', false)
             ->with('teachingAssignment')
             ->get()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PrefectDailyAttendance;
 use App\Models\SchoolCycle;
 use App\Models\SchoolCycleGroup;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Support\Facades\DB;
 
 class CoordinationAttendanceRiskController extends Controller
@@ -18,15 +19,10 @@ class CoordinationAttendanceRiskController extends Controller
             return view('coordination.students.attendance-risk', ['students' => collect()]);
         }
 
-        $activeCycleIds = SchoolCycle::query()
-            ->where('is_active', true)
-            ->where('campus_id', $activeCampusId)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        $activeCycleId = app(CurrentSchoolCycle::class)->id(auth()->user(), $activeCampusId);
 
         $activeGroupIds = SchoolCycleGroup::query()
-            ->whereIn('school_cycle_id', $activeCycleIds)
+            ->when($activeCycleId, fn ($query) => $query->where('school_cycle_id', (int) $activeCycleId), fn ($query) => $query->whereRaw('1 = 0'))
             ->where('campus_id', $activeCampusId)
             ->where('is_active', true)
             ->pluck('group_id')

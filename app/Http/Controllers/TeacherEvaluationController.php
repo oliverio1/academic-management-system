@@ -6,6 +6,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Activity;
 use App\Models\SchoolCycle;
 use App\Models\TeachingAssignment;
+use App\Services\CurrentSchoolCycle;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -63,11 +64,24 @@ class TeacherEvaluationController extends Controller
             ->filter(fn ($activity) => is_null($activity->session_activity_id))
             ->values();
 
+        $cloneCandidates = $activeCycle
+            ? TeachingAssignment::query()
+                ->with(['group:id,name', 'subject:id,name'])
+                ->whereKeyNot($assignment->id)
+                ->where('teacher_id', $teacher->id)
+                ->where('subject_id', $assignment->subject_id)
+                ->where('is_active', true)
+                ->whereHas('schoolCycleGroup', fn ($query) => $query->where('school_cycle_id', $activeCycle->id))
+                ->orderBy('group_id')
+                ->get()
+            : collect();
+
         return view('teacher.evaluation.activities', [
             'assignment' => $assignment,
             'activities' => $activities,
             'activitiesWithSession' => $activitiesWithSession,
             'manualActivities' => $manualActivities,
+            'cloneCandidates' => $cloneCandidates,
         ]);
     }
 
@@ -218,15 +232,6 @@ class TeacherEvaluationController extends Controller
     {
         $activeCampusId = (int) session('active_campus_id', 0);
 
-        return SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
-                $q->where(function ($nested) use ($activeCampusId) {
-                    $nested->where('campus_id', $activeCampusId)
-                        ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
-                });
-            })
-            ->orderByDesc('start_date')
-            ->first();
+        return app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
     }
 }

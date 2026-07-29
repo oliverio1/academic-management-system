@@ -8,6 +8,7 @@ use App\Models\CyclePartial;
 use App\Models\SchoolCycle;
 use App\Services\AcademicPerformanceService;
 use App\Services\AttendanceService;
+use App\Services\CurrentSchoolCycle;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Carbon\Carbon;
 
@@ -84,11 +85,10 @@ class ActaController extends Controller
     {
         $modalityId = $assignment->group->level->modality_id;
 
-        $activeCycle = SchoolCycle::query()
-            ->where('modality_id', $modalityId)
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), (int) session('active_campus_id', 0));
+        if ($activeCycle && (int) $activeCycle->modality_id !== (int) $modalityId) {
+            $activeCycle = null;
+        }
 
         if ($activeCycle) {
             $partials = CyclePartial::query()

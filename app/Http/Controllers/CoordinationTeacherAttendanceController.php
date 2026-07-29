@@ -7,6 +7,7 @@ use App\Models\SchoolCycle;
 use App\Models\Schedule;
 use App\Models\Teacher;
 use App\Models\TeacherCampusAttendance;
+use App\Services\CurrentSchoolCycle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -164,11 +165,7 @@ class CoordinationTeacherAttendanceController extends Controller
 
     private function firstClassStartTime(int $teacherId, int $campusId, Carbon $date): ?Carbon
     {
-        $cycle = SchoolCycle::query()
-            ->where('campus_id', $campusId)
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $cycle = app(CurrentSchoolCycle::class)->get(auth()->user(), $campusId);
 
         if (! $cycle) {
             return null;
