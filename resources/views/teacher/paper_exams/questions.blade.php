@@ -9,11 +9,11 @@
             <div>
                 <h4 class="mb-0">Seleccionar preguntas</h4>
                 <small class="text-muted">
-                    {{ $paperExam->title }} · {{ $paperExam->assignment->subject->name ?? 'N/D' }} · Grupo {{ $paperExam->assignment->group->name ?? 'N/D' }}
+                    {{ $paperExam->title }} / {{ $paperExam->assignment->subject->name ?? 'N/D' }} / Grupo {{ $paperExam->assignment->group->name ?? 'N/D' }}
                 </small>
             </div>
             <a href="{{ route('teacher.paper-exams.index', ['assignment_id' => $paperExam->teaching_assignment_id]) }}" class="btn btn-outline-secondary btn-sm">
-                Volver a exámenes
+                Volver a examenes
             </a>
         </div>
 
@@ -40,7 +40,7 @@
 
                 @if($banks->isEmpty())
                     <div class="alert alert-info mb-0">
-                        No tienes bancos activos con preguntas para esta materia.
+                        No tienes bancos activos con preguntas para esta materia y modalidad.
                         <a href="{{ route('teacher.question-banks.index') }}" class="alert-link">Crear o revisar bancos</a>.
                     </div>
                 @else
@@ -70,7 +70,8 @@
                                 <div>
                                     <strong>{{ $bank->name }}</strong>
                                     <span class="text-muted">
-                                        {{ $bank->partial ? ' · '.$bank->partial->name : '' }}
+                                        {{ $bank->schoolCycle ? ' / '.$bank->schoolCycle->name : '' }}
+                                        {{ $bank->partial ? ' / '.$bank->partial->name : '' }}
                                     </span>
                                 </div>
                                 <span class="badge badge-light">{{ $bank->questions->count() }} preguntas</span>

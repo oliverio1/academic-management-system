@@ -9,7 +9,7 @@
             <h4 class="mb-0">Editar pregunta</h4>
             <a href="{{ route('teacher.question-banks.show', $questionBank) }}" class="btn btn-outline-secondary btn-sm">Volver</a>
         </div>
-        <form method="POST" action="{{ route('teacher.question-banks.questions.update', [$questionBank, $question]) }}">
+        <form method="POST" action="{{ route('teacher.question-banks.questions.update', [$questionBank, $question]) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             <div class="card-body">
@@ -57,6 +57,40 @@
                             <div id="prompt_preview"></div>
                         </div>
                     </div>
+                </div>
+
+                @php
+                    $meta = is_array($question->meta ?? null) ? $question->meta : [];
+                @endphp
+                <div class="border rounded p-3 mb-3 bg-light">
+                    <div class="font-weight-bold mb-2">Material de apoyo</div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Titulo del apoyo</label>
+                            <input type="text" name="support_title" class="form-control" value="{{ old('support_title', $meta['support_title'] ?? '') }}" placeholder="Lectura, imagen, fragmento...">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Imagen de apoyo</label>
+                            <input type="file" name="support_image" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>URL de imagen</label>
+                            <input type="url" name="support_image_url" class="form-control" value="{{ old('support_image_url', $meta['support_image_url'] ?? '') }}" placeholder="https://...">
+                        </div>
+                        @if(!empty($meta['support_image_url']))
+                            <div class="form-group col-md-12">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" name="remove_support_image" value="1" class="custom-control-input" id="remove_support_image">
+                                    <label class="custom-control-label" for="remove_support_image">Quitar imagen actual</label>
+                                </div>
+                            </div>
+                        @endif
+                        <div class="form-group col-md-12">
+                            <label>Texto largo de apoyo</label>
+                            <textarea name="support_text" rows="8" class="form-control" placeholder="Pega aqui lecturas, fragmentos o instrucciones largas.">{{ old('support_text', $meta['support_text'] ?? '') }}</textarea>
+                        </div>
+                    </div>
+                    @include('partials.question_support_material', ['question' => $question])
                 </div>
 
                 <hr>

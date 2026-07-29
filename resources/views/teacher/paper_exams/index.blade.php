@@ -45,6 +45,9 @@
                                 </span>
                             </td>
                             <td class="text-right">
+                                <a class="btn btn-outline-secondary btn-sm" href="{{ route('teacher.paper-exams.preview', $exam) }}">
+                                    Vista alumno
+                                </a>
                                 <a class="btn btn-outline-success btn-sm" href="{{ route('teacher.paper-exams.questions.edit', $exam) }}">
                                     Seleccionar preguntas
                                 </a>

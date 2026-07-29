@@ -15,16 +15,26 @@ class PaperExamAttempt extends Model
         'status',
         'score',
         'max_score',
+        'question_sequence',
+        'options_sequence',
+        'exam_payload',
+        'autosave_payload',
+        'autosaved_at',
+        'locked_at',
+        'lock_reason',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'submitted_at' => 'datetime',
         'locked_at' => 'datetime',
+        'autosaved_at' => 'datetime',
         'score' => 'decimal:2',
         'max_score' => 'decimal:2',
         'question_sequence' => 'array',
         'options_sequence' => 'array',
+        'exam_payload' => 'array',
+        'autosave_payload' => 'array',
     ];
 
     public function exam()
@@ -40,5 +50,10 @@ class PaperExamAttempt extends Model
     public function answers()
     {
         return $this->hasMany(PaperExamAttemptAnswer::class, 'paper_exam_attempt_id');
+    }
+
+    public function events()
+    {
+        return $this->hasMany(PaperExamAttemptEvent::class, 'paper_exam_attempt_id');
     }
 }

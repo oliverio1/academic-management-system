@@ -45,6 +45,46 @@
         </div>
     </div>
 
+    @if($attempt->status === 'locked')
+        <div class="alert alert-danger">
+            Intento bloqueado{{ $attempt->lock_reason ? ' por: ' . $attempt->lock_reason : '' }}.
+        </div>
+    @endif
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Bitacora de seguridad</strong></div>
+        <div class="card-body table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Evento</th>
+                        <th>IP</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($attempt->events->sortByDesc('occurred_at') as $event)
+                        <tr>
+                            <td>{{ optional($event->occurred_at)->format('d/m/Y H:i:s') ?: '-' }}</td>
+                            <td>{{ $event->event_type }}</td>
+                            <td>{{ $event->ip_address ?: '-' }}</td>
+                            <td class="small">
+                                @if(!empty($event->metadata))
+                                    {{ collect($event->metadata)->map(fn($value, $key) => $key . ': ' . (is_scalar($value) ? $value : json_encode($value)))->implode(' | ') }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="text-center text-muted">Sin eventos registrados.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <form method="POST" action="{{ route('teacher.paper-exams.attempts.grade', [$paperExam, $attempt]) }}">
         @csrf
         @method('PUT')

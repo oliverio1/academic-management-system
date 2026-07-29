@@ -5,9 +5,15 @@
 @section('content')
 <div class="content px-3 mt-3">
     <div class="card mb-3">
-        <div class="card-header">
-            <h4 class="mb-0">{{ $questionBank->name }}</h4>
-            <small class="text-muted">{{ $questionBank->subject->name ?? 'N/D' }} | {{ $questionBank->partial->name ?? 'Sin parcial' }}</small>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">{{ $questionBank->name }}</h4>
+                <small class="text-muted">{{ $questionBank->subject->name ?? 'N/D' }} | {{ $questionBank->partial->name ?? 'Sin parcial' }}</small>
+            </div>
+            <div>
+                <a href="{{ route('teacher.question-banks.edit', $questionBank) }}" class="btn btn-outline-secondary btn-sm">Editar banco</a>
+                <a href="{{ route('teacher.question-banks.exam.configure', $questionBank) }}" class="btn btn-outline-success btn-sm">Configurar examen</a>
+            </div>
         </div>
     </div>
 
@@ -16,14 +22,25 @@
         <form method="POST" action="{{ route('teacher.question-banks.import', $questionBank) }}" enctype="multipart/form-data">
             @csrf
             <div class="card-body">
+                <div class="alert alert-info">
+                    <strong>Parcial de importacion:</strong>
+                    {{ $questionBank->partial->name ?? 'Sin parcial asignado' }}.
+                    Todas las preguntas del archivo se cargaran a este banco:
+                    {{ $questionBank->subject->name ?? 'Materia' }} / {{ $questionBank->schoolCycle->name ?? 'Ciclo' }}.
+                    @if(! $questionBank->cycle_partial_id)
+                        <div class="mt-1">
+                            <a href="{{ route('teacher.question-banks.edit', $questionBank) }}" class="alert-link">Asigna un parcial antes de importar.</a>
+                        </div>
+                    @endif
+                </div>
                 <div class="form-row align-items-end">
                     <div class="form-group col-md-7">
                         <label>Archivo Excel/CSV</label>
-                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required {{ ! $questionBank->cycle_partial_id ? 'disabled' : '' }}>
                     </div>
                     <div class="form-group col-md-5">
-                        <button class="btn btn-primary">Importar preguntas</button>
-                        <a href="{{ route('teacher.question-banks.template.download') }}" class="btn btn-outline-secondary">Descargar plantilla</a>
+                        <button class="btn btn-primary" {{ ! $questionBank->cycle_partial_id ? 'disabled' : '' }}>Importar preguntas</button>
+                        <a href="{{ route('teacher.question-banks.template.download-for-bank', $questionBank) }}" class="btn btn-outline-secondary">Descargar plantilla</a>
                     </div>
                 </div>
             </div>
@@ -32,7 +49,7 @@
 
     <div class="card mb-3">
         <div class="card-header"><strong>Agregar pregunta</strong></div>
-        <form method="POST" action="{{ route('teacher.question-banks.questions.store', $questionBank) }}">
+        <form method="POST" action="{{ route('teacher.question-banks.questions.store', $questionBank) }}" enctype="multipart/form-data">
             @csrf
             <div class="card-body">
                 <div class="form-row">
@@ -73,6 +90,27 @@
                         <div class="border rounded p-2 mt-2 bg-light">
                             <div class="small text-muted mb-1">Vista previa</div>
                             <div id="prompt_preview"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="border rounded p-3 mb-3 bg-light">
+                    <div class="font-weight-bold mb-2">Material de apoyo</div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Titulo del apoyo</label>
+                            <input type="text" name="support_title" class="form-control" value="{{ old('support_title') }}" placeholder="Lectura, imagen, fragmento...">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Imagen de apoyo</label>
+                            <input type="file" name="support_image" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>URL de imagen</label>
+                            <input type="url" name="support_image_url" class="form-control" value="{{ old('support_image_url') }}" placeholder="https://...">
+                        </div>
+                        <div class="form-group col-md-12">
+                            <label>Texto largo de apoyo</label>
+                            <textarea name="support_text" rows="8" class="form-control" placeholder="Pega aqui lecturas, fragmentos o instrucciones largas.">{{ old('support_text') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -133,7 +171,16 @@
                         <tr>
                             <td>{{ $question->sort_order }}</td>
                             <td>{{ $question->type_label }}</td>
-                            <td>{{ $question->prompt }}</td>
+                            <td>
+                                {{ $question->prompt }}
+                                @php
+                                    $meta = is_array($question->meta ?? null) ? $question->meta : [];
+                                    $hasSupport = !empty($meta['support_text']) || !empty($meta['support_image_url']) || !empty($meta['support_title']);
+                                @endphp
+                                @if($hasSupport)
+                                    <span class="badge badge-info ml-1">Apoyo</span>
+                                @endif
+                            </td>
                             <td>{{ number_format((float)$question->points, 2) }}</td>
                             <td class="text-right text-nowrap" style="width: 290px;">
                                 <a href="{{ route('teacher.question-banks.questions.preview', [$questionBank, $question]) }}" class="btn btn-outline-info btn-sm mr-1">Vista alumno</a>

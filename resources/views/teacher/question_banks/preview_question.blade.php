@@ -14,6 +14,7 @@
         </div>
         <div class="card-body">
             <div class="mb-3 p-3 border rounded">
+                @include('partials.question_support_material', ['question' => $question])
                 <div class="mb-2">
                     <strong>Pregunta:</strong> {{ $question->prompt }}
                 </div>

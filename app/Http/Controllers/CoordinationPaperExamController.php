@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\CurrentSchoolCycle;
 
 class CoordinationPaperExamController extends Controller
 {
@@ -28,10 +29,17 @@ class CoordinationPaperExamController extends Controller
     public function index()
     {
         $activeCampusId = $this->activeCampusId();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
 
         $exams = PaperExam::query()
             ->with(['assignment.group', 'assignment.subject', 'partial', 'schoolCycle'])
             ->withCount('examQuestions')
+            ->when(
+                $activeCycle,
+                fn ($query) => $query->where('school_cycle_id', (int) $activeCycle->id),
+                fn ($query) => $query->whereRaw('1 = 0')
+            )
+            ->whereHas('assignment.schoolCycleGroup', fn ($query) => $query->where('is_active', true))
             ->when($activeCampusId > 0, fn ($query) => $this->applyCampusFilterToExamQuery($query, $activeCampusId))
             ->orderByDesc('id')
             ->get();
@@ -43,11 +51,7 @@ class CoordinationPaperExamController extends Controller
     {
         $activeCampusId = $this->activeCampusId();
 
-        $activeCycle = SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, fn ($query) => $this->applyCampusFilterToCycleQuery($query, $activeCampusId))
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get($request->user(), $activeCampusId);
 
         $cycleGroups = collect();
         $selectedCycleGroup = null;
@@ -215,17 +219,13 @@ class CoordinationPaperExamController extends Controller
     public function create()
     {
         $activeCampusId = $this->activeCampusId();
-        $activeCycle = SchoolCycle::query()
-            ->where('is_active', true)
-            ->when($activeCampusId > 0, fn ($q) => $this->applyCampusFilterToCycleQuery($q, $activeCampusId))
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
 
         $assignments = TeachingAssignment::query()
             ->with(['group', 'subject'])
             ->when(
                 $activeCycle,
-                fn ($q) => $q->whereHas('schoolCycleGroup', fn ($sq) => $sq->where('school_cycle_id', $activeCycle->id))
+                fn ($q) => $q->whereHas('schoolCycleGroup', fn ($sq) => $sq->where('school_cycle_id', $activeCycle->id)->where('is_active', true))
             )
             ->when($activeCampusId > 0, fn ($q) => $this->applyCampusFilterToAssignmentQuery($q, $activeCampusId))
             ->where('is_active', true)
@@ -235,6 +235,11 @@ class CoordinationPaperExamController extends Controller
         $banks = QuestionBank::query()
             ->with(['subject', 'teacher.user', 'partial', 'questions'])
             ->where('is_active', true)
+            ->when(
+                $activeCycle,
+                fn ($q) => $q->where('school_cycle_id', $activeCycle->id),
+                fn ($q) => $q->whereRaw('1 = 0')
+            )
             ->orderByDesc('id')
             ->get();
 
@@ -259,6 +264,55 @@ class CoordinationPaperExamController extends Controller
             'question_ids.*' => ['integer', 'exists:questions,id'],
         ]);
 
+        $assignment = TeachingAssignment::query()
+            ->with('schoolCycleGroup')
+            ->whereKey((int) $data['teaching_assignment_id'])
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $schoolCycleId = (int) ($assignment->schoolCycleGroup?->school_cycle_id ?? 0);
+        if ($schoolCycleId <= 0) {
+            throw ValidationException::withMessages([
+                'teaching_assignment_id' => 'La asignacion seleccionada no pertenece a un ciclo activo.',
+            ]);
+        }
+
+        if (! empty($data['cycle_partial_id'])) {
+            $partialBelongsToCycle = CyclePartial::query()
+                ->whereKey((int) $data['cycle_partial_id'])
+                ->where('school_cycle_id', $schoolCycleId)
+                ->exists();
+
+            if (! $partialBelongsToCycle) {
+                throw ValidationException::withMessages([
+                    'cycle_partial_id' => 'El parcial seleccionado no pertenece al ciclo de la asignacion.',
+                ]);
+            }
+        }
+
+        $questionIds = collect($data['question_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $validQuestionIds = QuestionBank::query()
+            ->where('subject_id', $assignment->subject_id)
+            ->where('school_cycle_id', $schoolCycleId)
+            ->where('is_active', true)
+            ->whereHas('questions', fn ($query) => $query->whereIn('id', $questionIds)->where('is_active', true))
+            ->with(['questions' => fn ($query) => $query->whereIn('id', $questionIds)->where('is_active', true)])
+            ->get()
+            ->flatMap(fn (QuestionBank $bank) => $bank->questions->pluck('id'))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($validQuestionIds->count() !== $questionIds->count()) {
+            throw ValidationException::withMessages([
+                'question_ids' => 'Solo puedes seleccionar preguntas activas de bancos del ciclo y materia de la asignacion.',
+            ]);
+        }
+
         $activeCampusId = $this->activeCampusId();
         if ($activeCampusId > 0) {
             $assignmentBelongsToCampus = TeachingAssignment::query()
@@ -272,11 +326,11 @@ class CoordinationPaperExamController extends Controller
         }
 
         $exam = null;
-        DB::transaction(function () use ($data, &$exam) {
+        DB::transaction(function () use ($data, $questionIds, $schoolCycleId, &$exam) {
             $exam = PaperExam::create([
                 'created_by' => auth()->id(),
                 'teaching_assignment_id' => $data['teaching_assignment_id'],
-                'school_cycle_id' => $data['school_cycle_id'] ?? null,
+                'school_cycle_id' => $schoolCycleId,
                 'cycle_partial_id' => $data['cycle_partial_id'] ?? null,
                 'title' => $data['title'],
                 'instructions' => $data['instructions'] ?? null,
@@ -289,16 +343,12 @@ class CoordinationPaperExamController extends Controller
                 'is_active' => true,
             ]);
 
-            collect($data['question_ids'])
-                ->map(fn ($id) => (int) $id)
-                ->unique()
-                ->values()
-                ->each(function ($questionId, $index) use ($exam) {
-                    $exam->examQuestions()->create([
-                        'question_id' => $questionId,
-                        'sort_order' => $index + 1,
-                    ]);
-                });
+            $questionIds->each(function ($questionId, $index) use ($exam) {
+                $exam->examQuestions()->create([
+                    'question_id' => $questionId,
+                    'sort_order' => $index + 1,
+                ]);
+            });
         });
 
         return redirect()
@@ -317,6 +367,7 @@ class CoordinationPaperExamController extends Controller
             'examQuestions.question.matchingPairs',
             'examQuestions.question.fillBlanks',
             'attempts.student.user',
+            'attempts.events',
         ]);
 
         return view('coordination.paper_exams.show', compact('paperExam'));

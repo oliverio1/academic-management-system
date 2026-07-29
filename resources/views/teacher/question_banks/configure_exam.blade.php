@@ -9,9 +9,9 @@
             <div>
                 <h4 class="mb-0">Configurar examen</h4>
                 <small class="text-muted">
-                    {{ $questionBank->name }} · {{ $questionBank->subject->name ?? 'N/D' }}
+                    {{ $questionBank->name }} / {{ $questionBank->subject->name ?? 'N/D' }}
                     @if($questionBank->partial)
-                        · {{ $questionBank->partial->name }}
+                        / {{ $questionBank->partial->name }}
                     @endif
                 </small>
             </div>
@@ -39,39 +39,41 @@
                     </div>
                 @endif
 
-                @if($exams->isEmpty())
+                @if($examTargets->isEmpty())
                     <div class="alert alert-warning">
-                        No hay exámenes programados para esta materia/parcial. Coordinación debe programar primero el horario del examen.
+                        No hay grupos activos disponibles para esta materia en el ciclo del banco.
+                    </div>
+                @elseif($exams->isEmpty())
+                    <div class="alert alert-info">
+                        Coordinacion aun no ha programado este examen. Puedes generarlo ahora para el grupo seleccionado.
                     </div>
                 @endif
 
                 @if($questionBank->questions->isEmpty())
                     <div class="alert alert-info">
-                        Este banco todavía no tiene preguntas cargadas.
+                        Este banco todavia no tiene preguntas cargadas.
                     </div>
                 @endif
 
                 <div class="form-group">
-                    <label>Examen programado</label>
-                    <select name="paper_exam_id" id="paper_exam_id" class="form-control" required {{ $exams->isEmpty() ? 'disabled' : '' }}>
-                        @foreach($exams as $exam)
-                            @php
-                                $selectedIds = $exam->examQuestions
-                                    ->pluck('question_id')
-                                    ->map(fn ($id) => (int) $id)
-                                    ->values()
-                                    ->all();
-                            @endphp
-                            <option value="{{ $exam->id }}" data-question-ids='@json($selectedIds)'>
-                                {{ $exam->title }}
-                                · Grupo {{ $exam->assignment->group->name ?? 'N/D' }}
-                                @if($exam->online_available_from)
-                                    · {{ $exam->online_available_from->format('d/m/Y H:i') }}
-                                @endif
-                                · {{ $exam->exam_questions_count }} pregunta(s)
+                    <label>Examen / grupo</label>
+                    <select name="exam_target" id="exam_target" class="form-control" required {{ $examTargets->isEmpty() ? 'disabled' : '' }}>
+                        @foreach($examTargets as $target)
+                            <option value="{{ $target['value'] }}" data-question-ids='@json($target['question_ids'])'>
+                                {{ $target['label'] }}
                             </option>
                         @endforeach
                     </select>
+                    <small class="form-text text-muted">
+                        Si el examen aun no existe, se creara al guardar las preguntas.
+                    </small>
+                </div>
+
+                <div class="custom-control custom-checkbox mb-3">
+                    <input type="checkbox" name="apply_scope" value="all_groups" class="custom-control-input" id="apply_scope_all_groups">
+                    <label class="custom-control-label" for="apply_scope_all_groups">
+                        Aplicar estas preguntas a todos mis grupos activos de esta materia
+                    </label>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -117,7 +119,7 @@
             </div>
 
             <div class="card-footer text-right">
-                <button class="btn btn-primary" {{ $exams->isEmpty() || $questionBank->questions->isEmpty() ? 'disabled' : '' }}>
+                <button class="btn btn-primary" {{ $examTargets->isEmpty() || $questionBank->questions->isEmpty() ? 'disabled' : '' }}>
                     Guardar preguntas del examen
                 </button>
             </div>
@@ -129,7 +131,7 @@
 @section('page_scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const examSelect = document.getElementById('paper_exam_id');
+    const examSelect = document.getElementById('exam_target');
     const checkboxes = Array.from(document.querySelectorAll('.question-checkbox'));
     const selectAllButton = document.getElementById('select_all_questions');
     const clearAllButton = document.getElementById('clear_all_questions');

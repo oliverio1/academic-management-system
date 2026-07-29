@@ -15,29 +15,27 @@
         <div class="card-body">
             <p><strong>Instrucciones:</strong> {{ $paperExam->instructions ?: 'Sin instrucciones.' }}</p>
             <hr>
-            <h5>Configuración en línea</h5>
+            <h5>Configuracion en linea</h5>
             <form method="POST" action="{{ route('coordination.paper-exams.online.update', $paperExam) }}" class="mb-3">
                 @csrf
                 @method('PUT')
                 <div class="form-row">
                     <div class="form-group col-md-2">
-                        <label>Intentos máx.</label>
+                        <label>Intentos max.</label>
                         <input type="number" class="form-control" min="1" max="10" name="online_max_attempts" value="{{ (int) ($paperExam->online_max_attempts ?: 1) }}">
                     </div>
                     <div class="form-group col-md-3">
                         <label>Disponible desde</label>
-                        <input type="datetime-local" class="form-control" name="online_available_from"
-                               value="{{ optional($paperExam->online_available_from)->format('Y-m-d\\TH:i') }}">
+                        <input type="datetime-local" class="form-control" name="online_available_from" value="{{ optional($paperExam->online_available_from)->format('Y-m-d\\TH:i') }}">
                     </div>
                     <div class="form-group col-md-3">
                         <label>Disponible hasta</label>
-                        <input type="datetime-local" class="form-control" name="online_available_until"
-                               value="{{ optional($paperExam->online_available_until)->format('Y-m-d\\TH:i') }}">
+                        <input type="datetime-local" class="form-control" name="online_available_until" value="{{ optional($paperExam->online_available_until)->format('Y-m-d\\TH:i') }}">
                     </div>
                     <div class="form-group col-md-4 d-flex align-items-center">
                         <div class="custom-control custom-checkbox mr-4">
                             <input type="checkbox" class="custom-control-input" id="show_online_{{ $paperExam->id }}" name="is_online_enabled" value="1" {{ $paperExam->is_online_enabled ? 'checked' : '' }}>
-                            <label class="custom-control-label" for="show_online_{{ $paperExam->id }}">Habilitar examen en línea</label>
+                            <label class="custom-control-label" for="show_online_{{ $paperExam->id }}">Habilitar examen en linea</label>
                         </div>
                         <div class="custom-control custom-checkbox">
                             <input type="checkbox" class="custom-control-input" id="show_result_{{ $paperExam->id }}" name="online_show_result" value="1" {{ $paperExam->online_show_result ? 'checked' : '' }}>
@@ -45,7 +43,7 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn btn-primary btn-sm">Guardar configuración</button>
+                <button class="btn btn-primary btn-sm">Guardar configuracion</button>
             </form>
 
             <h6>Intentos registrados</h6>
@@ -57,18 +55,33 @@
                             <th>Intento</th>
                             <th>Estado</th>
                             <th>Inicio</th>
-                            <th>Envío</th>
+                            <th>Envio</th>
+                            <th>Incidentes</th>
                             <th>Puntaje</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($paperExam->attempts->sortByDesc('id') as $attempt)
+                            @php($eventCount = $attempt->events->count())
                             <tr>
                                 <td>{{ optional(optional($attempt->student)->user)->name ?? 'N/D' }}</td>
                                 <td>{{ $attempt->attempt_number }}</td>
-                                <td><span class="badge badge-{{ $attempt->status === 'submitted' ? 'success' : 'warning' }}">{{ $attempt->status }}</span></td>
+                                <td>
+                                    <span class="badge badge-{{ $attempt->status === 'locked' ? 'danger' : ($attempt->status === 'submitted' ? 'success' : 'warning') }}">
+                                        {{ $attempt->status }}
+                                    </span>
+                                    @if($attempt->lock_reason)
+                                        <div class="small text-muted">{{ $attempt->lock_reason }}</div>
+                                    @endif
+                                </td>
                                 <td>{{ optional($attempt->started_at)->format('d/m/Y H:i') ?: '-' }}</td>
                                 <td>{{ optional($attempt->submitted_at)->format('d/m/Y H:i') ?: '-' }}</td>
+                                <td>
+                                    <span class="badge badge-{{ $eventCount > 0 ? 'warning' : 'light' }}">{{ $eventCount }}</span>
+                                    @if($attempt->locked_at)
+                                        <div class="small text-muted">Bloqueo: {{ $attempt->locked_at->format('H:i:s') }}</div>
+                                    @endif
+                                </td>
                                 <td>
                                     @if($attempt->score !== null && $attempt->max_score !== null)
                                         {{ number_format((float) $attempt->score, 2) }} / {{ number_format((float) $attempt->max_score, 2) }}
@@ -78,7 +91,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center text-muted">Sin intentos todavía.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted">Sin intentos todavia.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
