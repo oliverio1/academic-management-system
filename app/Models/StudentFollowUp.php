@@ -55,7 +55,7 @@ class StudentFollowUp extends Model
             ->exists();
 
         if (! $pending) {
-            $this->update(['status' => 'closed']);
+            $this->update(['status' => 'completed']);
         }
     }
 }

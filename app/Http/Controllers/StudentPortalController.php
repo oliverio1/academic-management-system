@@ -67,6 +67,89 @@ class StudentPortalController extends Controller
         ]);
     }
 
+    public function academicPerformance(AcademicPerformanceService $performance)
+    {
+        $student = auth()->user()->student;
+        abort_unless($student, 403);
+
+        $activeCampusId = (int) session('active_campus_id', 0);
+
+        $assignments = TeachingAssignment::query()
+            ->with(['subject', 'teacher.user', 'group.level.modality'])
+            ->where('group_id', $student->group_id)
+            ->where('is_active', true)
+            ->when(
+                $activeCampusId > 0,
+                fn ($query) => $query->whereHas('schedules.schoolCycle', fn ($q) => $this->applyCampusFilterToCycleQuery($q, $activeCampusId))
+            )
+            ->orderBy('subject_id')
+            ->get();
+
+        $rows = $assignments->map(function (TeachingAssignment $assignment) use ($student, $performance) {
+            $period = $performance->periodForAssignment($assignment);
+            $breakdown = $performance->breakdownForAssignment($student, $assignment);
+            $status = $performance->academicStatus($student, $assignment);
+
+            $sessions = AcademicSession::query()
+                ->where('teaching_assignment_id', $assignment->id)
+                ->where('is_cancelled', false)
+                ->when($period, fn ($q) => $q->where('academic_period_id', $period->id))
+                ->with(['attendances' => fn ($q) => $q->where('student_id', $student->id)])
+                ->get();
+
+            $totalSessions = $sessions->count();
+            $attendedSessions = $sessions->filter(function ($session) {
+                $status = optional($session->attendances->first())->status;
+
+                return in_array($status, ['present', 'late', 'justified'], true);
+            })->count();
+
+            $attendancePercentage = $totalSessions > 0
+                ? round(($attendedSessions / $totalSessions) * 100, 1)
+                : null;
+
+            $activities = Activity::query()
+                ->where('teaching_assignment_id', $assignment->id)
+                ->where('is_active', true)
+                ->when($period, fn ($q) => $q->where('academic_period_id', $period->id))
+                ->with(['grades' => fn ($q) => $q->where('student_id', $student->id)])
+                ->orderBy('due_date')
+                ->orderBy('title')
+                ->get();
+
+            $gradedActivities = $activities->filter(fn ($activity) => $activity->grades->isNotEmpty())->count();
+
+            return [
+                'assignment' => $assignment,
+                'period' => $period,
+                'final' => $breakdown['final'] ?? null,
+                'breakdown' => $breakdown['rows'] ?? [],
+                'status' => $status,
+                'attendance_percentage' => $attendancePercentage,
+                'total_sessions' => $totalSessions,
+                'attended_sessions' => $attendedSessions,
+                'activities_count' => $activities->count(),
+                'graded_activities_count' => $gradedActivities,
+                'pending_activities_count' => max(0, $activities->count() - $gradedActivities),
+            ];
+        })->values();
+
+        $finals = $rows
+            ->pluck('final')
+            ->filter(fn ($value) => $value !== null)
+            ->map(fn ($value) => (float) $value);
+
+        $generalAverage = $finals->isNotEmpty()
+            ? round($finals->avg(), 2)
+            : null;
+
+        return view('student.portal.academic_performance', [
+            'student' => $student,
+            'rows' => $rows,
+            'generalAverage' => $generalAverage,
+        ]);
+    }
+
     public function subjectShow(
         TeachingAssignment $assignment,
         AcademicPerformanceService $performance

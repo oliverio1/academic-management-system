@@ -42,7 +42,7 @@
                                             @php
                                                 $followUp = $assignment->studentFollowUp;
                                                 $student = $followUp->student;
-                                                $isPending = is_null($assignment->responded_at);
+                                                $isPending = is_null($assignment->answered_at);
                                             @endphp
                                             <tr>
                                                 <td>{{ $student->user->name }}</td>

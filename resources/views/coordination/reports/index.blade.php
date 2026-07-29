@@ -1,112 +1,138 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
-@section('title', 'Reportes de docentes')
+@section('title', 'Reportes')
 
 @section('content')
+@include('coordination.reports._table_styles')
 <div class="content px-3">
     <div class="row">
         <div class="col-md-12 mt-3">
             <div class="card">
-                <div class="card-header">
-                    <h3 class="mb-0">Reportes académicos y conductuales</h3>
-                    <small class="text-muted">Ordenados por prioridad: pendientes y gravedad alta primero.</small>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="mb-0">Reportes</h3>
+                        <small class="text-muted">Bandeja central de reportes docentes, alumnos, prefectura y coordinacion.</small>
+                    </div>
+                    <a href="{{ route('coordination.reports.create') }}" class="btn btn-primary btn-sm">Levantar reporte</a>
                 </div>
                 <div class="card-body">
                     @if(session('info'))
                         <div class="alert alert-success">{{ session('info') }}</div>
                     @endif
 
-                    <form method="GET" action="{{ route('coordination.reports.index') }}">
+                    <form method="GET" action="{{ route('coordination.reports.index') }}" class="coordination-report-filters">
                         <div class="row">
                             <div class="col-md-3 mb-2">
                                 <select name="status" class="form-control">
                                     <option value="">Todos los estatus</option>
                                     <option value="open" {{ ($filters['status'] ?? '') === 'open' ? 'selected' : '' }}>Pendiente</option>
                                     <option value="reviewed" {{ ($filters['status'] ?? '') === 'reviewed' ? 'selected' : '' }}>Revisado</option>
+                                    <option value="resolved" {{ ($filters['status'] ?? '') === 'resolved' ? 'selected' : '' }}>Resuelto</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <select name="source" class="form-control">
+                                    <option value="">Todos los origenes</option>
+                                    @foreach($sourceOptions as $value => $label)
+                                        <option value="{{ $value }}" {{ ($filters['source'] ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-2 mb-2">
                                 <select name="severity" class="form-control">
-                                    <option value="">Todas las gravedades</option>
-                                    <option value="3" {{ (string) ($filters['severity'] ?? '') === '3' ? 'selected' : '' }}>3 - Alta</option>
-                                    <option value="2" {{ (string) ($filters['severity'] ?? '') === '2' ? 'selected' : '' }}>2 - Media</option>
-                                    <option value="1" {{ (string) ($filters['severity'] ?? '') === '1' ? 'selected' : '' }}>1 - Baja</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <select name="group_id" class="form-control">
-                                    <option value="">Todos los grupos</option>
-                                    @foreach($groups as $group)
-                                        <option value="{{ $group->id }}" {{ (string) ($filters['group_id'] ?? '') === (string) $group->id ? 'selected' : '' }}>
-                                            {{ $group->name }}
-                                        </option>
-                                    @endforeach
+                                    <option value="">Todas las prioridades</option>
+                                    <option value="3" {{ (string) ($filters['severity'] ?? '') === '3' ? 'selected' : '' }}>Alta</option>
+                                    <option value="2" {{ (string) ($filters['severity'] ?? '') === '2' ? 'selected' : '' }}>Media</option>
+                                    <option value="1" {{ (string) ($filters['severity'] ?? '') === '1' ? 'selected' : '' }}>Baja</option>
                                 </select>
                             </div>
                             <div class="col-md-4 mb-2">
-                                <select name="teacher_id" class="form-control">
-                                    <option value="">Todos los docentes</option>
-                                    @foreach($teachers as $teacher)
-                                        <option value="{{ $teacher->id }}" {{ (string) ($filters['teacher_id'] ?? '') === (string) $teacher->id ? 'selected' : '' }}>
-                                            {{ $teacher->user->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <input name="q" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="Buscar por alumno, grupo, reporta, asunto o descripcion">
                             </div>
                         </div>
-                        <button class="btn btn-outline-primary">Filtrar</button>
-                        <a href="{{ route('coordination.reports.index') }}" class="btn btn-outline-secondary">Limpiar</a>
+                        <button class="btn btn-primary">Filtrar</button>
+                        <a href="{{ route('coordination.reports.index') }}" class="btn btn-secondary">Limpiar</a>
                     </form>
 
-                    <hr>
-
-                    <div class="table-responsive p-3">
-                        <table data-datatable="true" class="table table-hover mb-0">
+                    <div class="table-responsive coordination-report-table-wrap">
+                        <table data-datatable="true" class="table table-hover mb-0 reports-table">
                             <thead>
                                 <tr>
-                                    <th>Gravedad</th>
                                     <th>Estatus</th>
+                                    <th>Prioridad</th>
+                                    <th>Origen</th>
+                                    <th>Reporta</th>
                                     <th>Alumno</th>
                                     <th>Grupo</th>
-                                    <th>Docente</th>
-                                    <th>Tipo</th>
-                                    <th>Motivo</th>
+                                    <th>Categoria</th>
+                                    <th>Asunto</th>
+                                    <th>Descripcion</th>
                                     <th>Fecha</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($reports as $report)
-                                    <tr class="{{ $report->severity === 3 && $report->status === 'open' ? 'table-danger' : '' }}">
-                                        <td><span class="badge {{ $report->severity === 3 ? 'badge-danger' : ($report->severity === 2 ? 'badge-warning' : 'badge-secondary') }}">{{ $report->severity }}</span></td>
+                                    @php
+                                        $priorityClass = match ((int) $report['priority']) {
+                                            3 => 'high',
+                                            2 => 'medium',
+                                            default => 'low',
+                                        };
+                                        $rowClass = $report['status'] === 'open'
+                                            ? 'report-row-open-' . $priorityClass
+                                            : ($report['status'] === 'resolved' ? 'report-row-resolved' : 'report-row-reviewed');
+                                    @endphp
+                                    <tr class="{{ $rowClass }}">
                                         <td>
-                                            @if($report->status === 'open')
-                                                <span class="badge badge-danger">Pendiente</span>
+                                            @if($report['status'] === 'open')
+                                                <span class="badge report-badge report-status-open">Pendiente</span>
+                                            @elseif($report['status'] === 'resolved')
+                                                <span class="badge report-badge report-status-resolved">Resuelto</span>
                                             @else
-                                                <span class="badge badge-success">Revisado</span>
+                                                <span class="badge report-badge report-status-reviewed">Revisado</span>
                                             @endif
                                         </td>
-                                        <td>{{ $report->student->user->name }}</td>
-                                        <td>{{ $report->group->name }}</td>
-                                        <td>{{ $report->teacher->user->name }}</td>
-                                        <td>{{ $typeOptions[$report->report_type] ?? $report->report_type }}</td>
-                                        <td style="max-width:360px;white-space:normal;">{{ $report->reason }}</td>
-                                        <td>{{ $report->created_at->format('d/m/Y H:i') }}</td>
+                                        <td><span class="badge report-badge report-badge-{{ $priorityClass }}">{{ $report['priority_label'] }}</span></td>
+                                        <td>{{ $report['source_label'] }}</td>
+                                        <td>{{ $report['reporter'] }}</td>
+                                        <td>{{ $report['student'] }}</td>
+                                        <td>{{ $report['group'] }}</td>
+                                        <td>{{ $report['category'] }}</td>
+                                        <td style="max-width:220px;white-space:normal;"><strong>{{ $report['subject'] }}</strong></td>
+                                        <td style="max-width:380px;white-space:normal;">{{ $report['description'] }}</td>
+                                        <td>{{ $report['created_at']->format('d/m/Y H:i') }}</td>
                                         <td>
-                                            @if($report->status === 'open')
-                                                <form method="POST" action="{{ route('coordination.reports.review', $report) }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button class="btn btn-sm btn-outline-success">Marcar revisado</button>
-                                                </form>
-                                            @else
-                                                <small class="text-muted">Revisado</small>
-                                            @endif
+                                            <div class="report-actions">
+                                                @if($report['status'] !== 'resolved')
+                                                    <a href="{{ $report['case_route'] }}" class="btn btn-sm btn-warning">Dar seguimiento</a>
+                                                @endif
+
+                                                @if($report['status'] === 'open')
+                                                    <form method="POST" action="{{ $report['review_route'] }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="reviewed">
+                                                        <button class="btn btn-sm btn-primary">Marcar atendido</button>
+                                                    </form>
+                                                @endif
+
+                                                @if($report['resolve_route'] && $report['status'] !== 'resolved')
+                                                    <form method="POST" action="{{ $report['resolve_route'] }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="resolved">
+                                                        <button class="btn btn-sm btn-success">Marcar resuelto</button>
+                                                    </form>
+                                                @elseif($report['status'] !== 'open')
+                                                    <small class="text-muted">{{ $report['status'] === 'resolved' ? 'Cerrado' : 'Revisado' }}</small>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">No hay reportes registrados.</td>
+                                        <td colspan="11" class="text-center text-muted py-4">No hay reportes registrados.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -118,4 +144,3 @@
     </div>
 </div>
 @endsection
-

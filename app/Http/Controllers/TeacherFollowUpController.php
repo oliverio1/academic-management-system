@@ -163,6 +163,8 @@ class TeacherFollowUpController extends Controller
                 'answered_at' => now(),
                 'status' => 'answered',
             ]);
+
+            $followUpTeacher->studentFollowUp?->checkAndCloseIfCompleted();
         });
     
         return redirect()

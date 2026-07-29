@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("
             ALTER TABLE `student_follow_ups`
             MODIFY `type` ENUM('academic', 'behavioral', 'mixed') NOT NULL DEFAULT 'mixed'
@@ -15,10 +19,13 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("
             ALTER TABLE `student_follow_ups`
             MODIFY `type` ENUM('academic', 'behavioral', 'mixed') NOT NULL
         ");
     }
 };
-

@@ -88,6 +88,13 @@
                                                 @endif
                                             </td>
                                             <td class="d-flex flex-wrap" style="gap: .25rem;">
+                                                <a href="{{ route('coordination.students.academic-summary', [
+                                                    'school_cycle_id' => $activeCycle?->id,
+                                                    'group_id' => $student->group_id,
+                                                    'student_id' => $student->id,
+                                                ]) }}" class="btn btn-success btn-sm">
+                                                    Desempeño
+                                                </a>
                                                 <a href="{{ route('students.show', $student) }}" class="btn btn-primary btn-sm">
                                                     Ver
                                                 </a>

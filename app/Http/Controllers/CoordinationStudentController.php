@@ -22,6 +22,7 @@ use App\Services\AcademicCalendarService;
 use App\Services\StudentFollowUpFlagService;
 use App\Services\AcademicPerformanceService;
 use App\Services\AttendanceService;
+use App\Services\CurrentSchoolCycle;
 use App\Models\PrefectDailyAttendance;
 
 class CoordinationStudentController extends Controller
@@ -29,10 +30,7 @@ class CoordinationStudentController extends Controller
     public function activeCycleRoster(Request $request)
     {
         $activeCampusId = (int) session('active_campus_id', 0);
-        $activeCycle = $this->tenantCyclesQuery()
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get($request->user(), $activeCampusId);
 
         $groupIds = collect();
         $groups = collect();
@@ -92,8 +90,8 @@ class CoordinationStudentController extends Controller
         AcademicPerformanceService $performance,
         AttendanceService $attendanceService
     ) {
-        $schoolCycleId = $request->integer('school_cycle_id') ?: null;
         $activeCampusId = (int) session('active_campus_id', 0);
+        $schoolCycleId = app(CurrentSchoolCycle::class)->id($request->user(), $activeCampusId);
         $groupId = $request->integer('group_id') ?: null;
         $studentId = $request->integer('student_id') ?: null;
 
@@ -107,9 +105,12 @@ class CoordinationStudentController extends Controller
             $selectedCycle = $schoolCycles->firstWhere('id', $schoolCycleId);
         }
         if (! $selectedCycle) {
-            $selectedCycle = $schoolCycles->firstWhere('is_active', true) ?: $schoolCycles->first();
+            $selectedCycle = app(CurrentSchoolCycle::class)->get($request->user(), $activeCampusId);
+            if ($selectedCycle && ! $schoolCycles->contains(fn ($cycle) => (int) $cycle->id === (int) $selectedCycle->id)) {
+                $selectedCycle = null;
+            }
+            $selectedCycle = $selectedCycle ?: $schoolCycles->firstWhere('is_active', true) ?: $schoolCycles->first();
         }
-
         $allowedGroupIds = collect();
         if ($selectedCycle) {
             $allowedGroupIds = SchoolCycleGroup::query()
@@ -170,6 +171,8 @@ class CoordinationStudentController extends Controller
         }
 
         $selectedStudent = null;
+        $selectedGroup = $groupId ? $groups->firstWhere('id', $groupId) : null;
+        $groupSummaryRows = collect();
         $subjectRows = collect();
         $globalAttendance = null;
         $globalAverage = null;
@@ -183,6 +186,60 @@ class CoordinationStudentController extends Controller
         $dailyMatrixPrefect = collect();
         $dailyMatrixByAssignment = collect();
         $dailyMatrixSubjects = collect();
+        $teacherCaptureRows = collect();
+        $recentTeacherAttendanceRows = collect();
+        $recentActivityRows = collect();
+
+        $activeCycle = $selectedCycle ?: app(CurrentSchoolCycle::class)->get($request->user(), $activeCampusId);
+        if ($activeCycle) {
+            $today = now()->toDateString();
+            $cyclePartials = CyclePartial::query()
+                ->where('school_cycle_id', $activeCycle->id)
+                ->with('academicPeriod:id,name')
+                ->orderBy('sort_order')
+                ->orderBy('start_date')
+                ->get()
+                ->map(function (CyclePartial $partial) use ($today) {
+                    $start = $partial->start_date?->toDateString();
+                    $end = $partial->end_date?->toDateString();
+
+                    if ($start && $today < $start) {
+                        $status = 'pending';
+                        $status_label = 'Aun no comienza';
+                    } elseif ($end && $today > $end) {
+                        $status = 'finished';
+                        $status_label = 'Concluido';
+                    } else {
+                        $status = 'active';
+                        $status_label = 'Activo';
+                    }
+
+                    return [
+                        'id' => $partial->id,
+                        'name' => $partial->name ?: ($partial->academicPeriod->name ?? 'Parcial'),
+                        'code' => $partial->code,
+                        'sort_order' => $partial->sort_order,
+                        'academic_period_id' => $partial->academic_period_id,
+                        'start_date' => $partial->start_date,
+                        'end_date' => $partial->end_date,
+                        'status' => $status,
+                        'status_label' => $status_label,
+                    ];
+                });
+
+            $partialColumns = $cyclePartials
+                ->filter(fn ($partial) => !empty($partial['academic_period_id']))
+                ->values();
+        }
+
+        if ($groupId && $selectedCycle) {
+            $groupSummaryRows = $this->groupAcademicSummaryRows(
+                $students,
+                (int) $groupId,
+                $selectedCycle,
+                $partialColumns
+            );
+        }
 
         if ($studentId) {
             $selectedStudent = Student::query()
@@ -217,12 +274,6 @@ class CoordinationStudentController extends Controller
                 $activePeriod = AcademicPeriod::query()
                     ->where('modality_id', $selectedStudent->group->level->modality_id)
                     ->where('is_active', true)
-                    ->first();
-
-                $activeCycle = $selectedCycle ?: $this->tenantCyclesQuery()
-                    ->where('modality_id', $selectedStudent->group->level->modality_id)
-                    ->where('is_active', true)
-                    ->orderByDesc('start_date')
                     ->first();
 
                 $cyclePeriodIds = collect();
@@ -281,9 +332,13 @@ class CoordinationStudentController extends Controller
                     : ($activePeriod ? Carbon::parse($activePeriod->end_date)->endOfDay() : null);
 
                 $assignments = TeachingAssignment::query()
-                    ->with('subject')
+                    ->with(['subject', 'teacher.user'])
                     ->where('group_id', $selectedStudent->group_id)
                     ->where('is_active', true)
+                    ->where(function ($q) use ($selectedStudent) {
+                        $q->whereNull('section_type')
+                            ->orWhereHas('students', fn ($students) => $students->where('students.id', $selectedStudent->id));
+                    })
                     ->when(
                         $selectedCycle,
                         fn ($q) => $q->whereHas('schedules', fn ($sq) => $sq
@@ -666,6 +721,106 @@ class CoordinationStudentController extends Controller
                         ->orderBy('subjects.name')
                         ->get();
                 }
+
+                if ($assignmentIds->isNotEmpty()) {
+                    $teacherCaptureRows = $assignments->map(function (TeachingAssignment $assignment) use ($selectedStudent, $cyclePeriodIds, $from, $to) {
+                        $sessionQuery = AcademicSession::query()
+                            ->where('teaching_assignment_id', $assignment->id)
+                            ->where('is_cancelled', false)
+                            ->when(
+                                $cyclePeriodIds->isNotEmpty(),
+                                fn ($q) => $q->whereIn('academic_period_id', $cyclePeriodIds->all()),
+                                fn ($q) => $q->when($from && $to, fn ($qq) => $qq->whereBetween('session_date', [$from, $to]))
+                            );
+
+                        $sessionIds = (clone $sessionQuery)->pluck('id');
+                        $totalSessions = $sessionIds->count();
+                        $closedSessions = (clone $sessionQuery)->whereNotNull('attendance_closed_at')->count();
+                        $attendanceRows = Attendance::query()
+                            ->where('student_id', $selectedStudent->id)
+                            ->whereIn('academic_session_id', $sessionIds)
+                            ->count();
+                        $attendedRows = Attendance::query()
+                            ->where('student_id', $selectedStudent->id)
+                            ->whereIn('academic_session_id', $sessionIds)
+                            ->whereIn('status', ['present', 'late', 'justified'])
+                            ->count();
+
+                        $activityQuery = Activity::query()
+                            ->where('teaching_assignment_id', $assignment->id)
+                            ->where('is_active', true)
+                            ->when(
+                                $cyclePeriodIds->isNotEmpty(),
+                                fn ($q) => $q->whereIn('academic_period_id', $cyclePeriodIds->all()),
+                                fn ($q) => $q->when($from && $to, fn ($qq) => $qq->whereBetween('due_date', [$from, $to]))
+                            );
+
+                        $activityIds = (clone $activityQuery)->pluck('id');
+                        $totalActivities = $activityIds->count();
+                        $gradedActivities = Grade::query()
+                            ->where('student_id', $selectedStudent->id)
+                            ->whereIn('activity_id', $activityIds)
+                            ->whereNotNull('score')
+                            ->count();
+                        $average = Grade::query()
+                            ->where('student_id', $selectedStudent->id)
+                            ->whereIn('activity_id', $activityIds)
+                            ->whereNotNull('score')
+                            ->avg('score');
+
+                        return [
+                            'assignment' => $assignment,
+                            'teacher' => $assignment->teacher?->user?->name ?? 'Sin profesor',
+                            'subject' => $assignment->subject?->name ?? 'N/D',
+                            'total_sessions' => $totalSessions,
+                            'closed_sessions' => $closedSessions,
+                            'attendance_rows' => $attendanceRows,
+                            'attendance_percentage' => $totalSessions > 0 ? round(($attendedRows / $totalSessions) * 100, 1) : null,
+                            'total_activities' => $totalActivities,
+                            'graded_activities' => $gradedActivities,
+                            'average' => $average !== null ? round((float) $average, 1) : null,
+                        ];
+                    })->values();
+
+                    $recentTeacherAttendanceRows = AcademicSession::query()
+                        ->whereIn('teaching_assignment_id', $assignmentIds->all())
+                        ->where('is_cancelled', false)
+                        ->when(
+                            $cyclePeriodIds->isNotEmpty(),
+                            fn ($q) => $q->whereIn('academic_period_id', $cyclePeriodIds->all()),
+                            fn ($q) => $q->when($from && $to, fn ($qq) => $qq->whereBetween('session_date', [$from, $to]))
+                        )
+                        ->with([
+                            'teachingAssignment.subject:id,name',
+                            'teachingAssignment.teacher.user:id,name',
+                            'attendances' => fn ($q) => $q->where('student_id', $selectedStudent->id),
+                            'sessionActivity:id,academic_session_id,title',
+                        ])
+                        ->orderByDesc('session_date')
+                        ->orderByDesc('start_time')
+                        ->limit(20)
+                        ->get();
+
+                    $recentActivityRows = Activity::query()
+                        ->whereIn('teaching_assignment_id', $assignmentIds->all())
+                        ->where('is_active', true)
+                        ->when(
+                            $cyclePeriodIds->isNotEmpty(),
+                            fn ($q) => $q->whereIn('academic_period_id', $cyclePeriodIds->all()),
+                            fn ($q) => $q->when($from && $to, fn ($qq) => $qq->whereBetween('due_date', [$from, $to]))
+                        )
+                        ->with([
+                            'assignment.subject:id,name',
+                            'assignment.teacher.user:id,name',
+                            'evaluationCriterion:id,name,percentage',
+                            'academicPeriod:id,name',
+                            'grades' => fn ($q) => $q->where('student_id', $selectedStudent->id),
+                        ])
+                        ->orderByDesc('due_date')
+                        ->orderByDesc('id')
+                        ->limit(20)
+                        ->get();
+                }
             }
         }
 
@@ -675,8 +830,10 @@ class CoordinationStudentController extends Controller
             'groups' => $groups,
             'students' => $students,
             'selectedGroupId' => $groupId,
+            'selectedGroup' => $selectedGroup,
             'selectedStudentId' => $studentId,
             'selectedStudent' => $selectedStudent,
+            'groupSummaryRows' => $groupSummaryRows,
             'subjectRows' => $subjectRows,
             'globalAttendance' => $globalAttendance,
             'globalAverage' => $globalAverage,
@@ -690,7 +847,221 @@ class CoordinationStudentController extends Controller
             'dailyMatrixPrefect' => $dailyMatrixPrefect,
             'dailyMatrixByAssignment' => $dailyMatrixByAssignment,
             'dailyMatrixSubjects' => $dailyMatrixSubjects,
+            'teacherCaptureRows' => $teacherCaptureRows,
+            'recentTeacherAttendanceRows' => $recentTeacherAttendanceRows,
+            'recentActivityRows' => $recentActivityRows,
         ]);
+    }
+
+    private function groupAcademicSummaryRows($students, int $groupId, SchoolCycle $cycle, $partialColumns)
+    {
+        if ($students->isEmpty()) {
+            return collect();
+        }
+
+        $from = Carbon::parse($cycle->start_date)->startOfDay();
+        $to = Carbon::parse($cycle->end_date)->endOfDay();
+        $periodIds = collect($partialColumns)
+            ->pluck('academic_period_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $assignments = TeachingAssignment::query()
+            ->with(['subject:id,name', 'teacher.user:id,name', 'students:id'])
+            ->where('group_id', $groupId)
+            ->where('is_active', true)
+            ->whereHas('schedules', fn ($query) => $query
+                ->where('school_cycle_id', (int) $cycle->id)
+                ->where('is_active', true)
+            )
+            ->orderBy('subject_id')
+            ->get();
+
+        $assignmentIds = $assignments->pluck('id')->map(fn ($id) => (int) $id)->values();
+        if ($assignmentIds->isEmpty()) {
+            return $students->map(fn (Student $student) => [
+                'student' => $student,
+                'subjects_count' => 0,
+                'attendance' => null,
+                'absences' => 0,
+                'average' => null,
+                'graded_activities' => 0,
+                'total_activities' => 0,
+                'partials' => collect($partialColumns)->mapWithKeys(fn ($partial) => [
+                    $partial['id'] => ['attendance' => null, 'grade' => null],
+                ]),
+            ]);
+        }
+
+        $sessions = AcademicSession::query()
+            ->select('id', 'teaching_assignment_id', 'academic_period_id')
+            ->whereIn('teaching_assignment_id', $assignmentIds->all())
+            ->where('is_cancelled', false)
+            ->whereBetween('session_date', [$from, $to])
+            ->get();
+
+        $sessionIds = $sessions->pluck('id')->map(fn ($id) => (int) $id)->values();
+        $sessionsById = $sessions->keyBy(fn ($session) => (int) $session->id);
+        $sessionsByAssignment = $sessions->groupBy('teaching_assignment_id');
+        $sessionsByAssignmentPeriod = $sessions
+            ->filter(fn ($session) => $session->academic_period_id)
+            ->groupBy(fn ($session) => (int) $session->teaching_assignment_id . '-' . (int) $session->academic_period_id);
+
+        $attendanceRows = Attendance::query()
+            ->select('student_id', 'academic_session_id', 'status')
+            ->whereIn('academic_session_id', $sessionIds->all())
+            ->whereIn('student_id', $students->pluck('id')->map(fn ($id) => (int) $id)->all())
+            ->get();
+
+        $attendanceByStudentAssignment = $attendanceRows
+            ->map(function (Attendance $attendance) use ($sessionsById) {
+                $session = $sessionsById->get((int) $attendance->academic_session_id);
+
+                return (object) [
+                    'student_id' => (int) $attendance->student_id,
+                    'assignment_id' => (int) optional($session)->teaching_assignment_id,
+                    'period_id' => (int) optional($session)->academic_period_id,
+                    'status' => $attendance->status,
+                ];
+            })
+            ->filter(fn ($row) => $row->assignment_id > 0)
+            ->groupBy(fn ($row) => (int) $row->student_id . '-' . (int) $row->assignment_id);
+
+        $activities = Activity::query()
+            ->select('id', 'teaching_assignment_id', 'academic_period_id')
+            ->whereIn('teaching_assignment_id', $assignmentIds->all())
+            ->where('is_active', true)
+            ->when(
+                $periodIds->isNotEmpty(),
+                fn ($query) => $query->whereIn('academic_period_id', $periodIds->all()),
+                fn ($query) => $query->whereBetween('due_date', [$from, $to])
+            )
+            ->get();
+
+        $activityIds = $activities->pluck('id')->map(fn ($id) => (int) $id)->values();
+        $activitiesByAssignment = $activities->groupBy('teaching_assignment_id');
+        $activitiesByAssignmentPeriod = $activities
+            ->filter(fn ($activity) => $activity->academic_period_id)
+            ->groupBy(fn ($activity) => (int) $activity->teaching_assignment_id . '-' . (int) $activity->academic_period_id);
+
+        $gradesByStudentActivity = Grade::query()
+            ->select('student_id', 'activity_id', 'score')
+            ->whereIn('activity_id', $activityIds->all())
+            ->whereIn('student_id', $students->pluck('id')->map(fn ($id) => (int) $id)->all())
+            ->whereNotNull('score')
+            ->get()
+            ->keyBy(fn (Grade $grade) => (int) $grade->student_id . '-' . (int) $grade->activity_id);
+
+        return $students->map(function (Student $student) use (
+            $assignments,
+            $partialColumns,
+            $sessionsByAssignment,
+            $sessionsByAssignmentPeriod,
+            $attendanceByStudentAssignment,
+            $activitiesByAssignment,
+            $activitiesByAssignmentPeriod,
+            $gradesByStudentActivity
+        ) {
+            $studentAssignments = $assignments
+                ->filter(function (TeachingAssignment $assignment) use ($student) {
+                    if ($assignment->section_type === null) {
+                        return true;
+                    }
+
+                    return $assignment->students->contains('id', (int) $student->id);
+                })
+                ->unique('subject_id')
+                ->values();
+
+            $subjectAttendance = [];
+            $subjectAbsences = 0;
+            $subjectGrades = [];
+            $gradedActivities = 0;
+            $totalActivities = 0;
+
+            $partials = collect($partialColumns)->mapWithKeys(fn ($partial) => [
+                $partial['id'] => [
+                    'attendance_values' => collect(),
+                    'grade_values' => collect(),
+                ],
+            ]);
+
+            foreach ($studentAssignments as $assignment) {
+                $assignmentSessions = collect($sessionsByAssignment->get((int) $assignment->id, []));
+                $assignmentAttendance = collect($attendanceByStudentAssignment->get((int) $student->id . '-' . (int) $assignment->id, []));
+                $attended = $assignmentAttendance
+                    ->whereIn('status', ['present', 'late', 'justified'])
+                    ->count();
+                $absent = $assignmentAttendance->where('status', 'absent')->count();
+
+                if ($assignmentSessions->count() > 0) {
+                    $subjectAttendance[] = round(($attended / $assignmentSessions->count()) * 100, 1);
+                    $subjectAbsences += $absent;
+                }
+
+                $assignmentActivities = collect($activitiesByAssignment->get((int) $assignment->id, []));
+                $totalActivities += $assignmentActivities->count();
+                $assignmentGradeValues = $assignmentActivities
+                    ->map(fn ($activity) => $gradesByStudentActivity->get((int) $student->id . '-' . (int) $activity->id)?->score)
+                    ->filter(fn ($score) => $score !== null)
+                    ->map(fn ($score) => (float) $score)
+                    ->values();
+
+                $gradedActivities += $assignmentGradeValues->count();
+                if ($assignmentGradeValues->isNotEmpty()) {
+                    $subjectGrades[] = round($assignmentGradeValues->avg(), 2);
+                }
+
+                foreach ($partialColumns as $partial) {
+                    $periodId = (int) ($partial['academic_period_id'] ?? 0);
+                    if ($periodId <= 0) {
+                        continue;
+                    }
+
+                    $periodSessions = collect($sessionsByAssignmentPeriod->get((int) $assignment->id . '-' . $periodId, []));
+                    if ($periodSessions->isNotEmpty()) {
+                        $periodAttendance = $assignmentAttendance->where('period_id', $periodId);
+                        $periodAttended = $periodAttendance
+                            ->whereIn('status', ['present', 'late', 'justified'])
+                            ->count();
+                        $partials[$partial['id']]['attendance_values']->push(
+                            round(($periodAttended / $periodSessions->count()) * 100, 1)
+                        );
+                    }
+
+                    $periodActivities = collect($activitiesByAssignmentPeriod->get((int) $assignment->id . '-' . $periodId, []));
+                    $periodGrades = $periodActivities
+                        ->map(fn ($activity) => $gradesByStudentActivity->get((int) $student->id . '-' . (int) $activity->id)?->score)
+                        ->filter(fn ($score) => $score !== null)
+                        ->map(fn ($score) => (float) $score)
+                        ->values();
+
+                    if ($periodGrades->isNotEmpty()) {
+                        $partials[$partial['id']]['grade_values']->push(round($periodGrades->avg(), 2));
+                    }
+                }
+            }
+
+            return [
+                'student' => $student,
+                'subjects_count' => $studentAssignments->count(),
+                'attendance' => $subjectAttendance !== [] ? round(collect($subjectAttendance)->avg(), 1) : null,
+                'absences' => $subjectAbsences,
+                'average' => $subjectGrades !== [] ? round(collect($subjectGrades)->avg(), 2) : null,
+                'graded_activities' => $gradedActivities,
+                'total_activities' => $totalActivities,
+                'partials' => $partials->map(fn ($partial) => [
+                    'attendance' => $partial['attendance_values']->isNotEmpty()
+                        ? round($partial['attendance_values']->avg(), 1)
+                        : null,
+                    'grade' => $partial['grade_values']->isNotEmpty()
+                        ? round($partial['grade_values']->avg(), 2)
+                        : null,
+                ]),
+            ];
+        })->values();
     }
 
     public function subjectDetail(
@@ -700,15 +1071,20 @@ class CoordinationStudentController extends Controller
     )
     {
         abort_unless($assignment->group_id === $student->group_id, 404);
+        abort_unless(
+            $assignment->section_type === null
+            || $assignment->students()->where('students.id', $student->id)->exists(),
+            404
+        );
 
         $student->load('user');
-        $assignment->load(['subject', 'teacher.user', 'group.level.modality']);
+        $assignment->load(['subject', 'teacher.user', 'group.level.modality', 'schoolCycleGroup']);
 
-        $activeCycle = $this->tenantCyclesQuery()
-            ->where('modality_id', $assignment->group->level->modality_id)
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), (int) session('active_campus_id', 0));
+        abort_if(
+            $activeCycle && (int) ($assignment->schoolCycleGroup?->school_cycle_id ?? 0) !== (int) $activeCycle->id,
+            404
+        );
 
         $cyclePeriodIds = collect();
         $period = null;
@@ -749,7 +1125,12 @@ class CoordinationStudentController extends Controller
                 fn ($q) => $q->when($period, fn ($qq) => $qq->where('academic_period_id', $period->id))
             )
             ->when($cycleFrom && $cycleTo, fn ($q) => $q->whereBetween('session_date', [$cycleFrom, $cycleTo]))
-            ->with(['attendances' => fn ($q) => $q->where('student_id', $student->id)])
+            ->with([
+                'attendances' => fn ($q) => $q->where('student_id', $student->id),
+                'sessionActivity:id,academic_session_id,title,description,evaluation_criterion_id',
+                'sessionActivity.evaluationCriterion:id,name,percentage',
+                'academicPeriod:id,name',
+            ])
             ->orderBy('session_date')
             ->orderBy('start_time')
             ->get();
@@ -763,6 +1144,7 @@ class CoordinationStudentController extends Controller
                 fn ($q) => $q->when($period, fn ($qq) => $qq->where('academic_period_id', $period->id))
             )
             ->when($cycleFrom && $cycleTo, fn ($q) => $q->whereBetween('due_date', [$cycleFrom, $cycleTo]))
+            ->with(['evaluationCriterion:id,name,percentage', 'academicPeriod:id,name', 'sessionActivity:id,academic_session_id,title'])
             ->orderBy('due_date')
             ->orderBy('title')
             ->get();
@@ -774,6 +1156,24 @@ class CoordinationStudentController extends Controller
             ->keyBy('activity_id');
 
         $breakdown = $performance->breakdownForAssignment($student, $assignment);
+        $attendanceStats = [
+            'total' => $sessions->count(),
+            'closed' => $sessions->whereNotNull('attendance_closed_at')->count(),
+            'registered' => $sessions->filter(fn ($session) => $session->attendances->isNotEmpty())->count(),
+            'present' => $sessions->filter(fn ($session) => in_array(optional($session->attendances->first())->status, ['present', 'late', 'justified'], true))->count(),
+            'absent' => $sessions->filter(fn ($session) => optional($session->attendances->first())->status === 'absent')->count(),
+        ];
+        $attendanceStats['percentage'] = $attendanceStats['total'] > 0
+            ? round(($attendanceStats['present'] / $attendanceStats['total']) * 100, 1)
+            : null;
+
+        $activityStats = [
+            'total' => $activities->count(),
+            'graded' => $grades->filter(fn ($grade) => $grade->score !== null)->count(),
+            'pending' => max(0, $activities->count() - $grades->filter(fn ($grade) => $grade->score !== null)->count()),
+            'average' => $grades->filter(fn ($grade) => $grade->score !== null)->avg('score'),
+        ];
+        $activityStats['average'] = $activityStats['average'] !== null ? round((float) $activityStats['average'], 1) : null;
 
         return view('coordination.students.subject-detail', [
             'student' => $student,
@@ -785,6 +1185,8 @@ class CoordinationStudentController extends Controller
             'grades' => $grades,
             'gradeBreakdownRows' => $breakdown['rows'] ?? [],
             'finalGrade' => $breakdown['final'] ?? null,
+            'attendanceStats' => $attendanceStats,
+            'activityStats' => $activityStats,
         ]);
     }
 
@@ -961,10 +1363,7 @@ class CoordinationStudentController extends Controller
     public function index(StudentFollowUpFlagService $flagService) {
         $activeCampusId = (int) session('active_campus_id', 0);
 
-        $activeCycle = $this->tenantCyclesQuery()
-            ->where('is_active', true)
-            ->orderByDesc('start_date')
-            ->first();
+        $activeCycle = app(CurrentSchoolCycle::class)->get(auth()->user(), $activeCampusId);
 
         $activeCycleId = (int) optional($activeCycle)->id;
         $activeCycleGroupIds = collect();
@@ -1279,14 +1678,10 @@ class CoordinationStudentController extends Controller
     {
         $activeCampusId = (int) session('active_campus_id', 0);
 
-        return SchoolCycle::query()
+        return app(CurrentSchoolCycle::class)
+            ->queryFor(auth()->user(), $activeCampusId)
             ->whereHas('cycleGroups', fn ($q) => $q->where('tenant_id', $this->tenantId()))
-            ->when($activeCampusId > 0, function ($q) use ($activeCampusId) {
-                $q->where(function ($nested) use ($activeCampusId) {
-                    $nested->where('campus_id', $activeCampusId)
-                        ->orWhereHas('campuses', fn ($campuses) => $campuses->where('campuses.id', $activeCampusId));
-                });
-            });
+        ;
     }
 
     private function tenantId(): string
