@@ -42,7 +42,7 @@ class TemarioImportServiceTest extends TestCase
         $this->assertNotNull($unit);
         $this->assertSame(1, (int) $unit->level);
         $this->assertSame('conceptual', $unit->type);
-        $this->assertStringContainsString('Horas: 5', $unit->content);
+        $this->assertSame(5.0, (float) $unit->hours);
         $this->assertStringContainsString('Objetivo especifico: Argumenta la importancia de la Química.', $unit->content);
     }
 
@@ -67,6 +67,45 @@ class TemarioImportServiceTest extends TestCase
         $this->assertSame('conceptual', $temario->points->firstWhere('label', '1.')->type);
         $this->assertSame('procedimental', $temario->points->firstWhere('label', '1.1.')->type);
         $this->assertSame('actitudinal', $temario->points->firstWhere('label', '1.1.1.')->type);
+    }
+
+    public function test_imports_preparatoria_olicati_metadata_hours_types_and_lettered_labels(): void
+    {
+        $subject = $this->subject('QUÍMICA III');
+        $file = $this->workbookUpload([
+            ['Nombre de la materia', 'Química III', null, null],
+            ['Creditos', '14', null, null],
+            ['Clave', '1501', null, null],
+            ['Tipo', 'Teórico/Práctico', null, null],
+            ['Horas por semana', '4', null, null],
+            ['Horas al año', '120', null, null],
+            [null, null, null, null],
+            ['Objetivo general', 'Aplicar conocimientos químicos a problemáticas actuales.', null, null],
+            ['1. Elementos químicos en los dispositivos móviles', 'Explicar propiedades físicas y químicas.', '40', null],
+            ['1.1. Minerales y dispositivos móviles', null, null, 'Conceptual'],
+            ['1.1.a. Obsolescencia programada', null, null, 'Conceptual'],
+            ['1.4. Búsqueda y análisis de textos de divulgación científica', null, null, 'Procedimental'],
+            ['1.9. Valoración del conocimiento químico', null, null, 'Actitudinal'],
+        ]);
+
+        $result = app(TemarioImportService::class)->import($file, $subject);
+
+        $this->assertFalse($result->hasErrors(), implode("\n", $result->errors));
+
+        $subject->refresh();
+        $this->assertSame('1501', $subject->subject_key);
+        $this->assertSame(Subject::TYPE_THEORETICAL_PRACTICAL, $subject->type);
+        $this->assertSame(4, (int) $subject->hours_per_week);
+        $this->assertSame(120, (int) $subject->annual_hours);
+
+        $temario = $subject->temarios()->with('points')->firstOrFail();
+        $this->assertStringContainsString('Clave: 1501', $temario->description);
+        $this->assertStringContainsString('Tipo: Teórico/Práctico', $temario->description);
+        $this->assertSame(40.0, (float) $temario->points->firstWhere('label', '1.')->hours);
+        $this->assertSame('conceptual', $temario->points->firstWhere('label', '1.1.')->type);
+        $this->assertSame(3, (int) $temario->points->firstWhere('label', '1.1.a.')->level);
+        $this->assertSame('procedimental', $temario->points->firstWhere('label', '1.4.')->type);
+        $this->assertSame('actitudinal', $temario->points->firstWhere('label', '1.9.')->type);
     }
 
     private function subject(string $name): Subject

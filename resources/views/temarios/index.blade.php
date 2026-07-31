@@ -71,6 +71,9 @@
                                                             @if($point->label)
                                                                 <strong>{{ $point->label }}</strong>
                                                             @endif
+                                                            @if(!is_null($point->hours))
+                                                                <span class="badge badge-info mr-1">{{ rtrim(rtrim(number_format((float) $point->hours, 2, '.', ''), '0'), '.') }} h</span>
+                                                            @endif
                                                             <span>{{ $point->content }}</span>
                                                         </div>
                                                     @empty

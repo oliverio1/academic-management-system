@@ -58,6 +58,7 @@
                     $current = [
                         'title' => $unitTitle,
                         'objective' => $unitObjective,
+                        'hours' => $point->hours,
                         'points' => [],
                     ];
                     continue;
@@ -103,6 +104,7 @@
         const getDefaultUnit = () => ({
             title: '',
             objective: '',
+            hours: '',
             points: [getDefaultPoint()]
         });
 
@@ -174,6 +176,16 @@
                                    placeholder="Ejemplo: Geografia como ciencia">
                         </div>
                         <div class="form-group">
+                            <label>Horas de la unidad</label>
+                            <input type="number"
+                                   min="0"
+                                   step="0.25"
+                                   class="form-control"
+                                   name="units[${unitIndex}][hours]"
+                                   value="${escapeHtml(unit.hours || '')}"
+                                   placeholder="Ejemplo: 12">
+                        </div>
+                        <div class="form-group">
                             <label>Objetivo específico de la unidad</label>
                             <textarea class="form-control"
                                       rows="2"
@@ -208,6 +220,8 @@
                 units[unitIndex].title = titleInput ? titleInput.value : '';
                 const objectiveInput = card.querySelector(`textarea[name="units[${unitIndex}][objective]"]`);
                 units[unitIndex].objective = objectiveInput ? objectiveInput.value : '';
+                const hoursInput = card.querySelector(`input[name="units[${unitIndex}][hours]"]`);
+                units[unitIndex].hours = hoursInput ? hoursInput.value : '';
 
                 const pointRows = card.querySelectorAll('.point-row');
                 units[unitIndex].points = Array.from(pointRows).map((row, pointIndex) => {

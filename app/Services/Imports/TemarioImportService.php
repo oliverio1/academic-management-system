@@ -29,6 +29,8 @@ class TemarioImportService
         }
 
         DB::transaction(function () use ($subject, $rows, $header, $result) {
+            $this->updateSubjectMetadata($subject, $header['metadata']);
+
             $normalizedTitle = preg_replace('/\s+/u', ' ', trim((string) $header['title']));
             $temario = $subject->temarios()
                 ->whereRaw('LOWER(TRIM(title)) = ?', [mb_strtolower($normalizedTitle, 'UTF-8')])
@@ -57,6 +59,7 @@ class TemarioImportService
                     'label' => $row['label'],
                     'level' => $row['level'],
                     'type' => $row['type'],
+                    'hours' => $row['hours'],
                     'content' => $row['content'],
                 ]);
 
@@ -73,6 +76,7 @@ class TemarioImportService
         $title = trim((string) $sheet->getCell('A1')->getFormattedValue());
         $courseObjective = trim((string) $sheet->getCell('B1')->getFormattedValue());
         $startRow = 4;
+        $metadata = [];
 
         if (str_contains($firstLabel, 'nombre de la materia')) {
             $title = trim((string) $sheet->getCell('B1')->getFormattedValue());
@@ -85,6 +89,11 @@ class TemarioImportService
                     $courseObjective = trim((string) $sheet->getCellByColumnAndRow(2, $row)->getFormattedValue());
                     $startRow = $row + 1;
                     break;
+                }
+
+                $value = trim((string) $sheet->getCellByColumnAndRow(2, $row)->getFormattedValue());
+                if ($label !== '' && $value !== '') {
+                    $metadata[$label] = $value;
                 }
             }
         }
@@ -106,6 +115,14 @@ class TemarioImportService
             $descriptionParts[] = $creditsTitle . ': ' . $credits;
         }
 
+        foreach ($metadata as $label => $value) {
+            if (str_contains($label, 'credito')) {
+                continue;
+            }
+
+            $descriptionParts[] = $this->displayMetadataLabel($label) . ': ' . $value;
+        }
+
         if (empty($descriptionParts)) {
             $descriptionParts[] = 'Importado desde formato de temario';
         }
@@ -116,11 +133,12 @@ class TemarioImportService
             'title' => $title,
             'description' => implode("\n", $descriptionParts),
             'start_row' => $startRow,
+            'metadata' => $metadata,
         ];
     }
 
     /**
-     * @return array<int, array{label:string, level:int, type:string, content:string}>
+     * @return array<int, array{label:string, level:int, type:string, hours:?float, content:string}>
      */
     private function extractSingleColumnRows(Worksheet $sheet, ImportResult $result, int $startRow = 4): array
     {
@@ -133,8 +151,8 @@ class TemarioImportService
                 continue;
             }
 
-            if (preg_match('/^\s*([0-9]+(?:\.[0-9]+)*\.?)\s*(.+)$/u', $raw, $matches) !== 1) {
-                $result->addWarning("Fila {$row}: formato invalido. Debe iniciar con numeracion (ej. 1., 1.1., 1.1.1.).");
+            if (preg_match('/^\s*([0-9]+(?:\.(?:[0-9]+|[a-zA-Z]))*\.?)\s*(.+)$/u', $raw, $matches) !== 1) {
+                $result->addWarning("Fila {$row}: formato invalido. Debe iniciar con numeracion (ej. 1., 1.1., 1.1.1. o 1.1.a.).");
                 $result->addSkipped();
                 continue;
             }
@@ -148,15 +166,12 @@ class TemarioImportService
             $type = $this->normalizePointType($thirdColumn)
                 ?? $this->normalizePointType($fourthColumn)
                 ?? 'conceptual';
+            $hours = $level === 1 ? $this->normalizeHours($thirdColumn) : null;
 
             if ($content === '') {
                 $result->addWarning("Fila {$row}: se omite porque no contiene texto despues de la numeracion.");
                 $result->addSkipped();
                 continue;
-            }
-
-            if ($level === 1 && $thirdColumn !== '' && ! $this->normalizePointType($thirdColumn)) {
-                $content .= ' | Horas: ' . $thirdColumn;
             }
 
             if ($level === 1 && $unitObjective !== '') {
@@ -167,6 +182,7 @@ class TemarioImportService
                 'label' => $label,
                 'level' => $level,
                 'type' => $type,
+                'hours' => $hours,
                 'content' => $content,
             ];
         }
@@ -177,7 +193,7 @@ class TemarioImportService
     private function inferLevelFromLabel(string $label): int
     {
         $clean = trim($label);
-        if (preg_match('/^([0-9]+(?:\.[0-9]+)*)\.?$/', $clean, $matches) !== 1) {
+        if (preg_match('/^([0-9]+(?:\.(?:[0-9]+|[a-zA-Z]))*)\.?$/', $clean, $matches) !== 1) {
             return 1;
         }
 
@@ -198,6 +214,68 @@ class TemarioImportService
             'actitudinal' => 'actitudinal',
             'otro', 'otros', 'otra' => 'otro',
             default => null,
+        };
+    }
+
+    private function normalizeHours(string $value): ?float
+    {
+        $normalized = trim(str_replace(',', '.', $value));
+        if ($normalized === '' || ! is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float) $normalized;
+    }
+
+    private function updateSubjectMetadata(Subject $subject, array $metadata): void
+    {
+        $updates = [];
+
+        if (! empty($metadata['clave'])) {
+            $updates['subject_key'] = $metadata['clave'];
+        }
+
+        if (! empty($metadata['tipo'])) {
+            $updates['type'] = $this->normalizeSubjectType($metadata['tipo']) ?? $subject->type;
+        }
+
+        if (! empty($metadata['horas por semana']) && is_numeric($metadata['horas por semana'])) {
+            $updates['hours_per_week'] = (int) $metadata['horas por semana'];
+        }
+
+        $annualHours = $metadata['horas al ano'] ?? $metadata['horas al a~no'] ?? null;
+        if (! empty($annualHours) && is_numeric($annualHours)) {
+            $updates['annual_hours'] = (int) $annualHours;
+        }
+
+        if (! empty($updates)) {
+            $subject->update($updates);
+        }
+    }
+
+    private function normalizeSubjectType(string $value): ?string
+    {
+        $normalized = str_replace(["'", '`', '´'], '', $this->normalizedText($value));
+
+        if (str_contains($normalized, 'practico') || str_contains($normalized, 'practica')) {
+            return Subject::TYPE_THEORETICAL_PRACTICAL;
+        }
+
+        if (str_contains($normalized, 'teorico') || str_contains($normalized, 'teorica')) {
+            return Subject::TYPE_THEORETICAL;
+        }
+
+        return null;
+    }
+
+    private function displayMetadataLabel(string $label): string
+    {
+        return match ($label) {
+            'clave' => 'Clave',
+            'tipo' => 'Tipo',
+            'horas por semana' => 'Horas por semana',
+            'horas al ano', 'horas al a~no' => 'Horas al año',
+            default => ucfirst($label),
         };
     }
 

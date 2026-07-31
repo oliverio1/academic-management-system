@@ -66,9 +66,10 @@ La plantilla de importacion del sistema usa una sola hoja:
 - `B4`: objetivo general.
 - Desde `A5`: puntos del temario, uno por fila.
 - En filas de unidad, columna `B`: objetivo especifico.
-- En filas de unidad, columna `C`: horas de la unidad, para Bachillerato.
+- En filas de unidad, columna `C`: horas de la unidad. El sistema las guarda en la base de datos.
 - Para Preparatoria, la columna siguiente puede indicar tipo de contenido: `conceptual`, `procedimental`, `actitudinal` u `otro`.
 - Si una fila de unidad usa `C` para horas y tambien necesita tipo, coloca el tipo en `D`.
+- En el encabezado OLICATI se pueden agregar filas antes de `Objetivo general`: `Clave`, `Tipo`, `Horas por semana`, `Horas al año`. El importador actualiza esos datos en la materia cuando existen.
 
 Ejemplo:
 

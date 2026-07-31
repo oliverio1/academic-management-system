@@ -12,7 +12,12 @@ class TemarioPoint extends Model
         'label',
         'level',
         'type',
+        'hours',
         'content',
+    ];
+
+    protected $casts = [
+        'hours' => 'decimal:2',
     ];
 
     public function temario()

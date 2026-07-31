@@ -194,6 +194,7 @@ class TemarioController extends Controller
                 'units' => 'required|array|min:1',
                 'units.*.title' => 'required|string|max:1000',
                 'units.*.objective' => 'nullable|string',
+                'units.*.hours' => 'nullable|numeric|min:0|max:9999',
                 'units.*.points' => 'required|array|min:1',
                 'units.*.points.*.label' => 'nullable|string|max:20',
                 'units.*.points.*.type' => 'required|in:conceptual,procedimental,actitudinal,otro',
@@ -207,6 +208,7 @@ class TemarioController extends Controller
                 'units.*.title.required' => 'Cada unidad debe tener nombre.',
                 'units.*.points.required' => 'Cada unidad debe tener al menos un punto.',
                 'units.*.points.min' => 'Cada unidad debe tener al menos un punto.',
+                'units.*.hours.numeric' => 'Las horas de la unidad deben ser numericas.',
                 'units.*.points.*.type.required' => 'Cada punto debe tener tipo.',
                 'units.*.points.*.content.required' => 'No puede haber puntos vacíos en el temario.',
             ]
@@ -225,6 +227,7 @@ class TemarioController extends Controller
             $flatPoints[] = [
                 'label' => (string) $unitNumber,
                 'type' => 'otro',
+                'hours' => $unit['hours'] ?? null,
                 'content' => $unitContent,
             ];
 
@@ -234,6 +237,7 @@ class TemarioController extends Controller
                         ? trim((string) $point['label'])
                         : ($unitNumber . '.' . ($pointIndex + 1)),
                     'type' => $point['type'] ?? 'otro',
+                    'hours' => null,
                     'content' => trim((string) ($point['content'] ?? '')),
                 ];
             }
@@ -255,6 +259,7 @@ class TemarioController extends Controller
                 'label' => $label,
                 'level' => $this->inferLevelFromLabel($label),
                 'type' => $point['type'],
+                'hours' => $point['hours'] ?? null,
                 'content' => $point['content'],
             ]);
         }
@@ -267,7 +272,7 @@ class TemarioController extends Controller
             return 1;
         }
 
-        if (preg_match('/^([0-9]+(?:\.[0-9]+)*)\.?$/', $clean, $matches) !== 1) {
+        if (preg_match('/^([0-9]+(?:\.(?:[0-9]+|[a-zA-Z]))*)\.?$/', $clean, $matches) !== 1) {
             return 1;
         }
 
