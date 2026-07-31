@@ -1162,11 +1162,33 @@ class TeacherDidacticPlanController extends Controller
             return null;
         }
 
-        return DidacticPlan::query()
+        $plan = DidacticPlan::query()
             ->where('teaching_assignment_id', $assignment->id)
             ->where('school_cycle_id', $cycle->id)
             ->whereHas('items')
-            ->with(['items.temarioPoint'])
+            ->with(['items.temarioPoint', 'items.fieldTrainingPoint'])
+            ->orderByRaw("CASE WHEN status = ? THEN 0 ELSE 1 END", [DidacticPlan::STATUS_TENTATIVE])
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if ($plan) {
+            return $plan;
+        }
+
+        return DidacticPlan::query()
+            ->where('school_cycle_id', $cycle->id)
+            ->whereHas('items')
+            ->whereHas('assignment', function ($query) use ($assignment) {
+                $query->where('teacher_id', $assignment->teacher_id)
+                    ->where('subject_id', $assignment->subject_id)
+                    ->where('group_id', $assignment->group_id)
+                    ->where('is_active', true);
+
+                if ($assignment->school_cycle_group_id) {
+                    $query->where('school_cycle_group_id', $assignment->school_cycle_group_id);
+                }
+            })
+            ->with(['items.temarioPoint', 'items.fieldTrainingPoint'])
             ->orderByRaw("CASE WHEN status = ? THEN 0 ELSE 1 END", [DidacticPlan::STATUS_TENTATIVE])
             ->orderByDesc('updated_at')
             ->first();

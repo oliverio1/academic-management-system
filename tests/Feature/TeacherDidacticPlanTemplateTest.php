@@ -140,6 +140,54 @@ class TeacherDidacticPlanTemplateTest extends TestCase
         $this->assertSame($tentative->id, DidacticPlan::query()->where('status', DidacticPlan::STATUS_TENTATIVE)->value('id'));
     }
 
+    public function test_teacher_downloads_divided_section_template_prefilled_from_main_group_plan(): void
+    {
+        $scenario = $this->planningScenario();
+        $plan = $this->tentativePlan($scenario);
+        $plan->update(['status' => DidacticPlan::STATUS_FINAL]);
+
+        $labAssignment = TeachingAssignment::create([
+            'tenant_id' => $this->tenantId,
+            'teacher_id' => $scenario['teacherUser']->teacher->id,
+            'group_id' => $scenario['group']->id,
+            'school_cycle_group_id' => $scenario['cycleGroup']->id,
+            'subject_id' => $scenario['subject']->id,
+            'section_number' => 2,
+            'section_type' => 'lab_taller',
+            'section_label' => 'B',
+            'is_active' => true,
+        ]);
+
+        Schedule::create([
+            'tenant_id' => $this->tenantId,
+            'teaching_assignment_id' => $labAssignment->id,
+            'school_cycle_id' => $scenario['cycle']->id,
+            'section_number' => 2,
+            'section_type' => 'lab_taller',
+            'section_label' => 'B',
+            'day_of_week' => 'martes',
+            'start_time' => '08:00:00',
+            'end_time' => '08:50:00',
+            'type' => 'lab',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('teacher.didactic-plans.template', $labAssignment));
+
+        $response->assertOk();
+        $spreadsheet = $this->spreadsheetFromResponse($response);
+        $subject = $spreadsheet->getSheetByName('Materia');
+        $planning = $spreadsheet->getSheetByName('Planeacion');
+
+        $this->assertSame('Programa indicativo de prueba.', $subject->getCell('B12')->getValue());
+        $this->assertSame('2026-08-03', $planning->getCell('E2')->getFormattedValue());
+        $this->assertSame('1.1.1; 1.1.2', $planning->getCell('F2')->getValue());
+        $this->assertStringContainsString('Estrategia tentativa de desarrollo.', $planning->getCell('G2')->getValue());
+        $this->assertSame(0, DidacticPlan::query()->where('teaching_assignment_id', $labAssignment->id)->count());
+    }
+
     public function test_teacher_imports_planning_template_and_creates_plan_items(): void
     {
         $scenario = $this->planningScenario();
