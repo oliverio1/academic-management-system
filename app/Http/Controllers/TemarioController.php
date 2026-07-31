@@ -143,20 +143,31 @@ class TemarioController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('temario');
 
-        $sheet->setCellValue('A1', 'Fisica I');
-        $sheet->setCellValue('B1', 'Comprender los principios basicos del movimiento, fuerzas y energia.');
+        $sheet->setCellValue('A1', 'Nombre de la materia');
+        $sheet->setCellValue('B1', 'Fisica I');
         $sheet->setCellValue('A2', 'Creditos');
         $sheet->setCellValue('B2', '8');
+        $sheet->setCellValue('A4', 'Objetivo general');
+        $sheet->setCellValue('B4', 'Comprender los principios basicos del movimiento, fuerzas y energia.');
 
-        $sheet->setCellValue('A4', '1. Cinematica');
-        $sheet->setCellValue('B4', 'Analizar el movimiento rectilineo y sus representaciones.');
-        $sheet->setCellValue('A5', '1.1. Magnitudes y unidades');
-        $sheet->setCellValue('A6', '1.2. Movimiento rectilineo uniforme');
-        $sheet->setCellValue('A7', '1.2.1. Graficas posicion-tiempo');
-        $sheet->setCellValue('A8', '2. Dinamica');
-        $sheet->setCellValue('B8', 'Aplicar las leyes de Newton para resolver problemas de fuerzas.');
-        $sheet->setCellValue('A9', '2.1. Leyes de Newton');
-        $sheet->setCellValue('A10', '2.1.1. Diagramas de cuerpo libre');
+        $sheet->setCellValue('A5', '1. Cinematica');
+        $sheet->setCellValue('B5', 'Analizar el movimiento rectilineo y sus representaciones.');
+        $sheet->setCellValue('C5', '12');
+        $sheet->setCellValue('D5', 'conceptual');
+        $sheet->setCellValue('A6', '1.1. Magnitudes y unidades');
+        $sheet->setCellValue('C6', 'conceptual');
+        $sheet->setCellValue('A7', '1.2. Movimiento rectilineo uniforme');
+        $sheet->setCellValue('C7', 'procedimental');
+        $sheet->setCellValue('A8', '1.2.1. Graficas posicion-tiempo');
+        $sheet->setCellValue('C8', 'actitudinal');
+        $sheet->setCellValue('A9', '2. Dinamica');
+        $sheet->setCellValue('B9', 'Aplicar las leyes de Newton para resolver problemas de fuerzas.');
+        $sheet->setCellValue('C9', '10');
+        $sheet->setCellValue('D9', 'conceptual');
+        $sheet->setCellValue('A10', '2.1. Leyes de Newton');
+        $sheet->setCellValue('C10', 'conceptual');
+        $sheet->setCellValue('A11', '2.1.1. Diagramas de cuerpo libre');
+        $sheet->setCellValue('C11', 'procedimental');
 
         $writer = new Xlsx($spreadsheet);
 

@@ -1,14 +1,15 @@
-Celda A,Celda B
-Nombre de la materia,Objetivo general del curso
-Creditos,8
-,
-1. Nombre de la unidad,Objetivo especifico de la unidad
-1.1. Nombre del tema,
-1.1.1. Nombre del subtema,
-1.1.2. Nombre del subtema,
-1.2. Nombre del tema,
-1.2.1. Nombre del subtema,
-2. Nombre de la unidad,Objetivo especifico de la unidad
-2.1. Nombre del tema,
-2.1.1. Nombre del subtema,
-2.1.2. Nombre del subtema,
+Celda A,Celda B,Celda C,Celda D
+Nombre de la materia,Nombre de la materia,,
+Creditos,8,,
+,,,
+Objetivo general,Objetivo general del curso,,
+1. Nombre de la unidad,Objetivo especifico de la unidad,12,conceptual
+1.1. Nombre del tema,,conceptual,
+1.1.1. Nombre del subtema,,procedimental,
+1.1.2. Nombre del subtema,,actitudinal,
+1.2. Nombre del tema,,conceptual,
+1.2.1. Nombre del subtema,,procedimental,
+2. Nombre de la unidad,Objetivo especifico de la unidad,10,conceptual
+2.1. Nombre del tema,,conceptual,
+2.1.1. Nombre del subtema,,procedimental,
+2.1.2. Nombre del subtema,,actitudinal,

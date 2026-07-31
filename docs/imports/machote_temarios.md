@@ -54,31 +54,37 @@ Objetivo especifico de la unidad: escribe aqui que debe lograr el alumno al term
 - Si el PDF solo trae "Bloques de aprendizaje", usar cada bloque como unidad y repetirlo como tema principal.
 - Si no hay subtemas, dejar al menos un tema por unidad.
 
-## Formato para Excel importable
+## Formato OLICATI para Excel importable
 
 La plantilla de importacion del sistema usa una sola hoja:
 
-- `A1`: nombre de la materia.
-- `B1`: objetivo general.
+- `A1`: etiqueta `Nombre de la materia`.
+- `B1`: nombre de la materia.
 - `A2`: etiqueta opcional, por ejemplo `Creditos`.
 - `B2`: valor opcional, por ejemplo `8`.
-- Desde `A4`: puntos del temario, uno por fila.
-- En `B4`, `B8`, etc.: objetivo especifico solo en filas de unidad.
+- `A4`: etiqueta `Objetivo general`.
+- `B4`: objetivo general.
+- Desde `A5`: puntos del temario, uno por fila.
+- En filas de unidad, columna `B`: objetivo especifico.
+- En filas de unidad, columna `C`: horas de la unidad, para Bachillerato.
+- Para Preparatoria, la columna siguiente puede indicar tipo de contenido: `conceptual`, `procedimental`, `actitudinal` u `otro`.
+- Si una fila de unidad usa `C` para horas y tambien necesita tipo, coloca el tipo en `D`.
 
 Ejemplo:
 
-| Celda A | Celda B |
-| --- | --- |
-| Fisica I | Comprender los principios basicos del movimiento, fuerzas y energia. |
-| Creditos | 8 |
-|  |  |
-| 1. Cinematica | Analizar el movimiento rectilineo y sus representaciones. |
-| 1.1. Magnitudes y unidades |  |
-| 1.2. Movimiento rectilineo uniforme |  |
-| 1.2.1. Graficas posicion-tiempo |  |
-| 2. Dinamica | Aplicar las leyes de Newton para resolver problemas de fuerzas. |
-| 2.1. Leyes de Newton |  |
-| 2.1.1. Diagramas de cuerpo libre |  |
+| Celda A | Celda B | Celda C | Celda D |
+| --- | --- | --- | --- |
+| Nombre de la materia | Fisica I |  |  |
+| Creditos | 8 |  |  |
+|  |  |  |  |
+| Objetivo general | Comprender los principios basicos del movimiento, fuerzas y energia. |  |  |
+| 1. Cinematica | Analizar el movimiento rectilineo y sus representaciones. | 12 | conceptual |
+| 1.1. Magnitudes y unidades |  | conceptual |  |
+| 1.2. Movimiento rectilineo uniforme |  | procedimental |  |
+| 1.2.1. Graficas posicion-tiempo |  | actitudinal |  |
+| 2. Dinamica | Aplicar las leyes de Newton para resolver problemas de fuerzas. | 10 | conceptual |
+| 2.1. Leyes de Newton |  | conceptual |  |
+| 2.1.1. Diagramas de cuerpo libre |  | procedimental |  |
 
 ## Prompt para generar un temario desde cero
 

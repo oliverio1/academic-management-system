@@ -18,11 +18,11 @@ class TemarioImportService
 
         $header = $this->extractHeader($sheet, $subject);
         if ($header === null) {
-            $result->addError('Formato invalido. La celda A1 debe contener el nombre de la materia.');
+            $result->addError('Formato invalido. La celda A1 debe contener el nombre de la materia o la etiqueta "Nombre de la materia" con el valor en B1.');
             return $result;
         }
 
-        $rows = $this->extractSingleColumnRows($sheet, $result);
+        $rows = $this->extractSingleColumnRows($sheet, $result, (int) $header['start_row']);
         if (empty($rows)) {
             $result->addWarning('No se encontraron filas validas para importar.');
             return $result;
@@ -56,7 +56,7 @@ class TemarioImportService
                     'position' => $index + 1,
                     'label' => $row['label'],
                     'level' => $row['level'],
-                    'type' => 'conceptual',
+                    'type' => $row['type'],
                     'content' => $row['content'],
                 ]);
 
@@ -69,12 +69,30 @@ class TemarioImportService
 
     private function extractHeader(Worksheet $sheet, Subject $subject): ?array
     {
+        $firstLabel = $this->normalizedText((string) $sheet->getCell('A1')->getFormattedValue());
         $title = trim((string) $sheet->getCell('A1')->getFormattedValue());
+        $courseObjective = trim((string) $sheet->getCell('B1')->getFormattedValue());
+        $startRow = 4;
+
+        if (str_contains($firstLabel, 'nombre de la materia')) {
+            $title = trim((string) $sheet->getCell('B1')->getFormattedValue());
+            $courseObjective = '';
+            $startRow = 2;
+
+            for ($row = 2; $row <= min(20, $sheet->getHighestDataRow()); $row++) {
+                $label = $this->normalizedText((string) $sheet->getCellByColumnAndRow(1, $row)->getFormattedValue());
+                if (str_contains($label, 'objetivo general')) {
+                    $courseObjective = trim((string) $sheet->getCellByColumnAndRow(2, $row)->getFormattedValue());
+                    $startRow = $row + 1;
+                    break;
+                }
+            }
+        }
+
         if ($title === '') {
             return null;
         }
 
-        $courseObjective = trim((string) $sheet->getCell('B1')->getFormattedValue());
         $creditsLabel = trim((string) $sheet->getCell('A2')->getFormattedValue());
         $credits = trim((string) $sheet->getCell('B2')->getFormattedValue());
 
@@ -97,18 +115,19 @@ class TemarioImportService
         return [
             'title' => $title,
             'description' => implode("\n", $descriptionParts),
+            'start_row' => $startRow,
         ];
     }
 
     /**
-     * @return array<int, array{label:string, level:int, content:string}>
+     * @return array<int, array{label:string, level:int, type:string, content:string}>
      */
-    private function extractSingleColumnRows(Worksheet $sheet, ImportResult $result): array
+    private function extractSingleColumnRows(Worksheet $sheet, ImportResult $result, int $startRow = 4): array
     {
         $rows = [];
         $highestRow = $sheet->getHighestDataRow();
 
-        for ($row = 4; $row <= $highestRow; $row++) {
+        for ($row = $startRow; $row <= $highestRow; $row++) {
             $raw = trim((string) $sheet->getCellByColumnAndRow(1, $row)->getFormattedValue());
             if ($raw === '') {
                 continue;
@@ -123,12 +142,21 @@ class TemarioImportService
             $label = trim($matches[1]);
             $content = trim($matches[2]);
             $unitObjective = trim((string) $sheet->getCellByColumnAndRow(2, $row)->getFormattedValue());
+            $thirdColumn = trim((string) $sheet->getCellByColumnAndRow(3, $row)->getFormattedValue());
+            $fourthColumn = trim((string) $sheet->getCellByColumnAndRow(4, $row)->getFormattedValue());
             $level = $this->inferLevelFromLabel($label);
+            $type = $this->normalizePointType($thirdColumn)
+                ?? $this->normalizePointType($fourthColumn)
+                ?? 'conceptual';
 
             if ($content === '') {
                 $result->addWarning("Fila {$row}: se omite porque no contiene texto despues de la numeracion.");
                 $result->addSkipped();
                 continue;
+            }
+
+            if ($level === 1 && $thirdColumn !== '' && ! $this->normalizePointType($thirdColumn)) {
+                $content .= ' | Horas: ' . $thirdColumn;
             }
 
             if ($level === 1 && $unitObjective !== '') {
@@ -138,6 +166,7 @@ class TemarioImportService
             $rows[] = [
                 'label' => $label,
                 'level' => $level,
+                'type' => $type,
                 'content' => $content,
             ];
         }
@@ -154,5 +183,32 @@ class TemarioImportService
 
         $parts = array_values(array_filter(explode('.', $matches[1]), fn ($part) => $part !== ''));
         return max(1, count($parts));
+    }
+
+    private function normalizePointType(string $value): ?string
+    {
+        $normalized = $this->normalizedText($value);
+        if ($normalized === '') {
+            return null;
+        }
+
+        return match ($normalized) {
+            'conceptual' => 'conceptual',
+            'procedimental' => 'procedimental',
+            'actitudinal' => 'actitudinal',
+            'otro', 'otros', 'otra' => 'otro',
+            default => null,
+        };
+    }
+
+    private function normalizedText(string $value): string
+    {
+        $value = trim(mb_strtolower($value, 'UTF-8'));
+        $converted = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        if ($converted !== false) {
+            $value = $converted;
+        }
+
+        return trim((string) preg_replace('/\s+/u', ' ', $value));
     }
 }
