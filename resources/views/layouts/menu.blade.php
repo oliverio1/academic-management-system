@@ -600,6 +600,14 @@
 </li>
 
 <li class="nav-item">
+    <a href="{{ route('teacher.students.index') }}"
+       class="nav-link {{ $isActive('teacher.students.*') }}">
+        <i class="nav-icon fas fa-users"></i>
+        <p>Mis alumnos</p>
+    </a>
+</li>
+
+<li class="nav-item">
     <a href="{{ route('teacher.didactic-plans.index') }}"
        class="nav-link {{ $isActive('teacher.didactic-plans.*') }}">
         <i class="nav-icon fas fa-file-alt"></i>

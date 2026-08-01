@@ -182,6 +182,11 @@
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-2">
+                                <a href="{{ route('teacher.students.index') }}" class="btn btn-secondary btn-block">
+                                    <i class="fas fa-users mr-1"></i>Mis alumnos
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-2">
                                 <a href="{{ route('teacher.follow-ups.index') }}" class="btn btn-warning btn-block">
                                     <i class="fas fa-bullhorn mr-1"></i>Avisos
                                 </a>

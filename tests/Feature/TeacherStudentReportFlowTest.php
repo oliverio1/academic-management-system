@@ -55,6 +55,50 @@ class TeacherStudentReportFlowTest extends TestCase
             ->assertSee($scenario['student']->user->name);
     }
 
+    public function test_teacher_can_browse_assigned_groups_students_and_student_detail(): void
+    {
+        $scenario = $this->reportScenario();
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('teacher.students.index'))
+            ->assertOk()
+            ->assertSee('Mis alumnos')
+            ->assertSee($scenario['group']->name)
+            ->assertSee('Quimica III');
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('teacher.students.group', $scenario['group']))
+            ->assertOk()
+            ->assertSee($scenario['student']->user->name)
+            ->assertSee('Detalle');
+
+        $this->actingAs($scenario['teacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('teacher.students.show', $scenario['student']))
+            ->assertOk()
+            ->assertSee($scenario['student']->user->name)
+            ->assertSee('Resumen por materia')
+            ->assertSee('Asistencia reciente')
+            ->assertSee('Actividades recientes');
+    }
+
+    public function test_teacher_cannot_open_student_detail_for_unassigned_group(): void
+    {
+        $scenario = $this->reportScenario();
+
+        $this->actingAs($scenario['otherTeacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('teacher.students.group', $scenario['group']))
+            ->assertForbidden();
+
+        $this->actingAs($scenario['otherTeacherUser'])
+            ->withSession(['active_campus_id' => $scenario['campus']->id])
+            ->get(route('teacher.students.show', $scenario['student']))
+            ->assertForbidden();
+    }
+
     public function test_teacher_creates_report_for_assigned_student_and_notifies_coordination(): void
     {
         $scenario = $this->reportScenario();
