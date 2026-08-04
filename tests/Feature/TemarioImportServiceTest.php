@@ -35,15 +35,22 @@ class TemarioImportServiceTest extends TestCase
         $temario = $subject->temarios()->with('points')->firstOrFail();
 
         $this->assertSame('Química I', $temario->title);
+        $this->assertSame('Comprender la química como ciencia experimental.', $temario->general_objective);
         $this->assertStringContainsString('Objetivo general: Comprender la química como ciencia experimental.', $temario->description);
         $this->assertStringContainsString('Creditos: 10', $temario->description);
 
         $unit = $temario->points->firstWhere('label', '1.');
         $this->assertNotNull($unit);
         $this->assertSame(1, (int) $unit->level);
+        $this->assertNull($unit->parent_id);
+        $this->assertSame('Química como herramienta de vida', $unit->title);
+        $this->assertSame('Argumenta la importancia de la Química.', $unit->objective);
         $this->assertSame('conceptual', $unit->type);
         $this->assertSame(5.0, (float) $unit->hours);
         $this->assertStringContainsString('Objetivo especifico: Argumenta la importancia de la Química.', $unit->content);
+
+        $topic = $temario->points->firstWhere('label', '1.1.');
+        $this->assertSame($unit->id, (int) $topic->parent_id);
     }
 
     public function test_imports_content_type_from_next_column_for_preparatoria_format(): void
@@ -67,6 +74,45 @@ class TemarioImportServiceTest extends TestCase
         $this->assertSame('conceptual', $temario->points->firstWhere('label', '1.')->type);
         $this->assertSame('procedimental', $temario->points->firstWhere('label', '1.1.')->type);
         $this->assertSame('actitudinal', $temario->points->firstWhere('label', '1.1.1.')->type);
+    }
+
+    public function test_imports_revised_preparatoria_area_file_with_hours_in_column_d(): void
+    {
+        $subject = $this->subject('FÍSICA IV');
+        $file = $this->workbookUpload([
+            ['Nombre de la materia', 'Física IV', null, null],
+            ['Clave', '1621', null, null],
+            ['Tipo', 'Teórico-práctica', null, null],
+            ['Horas por semana', '4', null, null],
+            ['Horas al año', '120', null, null],
+            [null, null, null, null],
+            [null, null, null, null],
+            ['Objetivo general', 'Aplicar conceptos de Física al área II.', null, null],
+            ['1. Física de la visión y la audición', 'Comprender óptica y acústica.', 'conceptual', '40'],
+            ["1.1a Ondas. Características:\nperiodo, frecuencia y velocidad", null, 'Conceptual', null],
+            ['1.1.b Fenómenos sonoros', null, 'Procedimental', null],
+        ], 'SEXTO - FISICA IV (II).xlsx');
+
+        $result = app(TemarioImportService::class)->import($file, $subject);
+
+        $this->assertFalse($result->hasErrors(), implode("\n", $result->errors));
+        $this->assertSame([], $result->warnings);
+
+        $temario = $subject->temarios()->with('points')->firstOrFail();
+        $this->assertSame('1621', $temario->program_key);
+        $this->assertSame('2', $temario->area);
+        $this->assertSame('II', $temario->area_label);
+        $this->assertSame(4, $temario->weekly_hours);
+        $this->assertSame(120, $temario->annual_hours);
+
+        $unit = $temario->points->firstWhere('label', '1.');
+        $topic = $temario->points->firstWhere('label', '1.1.a.');
+
+        $this->assertSame(40.0, (float) $unit->hours);
+        $this->assertSame('Física de la visión y la audición', $unit->title);
+        $this->assertSame('Comprender óptica y acústica.', $unit->objective);
+        $this->assertSame("Ondas. Características:\nperiodo, frecuencia y velocidad", $topic->title);
+        $this->assertSame($unit->id, (int) $topic->parent_id);
     }
 
     public function test_imports_preparatoria_olicati_metadata_hours_types_and_lettered_labels(): void
@@ -129,7 +175,7 @@ class TemarioImportServiceTest extends TestCase
         ]);
     }
 
-    private function workbookUpload(array $rows): UploadedFile
+    private function workbookUpload(array $rows, string $filename = 'temario.xlsx'): UploadedFile
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -148,7 +194,7 @@ class TemarioImportServiceTest extends TestCase
 
         return new UploadedFile(
             $path,
-            'temario.xlsx',
+            $filename,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             null,
             true

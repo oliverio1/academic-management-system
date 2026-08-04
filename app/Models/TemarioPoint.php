@@ -8,10 +8,14 @@ class TemarioPoint extends Model
 {
     protected $fillable = [
         'temario_id',
+        'parent_id',
         'position',
         'label',
+        'sort_key',
         'level',
         'type',
+        'title',
+        'objective',
         'hours',
         'content',
     ];
@@ -23,5 +27,15 @@ class TemarioPoint extends Model
     public function temario()
     {
         return $this->belongsTo(Temario::class);
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('position');
     }
 }

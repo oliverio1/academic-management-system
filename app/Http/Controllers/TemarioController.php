@@ -251,17 +251,31 @@ class TemarioController extends Controller
     private function syncPoints(Temario $temario, array $points): void
     {
         $temario->points()->delete();
+        $parentsByKey = [];
 
         foreach (array_values($points) as $index => $point) {
             $label = $point['label'] ?? null;
-            $temario->points()->create([
+            [$title, $objective] = $this->splitPointObjective((string) ($point['content'] ?? ''));
+            $sortKey = $this->labelKey($label);
+            $created = $temario->points()->create([
                 'position' => $index + 1,
                 'label' => $label,
+                'sort_key' => $sortKey !== '' ? $sortKey : null,
                 'level' => $this->inferLevelFromLabel($label),
                 'type' => $point['type'],
+                'title' => $title !== '' ? $title : null,
+                'objective' => $objective !== '' ? $objective : null,
                 'hours' => $point['hours'] ?? null,
                 'content' => $point['content'],
             ]);
+
+            if ($sortKey !== '') {
+                $parentsByKey[$sortKey] = $created->id;
+                $parentId = $this->parentIdForKey($sortKey, $parentsByKey);
+                if ($parentId) {
+                    $created->update(['parent_id' => $parentId]);
+                }
+            }
         }
     }
 
@@ -278,6 +292,46 @@ class TemarioController extends Controller
 
         $parts = array_values(array_filter(explode('.', $matches[1]), fn ($part) => $part !== ''));
         return max(1, count($parts));
+    }
+
+    private function labelKey(?string $label): string
+    {
+        if (preg_match('/([0-9]+(?:\.(?:[0-9]+|[a-zA-Z]))*)/u', (string) $label, $matches) === 1) {
+            return rtrim((string) $matches[1], '.');
+        }
+
+        return '';
+    }
+
+    private function parentIdForKey(string $key, array $parentsByKey): ?int
+    {
+        $parts = explode('.', $key);
+        if (count($parts) <= 1) {
+            return null;
+        }
+
+        array_pop($parts);
+        while (! empty($parts)) {
+            $parentKey = implode('.', $parts);
+            if (isset($parentsByKey[$parentKey])) {
+                return (int) $parentsByKey[$parentKey];
+            }
+            array_pop($parts);
+        }
+
+        return null;
+    }
+
+    private function splitPointObjective(string $content): array
+    {
+        if (preg_match('/^(.*?)\s*\|\s*Objetivo\s+espec[ií]fico:\s*(.+)$/uis', trim($content), $matches) === 1) {
+            return [
+                trim((string) $matches[1]),
+                trim((string) $matches[2]),
+            ];
+        }
+
+        return [trim($content), ''];
     }
 
     private function ensureCoordinatorAccess(): void
